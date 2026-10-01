@@ -21,9 +21,7 @@
 <meta name="twitter:description" content="Funūn is where songwriters and producers write together, keep a Sound Vault of masters and rights documents, and track copyright, PRO and SoundExchange registration, all in one place.">
 <meta name="twitter:image" content="https://www.funun.studio/marketing/og.jpg">
 <style>
-/* Self-hosted fonts — latin subset only, byte-identical to what Google served
-   on 2026-09-30. unicode-range and font-display:swap preserved exactly; only the
-   url() changes. Widening these or re-subsetting will move line breaks. */
+
 @font-face{font-family:'Grand Hotel';font-style:normal;font-weight:400;font-display:swap;src:url(/marketing/fonts/grand-hotel-400.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
 @font-face{font-family:'Inter';font-style:normal;font-weight:400;font-display:swap;src:url(/marketing/fonts/inter-400.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
 @font-face{font-family:'Inter';font-style:normal;font-weight:500;font-display:swap;src:url(/marketing/fonts/inter-500.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
@@ -41,26 +39,23 @@
   --border:rgba(255,255,255,.09); --border-strong:rgba(255,255,255,.17);
   --page:#000;
 }
-/* pick 4 — the radial glow ground, as an alternative to flat black */
+
 body[data-bg="glow"]{ --page:transparent; }
 body[data-bg="glow"]::before{
   content:'';position:fixed;inset:0;z-index:-2;
   background:radial-gradient(125% 125% at 50% 8%, #000 42%, #3b2a8c 78%, #6d3aa8 100%);
 }
 *{box-sizing:border-box}
-/* an id selector's display beats the UA [hidden] rule, so say it explicitly */
+
 [hidden]{display:none!important}
 html,body{margin:0}
-/* overflow-x:hidden on <body> makes the BODY a scroll container, so the page
-   ends up with two competing scrollers and the last stretch becomes
-   unreachable — which is what hid the footer. `clip` suppresses the same
-   horizontal overflow without creating a scroll container. */
+
 body{background:var(--page);color:var(--fg);
   font-family:'Inter',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
   -webkit-font-smoothing:antialiased;overflow-x:clip}
 .tnum{font-variant-numeric:tabular-nums}
 
-/* ── bench controls ─────────────────────────────── */
+
 .bench{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;gap:9px;flex-wrap:wrap;
   align-items:center;padding:9px 14px;background:rgba(10,10,12,.86);backdrop-filter:blur(12px);
   border-bottom:1px solid var(--border);font-size:11px}
@@ -72,7 +67,7 @@ body{background:var(--page);color:var(--fg);
 .note{color:var(--lav-dim);margin-left:auto;font-size:10.5px}
 main{padding-top:44px}
 
-/* ── shared section furniture ───────────────────── */
+
 .wrap{max-width:1120px;margin:0 auto;padding:0 24px}
 .eyebrow{display:inline-flex;align-items:center;gap:10px;margin-bottom:18px}
 .eyebrow .n{width:30px;height:30px;border-radius:999px;background:var(--card-2);border:1px solid var(--border-strong);
@@ -82,7 +77,7 @@ main{padding-top:44px}
 h2.sec{font-size:clamp(28px,4vw,44px);font-weight:700;letter-spacing:-.02em;margin:0 0 12px;line-height:1.08}
 p.sub{font-size:15px;color:var(--lav);max-width:46ch;line-height:1.6;margin:0}
 
-/* ── HERO A: illuminated ────────────────────────── */
+
 #heroA{position:relative;min-height:88vh;display:grid;place-items:center;overflow:hidden;text-align:center;padding:80px 24px}
 .blooms{position:absolute;inset:0;pointer-events:none}
 .bloom{position:absolute;left:50%;width:min(52em,92vw);aspect-ratio:2/1;border-radius:50%;
@@ -104,10 +99,8 @@ p.sub{font-size:15px;color:var(--lav);max-width:46ch;line-height:1.6;margin:0}
 .heroA-in p.lede{margin:14px auto 0;max-width:34ch;font-size:15px;line-height:1.6;color:var(--lav)}
 .heroA-in .cta{margin-top:32px;display:flex;gap:11px;justify-content:center;flex-wrap:wrap}
 
-/* ── HERO B: image-stream corridor ──────────────── */
-/* container-type and perspective must live on DIFFERENT elements: an element is
-   not its own container-query container, and container-type applies layout
-   containment, which breaks a 3D perspective declared on the same node. */
+
+
 #heroB{position:relative;min-height:88vh;overflow:hidden;container-type:inline-size}
 .corridor{perspective:30cqw;perspective-origin:50% 55%}
 .corridor{position:absolute;inset:0;pointer-events:none}
@@ -123,10 +116,7 @@ p.sub{font-size:15px;color:var(--lav);max-width:46ch;line-height:1.6;margin:0}
 .heroB-in p{max-width:40ch;font-size:14px;line-height:1.6;color:var(--lav);margin:0;
   text-shadow:0 2px 20px rgba(0,0,0,.9)}
 .heroB-foot{display:flex;flex-direction:column;align-items:center}
-/* Two scrims, not one. The radial keeps the vanishing point readable behind the
-   headline; the linear pair anchors the top and bottom so text never sits on a
-   bright card. Stitched components almost always need this — each was designed
-   assuming it owned the whole frame. */
+
 .heroB-scrim{position:absolute;inset:0;z-index:2;pointer-events:none;
   background:
     radial-gradient(ellipse 46% 38% at 50% 55%,rgba(0,0,0,.92),transparent 72%),
@@ -134,7 +124,7 @@ p.sub{font-size:15px;color:var(--lav);max-width:46ch;line-height:1.6;margin:0}
                     rgba(0,0,0,.72) 74%,#000 100%)}
 .cardi .art{filter:saturate(.85) brightness(.82)}
 
-/* ── buttons ────────────────────────────────────── */
+
 .btn{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:11px;font:inherit;font-size:14px;
   font-weight:700;padding:13px 22px;cursor:pointer;text-decoration:none;transition:.16s}
 .btn.primary{background:var(--grad);color:#fff;box-shadow:0 14px 34px -12px rgba(217,70,239,.55)}
@@ -142,7 +132,7 @@ p.sub{font-size:15px;color:var(--lav);max-width:46ch;line-height:1.6;margin:0}
 .btn.ghost{background:rgba(255,255,255,.07);color:var(--fg);border:1px solid var(--border-strong)}
 .btn.ghost:hover{background:rgba(255,255,255,.12)}
 
-/* ── testimonials ───────────────────────────────── */
+
 #voices{padding:110px 0}
 .vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;margin-top:38px}
 .vcard{border:1px solid var(--border);background:var(--card);border-radius:16px;padding:20px;
@@ -157,9 +147,7 @@ p.sub{font-size:15px;color:var(--lav);max-width:46ch;line-height:1.6;margin:0}
 .vquote{font-size:14px;line-height:1.6;color:var(--lav);margin:0}
 .vplayer{display:flex;align-items:center;gap:11px;border:1px solid var(--border);border-radius:11px;
   background:var(--card-2);padding:9px 11px;margin-top:auto}
-/* ^ margin-top:auto, because the grid stretches every card to the tallest in the
-   row. Text-only cards have no player at all; audio cards keep theirs on the
-   floor of the card rather than floating under a short quote. */
+
 .vplay{width:32px;height:32px;flex:none;border-radius:999px;border:0;background:rgba(255,255,255,.1);
   color:var(--fg);display:grid;place-items:center;cursor:pointer;padding:0;transition:.15s}
 .vplay:hover{background:var(--grad);color:#fff}
@@ -170,11 +158,7 @@ p.sub{font-size:15px;color:var(--lav);max-width:46ch;line-height:1.6;margin:0}
 .vplay:focus-visible,.vwave:focus-visible{outline:2px solid var(--brand-indigo);outline-offset:2px}
 .vdur{flex:none;font-size:11px;color:var(--lav-dim);font-variant-numeric:tabular-nums}
 
-/* ── faq ───────────────────────────────────────────────────────────────
-   Open, not an accordion. The page already has 17 click-to-reveal popovers,
-   and an FAQ is the wrong place to hide answers -- someone reading it is
-   anxious about ownership or lock-in, and making them click to find out
-   whether you take a cut is backwards. */
+
 #faq{padding:96px 0 40px}
 .faq{margin-top:42px;display:grid;gap:30px 44px;grid-template-columns:repeat(2,1fr)}
 @media(max-width:860px){.faq{grid-template-columns:1fr;gap:26px}}
@@ -182,10 +166,7 @@ p.sub{font-size:15px;color:var(--lav);max-width:46ch;line-height:1.6;margin:0}
 .faq p{margin:8px 0 0;font-size:13.5px;line-height:1.62;color:var(--lav)}
 .faq b{color:#fff;font-weight:650}
 
-/* ── pricing ────────────────────────────────────────
-   The app's one-gradient-per-screen rule is an APP rule. A pricing section has
-   to sell, so it spends: ambient light behind the section, a raised hero card,
-   filled ticks, and a CTA with internal structure. */
+
 #pricing{position:relative;padding:110px 0 70px;overflow:hidden}
 .pglow{position:absolute;pointer-events:none;border-radius:50%;filter:blur(130px)}
 .pglow.a{top:-6%;right:14%;width:34rem;height:34rem;background:rgba(129,140,248,.14)}
@@ -204,7 +185,7 @@ p.sub{font-size:15px;color:var(--lav);max-width:46ch;line-height:1.6;margin:0}
 .pcard{position:relative;border:1px solid var(--border);background:var(--card);border-radius:20px;padding:28px;
   display:flex;flex-direction:column;transition:border-color .2s,transform .2s}
 .pcard:not(.pop):hover{border-color:var(--border-strong);transform:translateY(-3px)}
-/* the one card that is meant to be chosen, and looks it */
+
 .pcard.pop{border-color:rgba(217,70,239,.5);background:linear-gradient(180deg,#191330 0%,#0b0a10 62%);
   box-shadow:0 24px 60px -24px rgba(217,70,239,.35), inset 0 1px 0 rgba(255,255,255,.07);
   transform:scale(1.025);z-index:2}
@@ -229,21 +210,18 @@ p.sub{font-size:15px;color:var(--lav);max-width:46ch;line-height:1.6;margin:0}
 .tick{flex:none;width:19px;height:19px;border-radius:999px;display:grid;place-items:center;margin-top:1px;
   background:var(--grad);box-shadow:0 0 12px -2px rgba(217,70,239,.55)}
 .pcard:not(.pop) .tick{background:rgba(129,140,248,.9);box-shadow:0 0 10px -3px rgba(129,140,248,.6)}
-/* CTA with internal structure — label left, arrow in its own disc right */
-/* team / volume strip — deliberately a BAND, not a fourth pricing card. A card
-   would read as another tier to choose; this reads as a door out of the grid. */
+
+
 .teamstrip{margin-top:26px;display:flex;align-items:center;gap:28px;flex-wrap:wrap;
   position:relative;z-index:1;overflow:hidden;
-  /* same materials as .pcard -- border, fill, radius, padding -- so it reads as
-     the same family. Only the SHAPE differs: a band is a door out of the grid,
-     a fourth card would read as a fourth tier with an empty price slot. */
+  
   border:1px solid var(--border);background:var(--card);border-radius:20px;padding:26px 28px}
-/* a soft light from the CTA end, so the middle of a very wide band is not dead space */
+
 .teamstrip::before{content:'';position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(120% 180% at 92% 50%,rgba(217,70,239,.16),rgba(129,140,248,.08) 42%,transparent 70%)}
 .teamstrip>*{position:relative}
 .tstext{flex:1 1 320px;min-width:0}
-/* the band carries a tier's anatomy: name, price slot, audience, inclusion line */
+
 .tsname{margin:0;font-size:18px;font-weight:700;color:#fff;letter-spacing:-.018em;
   display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .tsprice{font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
@@ -260,8 +238,7 @@ p.sub{font-size:15px;color:var(--lav);max-width:46ch;line-height:1.6;margin:0}
 @media(max-width:620px){.teamstrip{align-items:flex-start}
   .tscta{width:100%;margin-left:0}}
 
-/* feature info affordance — a button, not a hover-only tooltip, so it works on touch
-   and reaches the keyboard. The popover is a sibling so it is not clipped by the li. */
+
 .pcard li{position:relative}
 .finfo{flex:none;width:15px;height:15px;margin-top:2px;border-radius:999px;cursor:pointer;
   display:grid;place-items:center;padding:0;font:inherit;line-height:0;
@@ -271,17 +248,13 @@ p.sub{font-size:15px;color:var(--lav);max-width:46ch;line-height:1.6;margin:0}
   border-color:rgba(129,140,248,.55);color:#fff}
 .finfo:focus-visible{outline:2px solid rgba(129,140,248,.9);outline-offset:2px}
 .finfo svg{width:9px;height:9px}
-/* Entrance borrowed from the 21st.dev animated-tooltip: it springs in at scale
-   0.6 with an overshoot rather than just appearing. framer-motion's spring
-   (stiffness 260, damping 10) approximated in keyframes -- no library. */
+
 @keyframes fpop-in{
   0%  {opacity:0; transform:translateY(9px) scale(.82)}
   55% {opacity:1; transform:translateY(-3px) scale(1.025)}
   78% {transform:translateY(1px) scale(.995)}
   100%{opacity:1; transform:translateY(0) scale(1)}}
-/* The two fading hairlines along the bottom edge are the detail that makes the
-   source read as crafted. Theirs are emerald + sky; these are the Funun gradient
-   endpoints. One element, two background gradients, different widths/offsets. */
+
 .fpop .fline{position:absolute;left:0;right:0;bottom:0;height:1px;pointer-events:none;
   background-image:linear-gradient(90deg,transparent,#10b981,transparent),
                    linear-gradient(90deg,transparent,#0ea5e9,transparent);
@@ -305,8 +278,7 @@ p.sub{font-size:15px;color:var(--lav);max-width:46ch;line-height:1.6;margin:0}
   background:#c4c4cc;transform:translateY(-3px)}
 .fpop b{display:block;color:#09090b;font-size:16px;font-weight:700;letter-spacing:-.017em;
   line-height:1.22;margin-bottom:5px}
-/* last rows would push the panel past the card and into the band below, so it
-   opens upward instead -- arrow flips with it */
+
 .fpop.up{top:auto;bottom:calc(100% + 8px);transform-origin:bottom left}
 .fpop.up::before{top:auto;bottom:-4px}
 @keyframes fpop-in-up{
@@ -329,17 +301,13 @@ p.sub{font-size:15px;color:var(--lav);max-width:46ch;line-height:1.6;margin:0}
   background:rgba(0,0,0,.22);transition:transform .18s}
 .pcta.quiet .disc{background:rgba(255,255,255,.09)}
 .pcta:hover .disc{transform:translate(2px,-2px)}
-/* ── footer ─────────────────────────────────────────
-   The point of the source design is that the footer is a CARD that lifts off
-   the page: big rounded top corners, inset from the edges, a soft radial glow
-   spilling from the top center, and a thin blurred light bar on its edge.
-   A line with links under it is not the same object. */
+
 .footwrap{max-width:1120px;margin:48px auto 0;padding:0 24px}
 footer{position:relative;border:1px solid var(--border);border-bottom:0;
   border-radius:40px 40px 0 0;padding:58px 44px 52px;overflow:hidden;
   background:radial-gradient(42% 150px at 50% 0%, rgba(255,255,255,.07), transparent 70%)}
 @media(max-width:700px){footer{border-radius:28px 28px 0 0;padding:44px 24px 40px}}
-/* the light bar riding the top edge */
+
 footer::before{content:'';position:absolute;top:0;left:50%;transform:translate(-50%,-50%);
   width:34%;height:2px;border-radius:999px;filter:blur(1.5px);
   background:linear-gradient(90deg,transparent,rgba(199,203,247,.55),transparent)}
@@ -349,16 +317,14 @@ footer::before{content:'';position:absolute;top:0;left:50%;transform:translate(-
 .fmarkrow .glyph{display:flex;align-items:center;gap:2.5px;height:26px}
 .fmarkrow .glyph i{width:3px;border-radius:999px;background:var(--grad);display:block}
 .fmark{font-size:21px;font-weight:700;letter-spacing:-.015em}
-/* company tagline -- sits with the wordmark, the one slot a company line belongs in */
+
 .ftag{margin:10px 0 0;font-size:13.5px;font-weight:600;letter-spacing:-.008em;color:var(--lav)}
 .fcopy{font-size:12px;color:var(--lav-dim);margin:16px 0 0;line-height:1.65;max-width:30ch}
 .fcols{display:grid;grid-template-columns:repeat(2,1fr);gap:30px}
-/* Legal is a sentence, not a list, so it gets the room a sentence needs. In
-   four equal columns it was 135px wide and wrapped to seven lines — a wall
-   of text in a nav column. 1.9fr puts it at roughly three. */
+
 @media(min-width:640px){.fcols{grid-template-columns:1fr 1fr 1.9fr 1fr}}
 .fcol h4{margin:0 0 14px;font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--lav-dim)}
-.fcol li a{white-space:nowrap}  /* labels, not prose — the narrower Product column was breaking "The Writer's Room" across two lines */
+.fcol li a{white-space:nowrap}  
 .fcol .fnote{margin:0;font-size:12px;line-height:1.65;color:var(--lav-dim);max-width:30ch}
 .fcol .fnote a{color:var(--lav);text-decoration:underline;text-underline-offset:2px}
 .fcol .fnote a:hover{color:#fff}
@@ -369,8 +335,7 @@ footer::before{content:'';position:absolute;top:0;left:50%;transform:translate(-
 .fcol a svg{flex:none;opacity:.7}
 .fcol a:hover svg{opacity:1}
 .reveal{transition:opacity .7s ease,transform .7s cubic-bezier(.32,.72,0,1),filter .7s ease}
-/* Hidden ONLY once JS has confirmed it can reveal them again. Without the
-   .js-reveal gate, one thrown error above leaves every section invisible. */
+
 .js-reveal .reveal:not(.in){opacity:0;transform:translateY(10px);filter:blur(4px)}
 @media(prefers-reduced-motion:reduce){.js-reveal .reveal:not(.in){opacity:1;transform:none;filter:none}}
 .flag{font-size:11px;color:var(--amber);background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.28);
@@ -389,11 +354,7 @@ footer::before{content:'';position:absolute;top:0;left:50%;transform:translate(-
 .announce .cta{margin-top:32px;display:flex;gap:11px;justify-content:center;flex-wrap:wrap}
 
 
-/* ── how it works ──────────────────────────────────────────────────────
-   Structure taken from 21st.dev's how-it-works-2: a vertical rail of
-   numbered nodes joined by a hairline. Not ported: React, @remixicon,
-   class-variance-authority, shadcn's Badge and cn() -- all absent here, and
-   the component is a flex list once the plumbing is stripped out. */
+
 #how{padding:96px 0 20px}
 .steps{list-style:none;margin:44px 0 0;padding:0;max-width:62ch}
 .steps li{display:flex;gap:22px}
@@ -407,15 +368,13 @@ footer::before{content:'';position:absolute;top:0;left:50%;transform:translate(-
 .steps li:last-child .body{padding-bottom:0}
 .steps h3{margin:7px 0 0;font-size:17px;font-weight:700;letter-spacing:-.015em;color:#fff}
 .steps p{margin:7px 0 0;font-size:14px;line-height:1.6;color:var(--lav)}
+
 .steps .who{display:inline-block;margin-top:9px;font-size:10.5px;font-weight:600;
   letter-spacing:.1em;text-transform:uppercase;color:#a5b4fc;
   border:1px solid rgba(129,140,248,.38);background:rgba(129,140,248,.11);
   border-radius:999px;padding:3px 9px}
 
-/* ── the crate ─────────────────────────────────────────────────────────
-   Copy on the left, a Selects player on the right -- the artefact a supervisor
-   actually receives. Recreated from public/maya-selects-desktop.html rather
-   than screenshotted, so it restyles with the tokens. */
+
 #crate{padding:96px 0 30px}
 .csplit{display:grid;gap:40px;grid-template-columns:1fr 1fr;align-items:center}
 @media(max-width:940px){.csplit{grid-template-columns:1fr;gap:34px}}
@@ -427,19 +386,7 @@ footer::before{content:'';position:absolute;top:0;left:50%;transform:translate(-
 .cbeats em{font-style:normal;color:#fff}
 .ccta{margin-top:28px;display:flex;gap:11px;flex-wrap:wrap}
 
-/* ── the Selects mock ──────────────────────────────────────────────────
-   Rebuilt 2026-09-26 against components/selects-player/SelectsPlayer.tsx and
-   its theme.ts, after the owner said it did not look like the product. It
-   did not: the real player is a CENTRED hero — big square cover, the
-   FUNŪN·Selects chip, a white play pill — over a purple ambient wash, with
-   love/pass reactions on each row. The old mock was a horizontal tracklist
-   in the marketing page's neutral greys with none of that.
 
-   The player ships its OWN palette (theme.ts) and it is not this page's:
-   ground #08070d, purple-tinted panels, a true lavender #C7CBF7. Those are
-   hardcoded below on purpose — using the marketing tokens is what made it
-   look like a different product. Third divergence caught between the mock
-   and the component; the component has won all three. */
 .selects{--sground:#08070d;--spanel:#0E0D1E;--spanel2:#151330;--slav:#C7CBF7;
   --slavdim:#8b8fbf;--sborder:rgba(199,203,247,.12);--sborder2:rgba(199,203,247,.22);
   --srose:#F9A8C0;--sgreen:#34D399;
@@ -461,7 +408,7 @@ footer::before{content:'';position:absolute;top:0;left:50%;transform:translate(-
 .sel-pill{display:inline-flex;align-items:center;gap:6px;font-size:9px;letter-spacing:.1em;
   text-transform:uppercase;color:#F4C77B;flex:none}
 .sel-pill::before{content:'';width:5px;height:5px;border-radius:999px;background:#F4C77B}
-/* the hero — centred, which is the single biggest thing the old mock got wrong */
+
 .sel-hero{text-align:center;padding:2px 20px 0}
 .sel-cover{width:min(168px,48%);aspect-ratio:1;border-radius:16px;margin:0 auto;display:block;
   object-fit:cover;border:1px solid var(--sborder);box-shadow:0 30px 80px -28px rgba(0,0,0,.85)}
@@ -479,7 +426,7 @@ footer::before{content:'';position:absolute;top:0;left:50%;transform:translate(-
   font-size:12.5px;box-shadow:0 14px 34px -16px rgba(255,255,255,.5)}
 .sel-hc{width:30px;height:30px;border-radius:50%;border:1px solid var(--sborder2);
   background:none;color:var(--slav);display:grid;place-items:center;font-size:11px;flex:none}
-/* the list */
+
 .sel-head{display:flex;align-items:center;gap:9px;padding:18px 18px 4px}
 .sel-head .l{font-size:9.5px;letter-spacing:.15em;text-transform:uppercase;font-weight:700;
   color:var(--slavdim)}
@@ -501,18 +448,11 @@ footer::before{content:'';position:absolute;top:0;left:50%;transform:translate(-
 .selects figcaption{position:relative;z-index:1;padding:11px 18px 14px;
   border-top:1px solid var(--sborder);font-size:11px;color:var(--slavdim);line-height:1.5}
 
-/* ── collaborator sphere ───────────────────────────────────────────────
-   Maths ported from 21st.dev's image-sphere (Fibonacci distribution, Y/X
-   rotation matrices, depth-driven scale and fade). The React, framer-motion
-   and lucide parts are not ported -- the bench has no React, and the value of
-   that component is its geometry, not its shell.
-   Initials rather than photographs: a sphere of invented faces would imply
-   real collaborators who do not exist. Matches WriterRoomPresence's fallback. */
+
 #people{padding:96px 0 40px}
 .sphere-wrap{position:relative;z-index:0;display:flex;flex-direction:column;align-items:center;
   margin-top:40px}
-/* ^ z-index:0 is load-bearing. It makes a stacking context, so the nodes' 1000+
-   z-indexes compete only in here -- without it they paint over the sticky nav. */
+
 .sphere{position:relative;width:min(560px,86vw);aspect-ratio:1;cursor:grab;touch-action:none}
 .sphere:active{cursor:grabbing}
 .sphere .node{position:absolute;display:grid;place-items:center;border-radius:999px;
@@ -540,13 +480,7 @@ footer::before{content:'';position:absolute;top:0;left:50%;transform:translate(-
   color:var(--lav-dim)}
 @media(prefers-reduced-motion:reduce){.sphere-card{animation:none}}
 
-/* ── header ────────────────────────────────────────────────────────────
-   Three parts, not a centred pill: the page needed identity and a way back
-   in, and a nav-only component supplies neither. The sliding indicator is
-   borrowed from 21st.dev's nav-header, but driven by SCROLL POSITION rather
-   than hover alone -- on a long single-page site, knowing where you are
-   matters more than knowing what you are pointing at. CSS transition on
-   left/width; framer-motion adds nothing here. */
+
 .nav{position:sticky;top:0;z-index:200;backdrop-filter:blur(14px);
   background:rgba(10,10,15,.72);border-bottom:1px solid transparent;transition:border-color .25s}
 .nav[data-stuck="1"]{border-bottom-color:var(--border)}
@@ -571,11 +505,7 @@ footer::before{content:'';position:absolute;top:0;left:50%;transform:translate(-
   justify-self:end;padding:7px 2px;transition:color .18s}
 .navsignin:hover{color:#fff}
 
-/* ── differentiators ───────────────────────────────────────────────────
-   A SECOND carousel on one page is a risk: the hero already auto-rotates,
-   and two things moving competes for attention while hiding content behind
-   a timer. So this one is MANUAL and tabbed — every name is readable at
-   once, and the art only changes when someone asks it to. */
+
 .dtabs{display:flex;flex-wrap:wrap;gap:8px;margin:34px 0 22px}
 .dtab{border:1px solid var(--border);background:var(--card);color:var(--lav-dim);
   font:inherit;font-size:12.5px;font-weight:600;padding:8px 14px;border-radius:999px;
@@ -604,19 +534,14 @@ footer::before{content:'';position:absolute;top:0;left:50%;transform:translate(-
   @keyframes dfade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 }
 
-/* ── sign-in dialog ────────────────────────────────────────────────────
-   Skin taken from the login card the owner picked; everything else rebuilt on
-   Funūn tokens. Native <dialog> rather than a div: it gives focus trapping,
-   Esc, inert background and ::backdrop for free, and those are the four things
-   hand-rolled modals get wrong. The header link keeps href="/signin", so the
-   real page is still the destination when JS has not run. */
+
 
 .authwrap{position:relative;width:100%;height:100%;display:grid;place-items:center;padding:24px}
 .authveil{position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(78% 58% at 50% 32%, rgba(129,140,248,.14), transparent 62%)}
 .authsparks{position:absolute;inset:0;width:100%;height:100%;opacity:.55;
   mix-blend-mode:screen;pointer-events:none}
-/* the drawn grid: three rules across, three down, each shimmering once as it lands */
+
 .authlines{position:absolute;inset:0;pointer-events:none;opacity:.75}
 .authlines i{position:absolute;background:rgba(255,255,255,.10)}
 .authlines .h{left:0;right:0;height:1px;transform:scaleX(0);transform-origin:50% 50%;
@@ -660,8 +585,7 @@ footer::before{content:'';position:absolute;top:0;left:50%;transform:translate(-
 .authrow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-4px 0 16px}
 .authrow a{font-size:11.5px;color:var(--lav-dim);text-decoration:none}
 .authrow a:hover{color:var(--fg)}
-/* Remember me. A real checkbox with appearance:none rather than a div pretending
-   to be one -- it keeps the label click, the focus ring and the keyboard space bar. */
+
 .authkeep{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--lav-dim);
   cursor:pointer;user-select:none}
 .authkeep:hover{color:var(--lav)}
@@ -700,11 +624,11 @@ footer::before{content:'';position:absolute;top:0;left:50%;transform:translate(-
   .authsparks{display:none}
 }
 
-/* ── hero carousel ────────────────────────────────────────────────── */
+
 .carousel{position:relative}
 .slide:not(.on){display:none!important}
-/* ^ !important is load-bearing: #heroA/#heroB/#heroC set display by ID, and
-   heroC sets it inline. A class selector cannot beat either one. */
+
+
 .cdots{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);z-index:20;
   display:flex;gap:4px;align-items:center;max-width:calc(100vw - 28px);
   background:rgba(255,255,255,.035);border:1px solid var(--border);border-radius:999px;padding:4px}
@@ -719,44 +643,44 @@ footer::before{content:'';position:absolute;top:0;left:50%;transform:translate(-
   background:var(--grad);animation:cfill var(--dwell,9s) linear forwards}
 @keyframes cfill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @media(prefers-reduced-motion:reduce){.cdot[aria-selected="true"]::after{animation:none;transform:scaleX(1)}}
-/* three product names do not fit a 375px viewport at full size */
+
 @media(max-width:430px){.cdots{gap:1px;padding:3px}.cdot{font-size:10px;padding:6px 8px}
   .cdot[aria-selected="true"]::after{left:7px;right:7px}}
 
-/* ── the neon sign ────────────────────────────────────────────────── */
+
 #heroA{position:relative;min-height:92vh;display:grid;place-items:center;overflow:hidden;
   text-align:center;padding:90px 24px}
-/* the building it is bolted to — only visible where the sign's light reaches */
+
 .wall{position:absolute;inset:0;pointer-events:none;opacity:.5;
   background:
     repeating-linear-gradient(0deg, rgba(255,255,255,.055) 0 1px, transparent 1px 34px),
     repeating-linear-gradient(90deg, rgba(255,255,255,.045) 0 1px, transparent 1px 78px);
   -webkit-mask-image:radial-gradient(52% 40% at 50% 42%, #000 0%, rgba(0,0,0,.55) 45%, transparent 78%);
   mask-image:radial-gradient(52% 40% at 50% 42%, #000 0%, rgba(0,0,0,.55) 45%, transparent 78%)}
-/* the light the sign throws back onto the wall */
+
 .spill{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);pointer-events:none;
   width:min(90rem,150vw);height:42rem;filter:blur(90px);opacity:0;
   background:radial-gradient(ellipse at center,
     rgba(217,70,239,.46) 0%, rgba(129,140,248,.34) 36%, transparent 70%);
   animation:spillOn 2.4s cubic-bezier(.32,.72,0,1) .35s forwards}
 @keyframes spillOn{from{opacity:0}to{opacity:1}}
-/* the mount: a rail above the sign with two brackets and a conduit drop */
+
 .mount{position:relative;width:min(13rem,42vw);height:16px;margin:0 auto 4px}
 .mount .rail{position:absolute;left:0;right:0;top:0;height:3px;border-radius:3px;
   background:linear-gradient(90deg,transparent,rgba(255,255,255,.22) 18%,rgba(255,255,255,.22) 82%,transparent)}
-/* two drop rods, like a hanging bar sign */
+
 .mount .brk{position:absolute;top:3px;width:2px;height:13px;
   background:linear-gradient(180deg,rgba(255,255,255,.2),rgba(255,255,255,.07))}
 .mount .brk.l{left:22%} .mount .brk.r{right:22%}
 .conduit{display:none}
 .neonwrap{position:relative;z-index:3}
 
-/* real tubes do not snap on — they stutter, then settle */
+
 @keyframes warmup{
   0%{opacity:0}   6%{opacity:.85}  9%{opacity:.1}
   14%{opacity:.9} 17%{opacity:.25} 23%{opacity:1}
   26%{opacity:.5} 32%{opacity:1}   100%{opacity:1}}
-/* one tube never quite behaves */
+
 .neon .flick{animation:flick 7s steps(1,end) 2.6s infinite}
 @keyframes flick{0%,96.5%{opacity:1} 97%{opacity:.35} 97.6%{opacity:1} 98.2%{opacity:.5} 98.8%{opacity:1}}
 @media(prefers-reduced-motion:reduce){
@@ -768,10 +692,7 @@ footer::before{content:'';position:absolute;top:0;left:50%;transform:translate(-
 .heroA-in .cta{margin-top:30px;display:flex;gap:11px;justify-content:center;flex-wrap:wrap;
   position:relative;z-index:3}
 
-/* ── sign cabinet ─────────────────────────────────────────────────────
-   The Milshire's script is not floating — it is mounted on a dark cabinet
-   with a lit edge, bolted to a frame. That panel is half of why it reads as
-   a SIGN rather than as glowing text. */
+
 .cabinet{position:relative;display:inline-block;padding:.22em .58em .30em;border-radius:.46em;
   background:linear-gradient(180deg,rgba(18,14,30,.92),rgba(8,6,14,.96));
   box-shadow:inset 0 0 0 1px rgba(199,203,247,.14),
@@ -780,10 +701,10 @@ footer::before{content:'';position:absolute;top:0;left:50%;transform:translate(-
 
 
 
-/* a thin lit pinstripe chasing the cabinet edge, like the tube trim on old signs */
+
 .cabinet::before{content:'';position:absolute;inset:.16em;border-radius:.34em;pointer-events:none;
   box-shadow:0 0 0 1.5px rgba(217,70,239,.45), 0 0 14px 1px rgba(217,70,239,.30)}
-/* bolts */
+
 .cabinet::after{content:'';position:absolute;left:.3em;right:.3em;top:.26em;height:0;pointer-events:none;
   box-shadow:0 0 0 2px rgba(255,255,255,.10), 100% 0 0 2px rgba(255,255,255,.10)}
 .neon{font-family:var(--signfont,'Grand Hotel'),ui-serif,Georgia,serif;font-weight:400;
@@ -800,10 +721,10 @@ body[data-signfont="Lobster"] .neon{font-size:clamp(42px,10vw,116px)}
 
 
 
-<!-- the glow filter, rebuilt in Funūn's indigo→fuchsia instead of the source's warm gold -->
+
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
-    <!-- the old headline glow, kept for other slides -->
+    
     <filter id="funun-glow" color-interpolation-filters="sRGB" x="-60%" y="-220%" width="220%" height="540%">
       <feGaussianBlur in="SourceGraphic" stdDeviation="3"  result="b3"/>
       <feGaussianBlur in="SourceGraphic" stdDeviation="20" result="b20"/>
@@ -814,28 +735,25 @@ body[data-signfont="Lobster"] .neon{font-size:clamp(42px,10vw,116px)}
       <feMerge><feMergeNode in="l3"/><feMergeNode in="l2"/><feMergeNode in="l0"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
 
-    <!-- NEON TUBE. A real tube is four things stacked: a near-white core, a
-         saturated sheath right at the glass, a mid bloom, and a wide soft haze
-         that lands on the wall behind. Miss the white core and it reads as
-         colored text; miss the wide haze and it reads as a sticker. -->
+    
     <filter id="neon-tube" color-interpolation-filters="sRGB" x="-90%" y="-320%" width="280%" height="740%">
       <feGaussianBlur in="SourceGraphic" stdDeviation="1.4" result="n1"/>
       <feGaussianBlur in="SourceGraphic" stdDeviation="5"   result="n5"/>
       <feGaussianBlur in="SourceGraphic" stdDeviation="14"  result="n14"/>
       <feGaussianBlur in="SourceGraphic" stdDeviation="34"  result="n34"/>
       <feGaussianBlur in="SourceGraphic" stdDeviation="62"  result="n62"/>
-      <!-- widest haze: fuchsia washing the wall -->
+      
       <feColorMatrix in="n62" result="h" type="matrix"
         values=".92 0 0 0 0   0 .18 0 0 0   0 0 1 0 0    0 0 0 .8 0"/>
-      <!-- mid bloom: indigo, the body of the light -->
+      
       <feColorMatrix in="n34" result="m" type="matrix"
         values=".58 0 0 0 0   0 .38 0 0 0   0 0 1 0 0    0 0 0 1 0"/>
       <feColorMatrix in="n14" result="s" type="matrix"
         values=".70 0 0 0 0   0 .46 0 0 0   0 0 1 0 0    0 0 0 1 0"/>
-      <!-- the sheath hugging the glass -->
+      
       <feColorMatrix in="n5" result="g" type="matrix"
         values=".92 0 0 0 0   0 .72 0 0 0   0 0 1 0 0    0 0 0 1 0"/>
-      <!-- the hot core -->
+      
       <feColorMatrix in="n1" result="c" type="matrix"
         values="1 0 0 0 .12   0 1 0 0 .10   0 0 1 0 .14   0 0 0 1 0"/>
       <feMerge>
@@ -847,7 +765,7 @@ body[data-signfont="Lobster"] .neon{font-size:clamp(42px,10vw,116px)}
 </svg>
 
 <main>
-  <!-- ══ HEADER ══ -->
+  
   <header class="nav" id="nav">
     <div class="wrap navrow">
       <a class="navmark" href="#top" aria-label="Fun&#363;n home">
@@ -865,7 +783,7 @@ body[data-signfont="Lobster"] .neon{font-size:clamp(42px,10vw,116px)}
   </header>
 
   <div class="carousel" id="carousel">
-  <!-- ══ HERO A ══ -->
+  
   <section id="heroA" class="slide" data-nav="The Writer’s Room">
     <div class="wall" aria-hidden="true"></div>
     <div class="spill" aria-hidden="true"></div>
@@ -889,7 +807,7 @@ body[data-signfont="Lobster"] .neon{font-size:clamp(42px,10vw,116px)}
     </div>
   </section>
 
-  <!-- ══ HERO B ══ -->
+  
   <section id="heroB" class="slide announce" data-nav="Sound Vault">
     <div class="ann-in">
       <p class="kicker">Introducing</p>
@@ -904,7 +822,7 @@ body[data-signfont="Lobster"] .neon{font-size:clamp(42px,10vw,116px)}
     </div>
   </section>
 
-  <!-- placeholder slides so the mechanism is visible; content is yours to decide -->
+  
   <section id="heroC" class="slide announce" data-nav="The Crate">
     <div class="ann-in">
       <p class="kicker">Introducing</p>
@@ -921,7 +839,7 @@ body[data-signfont="Lobster"] .neon{font-size:clamp(42px,10vw,116px)}
   <div class="cdots" id="cdots" role="tablist" aria-label="Hero slides"></div>
   </div>
 
-  <!-- ══ HOW IT WORKS ══ -->
+  
   <section id="how"><div class="wrap">
     <div class="reveal">
       <div class="eyebrow"><span class="n">01</span><span class="r"></span><span class="t">How it works</span></div>
@@ -932,7 +850,7 @@ body[data-signfont="Lobster"] .neon{font-size:clamp(42px,10vw,116px)}
     <ol class="steps reveal" id="steps"></ol>
   </div></section>
 
-  <!-- ══ COLLABORATOR SPHERE ══ -->
+  
   <section id="people"><div class="wrap">
     <div class="reveal">
       <div class="eyebrow"><span class="n">01</span><span class="r"></span><span class="t">Collaborators</span></div>
@@ -947,7 +865,7 @@ body[data-signfont="Lobster"] .neon{font-size:clamp(42px,10vw,116px)}
       <p class="sphere-hint">Drag to spin &middot; hover a face for their details</p>
     </div>  </div></section>
 
-  <!-- ══ THE CRATE ══ -->
+  
   <section id="crate"><div class="wrap">
     <div class="csplit">
       <div class="reveal">
@@ -1001,7 +919,7 @@ body[data-signfont="Lobster"] .neon{font-size:clamp(42px,10vw,116px)}
     </div>
   </div></section>
 
-  <!-- ══ DIFFERENTIATORS ══ -->
+  
   <section id="tools"><div class="wrap">
     <div class="reveal">
       <div class="eyebrow"><span class="n">01</span><span class="r"></span><span class="t">Differentiators</span></div>
@@ -1014,7 +932,7 @@ body[data-signfont="Lobster"] .neon{font-size:clamp(42px,10vw,116px)}
     <div class="dpanel reveal" id="dpanel"></div>
       </div></section>
 
-  <!-- ══ VOICES ══ -->
+  
   <section id="voices"><div class="wrap">
     <div class="reveal">
       <div class="eyebrow"><span class="n">01</span><span class="r"></span><span class="t">Voices</span></div>
@@ -1023,7 +941,7 @@ body[data-signfont="Lobster"] .neon{font-size:clamp(42px,10vw,116px)}
     </div>
     <div class="vgrid" id="vgrid"></div>  </div></section>
 
-  <!-- ══ FAQ ══ -->
+  
   <section id="faq"><div class="wrap">
     <div class="reveal">
       <div class="eyebrow"><span class="n">01</span><span class="r"></span><span class="t">Questions</span></div>
@@ -1034,7 +952,7 @@ body[data-signfont="Lobster"] .neon{font-size:clamp(42px,10vw,116px)}
     <div class="faq reveal" id="faqGrid"></div>
   </div></section>
 
-  <!-- ══ PRICING ══ -->
+  
   <section id="pricing">
     <span class="pglow a" aria-hidden="true"></span><span class="pglow b" aria-hidden="true"></span>
     <div class="wrap">
@@ -1060,7 +978,7 @@ body[data-signfont="Lobster"] .neon{font-size:clamp(42px,10vw,116px)}
       <a class="tscta" href="/signup"><span>Talk to us</span><span class="disc"></span></a>
     </div>  </div></section>
 
-  <!-- ══ FOOTER ══ -->
+  
   <div class="footwrap"><footer>
     <div class="fgrid">
       <div class="reveal">
@@ -1075,25 +993,25 @@ body[data-signfont="Lobster"] .neon{font-size:clamp(42px,10vw,116px)}
     </div>  </footer></div>
 </main>
 
-<!-- ══ SIGN-IN DIALOG ══ -->
+
 
 <script nonce="__CSP_NONCE_PLACEHOLDER__">
-// Bench-only image cache buster. Faces get overwritten in place (same filename,
-// new bytes) while picking, and the browser serves the stale copy -- which reads
-// as "the change didn't work". MUST be declared before any renderer uses it:
-// a `const` further down the file is in the temporal dead zone and throws.
+
+
+
+
 const ASSET_V='202609271636';
-// F2: the two inline onerror attributes removed above are blocked by the app CSP
-// (the nonce on the surviving script tag does not cover inline event-handler attributes).
-// Capture phase, because the 'error' event does not bubble -- a bubble-phase
-// listener on document would never see it. One registration here covers
-// both occurrences below AND every <img> the two renderers insert later via
-// innerHTML, so it never needs to run again after the initial render.
+
+
+
+
+
+
 document.addEventListener('error', function(e){
   if (e.target instanceof HTMLImageElement) e.target.remove();
 }, true);
 
-// ── controls ─────────────────────────────────────
+
 function wireSeg(attr, apply){
   document.querySelectorAll('.bench [data-'+attr+']').forEach(b=>{
     b.onclick=()=>{
@@ -1102,7 +1020,7 @@ function wireSeg(attr, apply){
     };
   });
 }
-// ── hero carousel ────────────────────────────────
+
 const SLIDES=[...document.querySelectorAll('.carousel .slide')];
 const DWELL=9000;
 let cIdx=0, cTimer=null, cPaused=false;
@@ -1113,10 +1031,10 @@ function showSlide(i){
     d.setAttribute('aria-selected', String(k===cIdx));
     d.tabIndex = k===cIdx ? 0 : -1;
   });
-  // restart the fill animation on the active dot
+  
   const on=document.querySelector('.cdot[aria-selected="true"]');
   if(on){ on.style.setProperty('--dwell', (DWELL/1000)+'s'); }
-  // the bench hero switch still works: it jumps the carousel
+  
   document.body.dataset.hero = cIdx===0 ? 'illuminated' : cIdx===1 ? 'stream' : 'other';
   document.querySelectorAll('.bench [data-hero]').forEach(b=>
     b.setAttribute('aria-pressed', String((b.dataset.hero==='illuminated'&&cIdx===0)||(b.dataset.hero==='stream'&&cIdx===1))));
@@ -1137,7 +1055,7 @@ car.addEventListener('pointerenter',()=>cPaused=true);
 car.addEventListener('pointerleave',()=>cPaused=false);
 showSlide(0); armCarousel();
 
-// the bench switch jumps the carousel rather than toggling display
+
 wireSeg('hero', v=>{ showSlide(v==='illuminated'?0:1); armCarousel(); });
 wireSeg('bg', v=>{ document.body.dataset.bg=v; });
 wireSeg('signfont', v=>{
@@ -1148,16 +1066,16 @@ wireSeg('signfont', v=>{
 document.documentElement.style.setProperty('--signfont', "'Grand Hotel'");
 document.body.dataset.signfont='Grand Hotel';
 
-// ── the corridor ─────────────────────────────────
-// Ported from the source's geometry. Depth is authored as APPARENT SIZE and
-// grows geometrically, so consecutive cards keep a constant size ratio and the
-// ribbon never tears. Cards are born ACROSS the axis (railBirth negative) so
-// the vanishing point is never uncovered, and negative animation delays drop
-// every card mid-flight so the corridor is full on the first frame.
+
+
+
+
+
+
 const P = {perspective:30, cardW:18, cardH:25, radius:0.4, birthH:2.6, exitH:46,
            railBirth:-11, railExit:44, fan:3.3, turnBirth:6, turnExit:28, stops:24};
 const CARDS = 9, SPEED = 20, AXIS = 55;
-// stand-ins for cover art — real ones would come from artists who opted in
+
 const ART = [
   'linear-gradient(135deg,#c0532f,#e8b84b)','linear-gradient(140deg,#3f7f6f,#4c8c9b)',
   'linear-gradient(120deg,#818cf8,#d946ef)','linear-gradient(160deg,#1f2937,#4b5563)',
@@ -1181,7 +1099,7 @@ function railKeyframes(dir, name){
 (function buildCorridor(){
   const stage=document.getElementById('stage');
   const corridor=document.querySelector('.corridor');
-  if(!stage||!corridor) return;   // corridor slide retired -- see the image-stream note
+  if(!stage||!corridor) return;   
   corridor.style.perspective=P.perspective+'cqw';
   corridor.style.perspectiveOrigin='50% '+AXIS+'%';
   const st=document.createElement('style');
@@ -1200,21 +1118,27 @@ function railKeyframes(dir, name){
   stage.innerHTML=html;
 })();
 
-// ── voices ───────────────────────────────────────
-// Bars are DETERMINISTIC, not Math.random() — the source randomised on every
-// render, which in Next.js makes the server and client disagree and triggers a
-// hydration mismatch. Real Funūn would feed peaksFromBuffer() here instead.
-// Two kinds of card, one grid. A plain text quote needs consent and nothing
-// else; an audio quote needs a clip, a release and the peaks below. Entries with
-// no `a` render as text -- that is the whole switch, so the section can start as
-// text and gain audio one person at a time.
-//
-// `a.peaks` is DATA, not something the page works out. The clip and its peaks are
-// produced together at ingest by tools/audio-peaks.py, so playing a card costs one
-// mp3 and forty numbers -- no AudioContext, no decode on load. The previous version
-// of this section faked both: the bars came from Math.sin and the play button ran a
-// setInterval over a progress fraction. It played nothing.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 const VOICES = [
+  
+  
+  
+  
+  
+  
   {n:'Ludwig van Beethoven', r:'Composer \u00b7 Bonn', art:'linear-gradient(135deg,#c0532f,#e8b84b)', i:'LB',
    img:'/marketing/img/composer-beethoven.jpg', op:'50% 16%', z:1.45,
    q:'I stopped keeping a splits spreadsheet. The room already knew who wrote what. This is hella fire. \ud83d\udd25\ud83d\udd25\ud83d\udd25'},
@@ -1247,9 +1171,9 @@ function barColor(i,n){const t=i/Math.max(1,n-1);
       + '<audio data-a="'+k+'" src="'+esc(v.a.src)+'" preload="none"></audio>'
       + '</div>';
     return '<div class="vcard">'
-      // The gradient + initials stay underneath as the fallback layer: if a portrait
-      // is missing or 404s, the shared image-error listener above removes the <img> and the initials show through,
-      // so a broken asset can never leave an empty circle.
+      
+      
+      
       + '<div class="vtop"><span class="vav" style="background:'+v.art+'">'+v.i
       +   (v.img ? '<img src="'+v.img+'?v='+ASSET_V+'" alt="" loading="lazy"'
       +     ' style="--op:'+(v.op||'50% 50%')+';--z:'+(v.z||1)+'">' : '')
@@ -1291,11 +1215,11 @@ function barColor(i,n){const t=i/Math.max(1,n-1);
     au.addEventListener('pause',      ()=>setButton(k,false));
     au.addEventListener('play',       ()=>{
       setButton(k,true);
-      audios.forEach(o=>{ if(o!==au && !o.paused) o.pause(); });   // one at a time
+      audios.forEach(o=>{ if(o!==au && !o.paused) o.pause(); });   
     });
-    // A clip that will not load must not leave a dead play button on a public page.
+    
     au.addEventListener('error', ()=>{
-      const p=el('data-v',k)?.closest('.vplayer'); if(p) p.remove();   // falls back to a text quote
+      const p=el('data-v',k)?.closest('.vplayer'); if(p) p.remove();   
     });
   });
 
@@ -1306,16 +1230,16 @@ function barColor(i,n){const t=i/Math.max(1,n-1);
     });
   });
 
-  // click the waveform to scrub -- a mouse convenience; the button is the keyboard path
+  
   grid.querySelectorAll('.vwave').forEach(w=>{
     w.addEventListener('click', e=>{
       const k=+w.dataset.w, au=el('data-a',k), r=w.getBoundingClientRect();
-      // Scrubbing needs a host that answers Range requests. Without one the browser
-      // can only seek inside what it has already streamed, and a click past that
-      // clamps to 0 and restarts the clip -- which reads as a broken player, worse
-      // than a dead one. So: only scrub once the whole clip is seekable. python's
-      // http.server sends no Accept-Ranges, so on the bench this stays inert until a
-      // clip has played through; Vercel and Supabase Storage both answer Range.
+      
+      
+      
+      
+      
+      
       const d=au.duration && isFinite(au.duration) ? au.duration : VOICES[k].a.d;
       if(!au.seekable.length || au.seekable.end(au.seekable.length-1) < d-0.5) return;
       const t=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width))*d;
@@ -1324,12 +1248,12 @@ function barColor(i,n){const t=i/Math.max(1,n-1);
   });
 })();
 
-// ── faq ──────────────────────────────────────────
-// Every answer checked against source before writing -- these are the questions
-// where a wrong answer costs money or trust, not just clarity.
-// NOT INCLUDED: what changes when a song enters The Crate. Exclusivity of
-// representation is an open placeholder in lib/sync-library/agreement.ts, to be
-// decided with counsel/BD. See 2026-09-25-crate-exclusivity-term-blocks-faq-answer.md
+
+
+
+
+
+
 const FAQ=[
  ['Can I still shop my songs elsewhere?',
   'Yes. The Writer’s Room, Sound Vault and Release Report are yours to use. What you make in them is yours. Funūn takes no ownership and no exclusivity over your songs or your masters. Write here, release wherever you like, pitch to whoever you like.'],
@@ -1353,19 +1277,25 @@ const FAQ=[
   g.innerHTML=FAQ.map(([q,a])=>'<div><h3>'+q+'</h3><p>'+a+'</p></div>').join('');
 })();
 
-// ── pricing ──────────────────────────────────────
+
 let bill='m';
+
+
+
+
+
+
 const TIERS=[
   {id:'free', name:'Writer', who:'Writing solo or just getting started', m:0, y:0,
    blurb:'Everything you need to write a song and keep track of who contributed what.',
    feats:[
-     // "every line remembers who wrote it" REMOVED -- author_user_id is a column on
-     // lyric_blocks (migration 135:219) and a block holds one text field. Attribution
-     // is BLOCK-level; there is no per-line author record in the schema.
+     
+     
+     
      {t:'The Writer\u2019s Room', h:'Where your song gets written',
       i:'Hum a melody, write lyrics, upload a take or bring in a collaborator. Comments stay with the section or moment they\u2019re about. The room keeps the session history as you work, so you leave knowing who did what.'},
-     // storage explanation dropped until enforcement exists (Codex: do not explain an
-     // unenforced quota here)
+     
+     
      {t:'Unlimited songs', h:'We don\u2019t count songs',
       i:'Start as many as you want. Nobody should have to decide whether an idea deserves a slot. Rough takes are included. Humming an idea never counts against your storage.'},
      {t:'Sound Vault', h:'Your masters, artwork and documents',
@@ -1374,8 +1304,8 @@ const TIERS=[
       i:'Keep split sheets and agreements together. See what\u2019s signed, what\u2019s waiting and who needs a nudge.'},
      {t:'Collaborator profiles', h:'Add them once. Stop chasing the details.',
       i:'Save a collaborator\u2019s name, PRO, IPI, publisher and professional contact once. Fun\u016bn can reuse those details when you prepare splits, contracts and registrations, so you\u2019re not chasing one missing IPI the week a release is due.',
-      // softened from the row-isolation promise: that model may be wrong for an executed
-      // split sheet every party must review, and it must hold across exports and support tooling
+      
+      
       p:'Your private roster stays private. A shared document includes only the fields needed for that document.'},
      {t:'Rights checklists', h:'Know what still needs filing',
       i:'Work through copyright, PRO and SoundExchange steps with plain\u2011language guidance, direct links and a status you can come back to. You do the filing; Fun\u016bn keeps the checklist.'},
@@ -1385,8 +1315,8 @@ const TIERS=[
       i:'Keep the release details people ask for in one place: credits, identifiers, lyrics and delivery metadata. Fill them in once, then export a clean handoff instead of rebuilding the sheet for every recipient.'},
      {t:'Antenna', h:'Opportunities, matched to your catalogue',
       i:'Antenna checks open sync, playlist and brand opportunities against the music in your Sound Vault, then shows you the ones that fit. You get a shortlist, not another feed to dig through. Antenna brings the brief to you; The Crate puts your song where supervisors come looking.'},
-     // "one-stop-licensed" -> "ready for one-stop clearance": the former says a license
-     // already exists. And the pitching promise no longer commits humans per song.
+     
+     
      {t:'Unlock sync opportunities', h:'Submit to The Crate',
       i:'The Crate is Fun\u016bn\u2019s curated sync catalogue for songs with the rights information and approvals needed for one\u2011stop clearance. Submitting is free; getting in is earned. Once a song is admitted, your Sync Library opens and it\u2019s ready for our team to pull when the right brief comes in.'},
      {t:'Release Report', h:'Keep the release paperwork moving',
@@ -1405,14 +1335,14 @@ const TIERS=[
          ['DistroAdvisor','flags metadata gaps before you submit'],
          ['RoyaltyAudit','checks your PRO and split information for gaps'],
          'Plus a second read on contracts, document drafts, campaign planning and tags suggested from the track.']},
-     // "completeness and accuracy" is not something an AI review can guarantee
+     
      {t:'AI contract check', h:'Read before you sign',
       i:'Upload an agreement for a structured second read: missing fields, internal inconsistencies and questions to take back to the other side. It can miss things. It isn\u2019t legal advice.'},
-     // GATED: do not publish until the deployed recorder reliably produces 24-bit/48k
+     
      {t:'24\u2011bit keeper takes', h:'Record the one you want to keep',
       i:'Capture a lossless 24\u2011bit/48\u202fkHz take when the idea moves beyond a voice memo.'},
-     // two storage rows collapsed into one -- there is one meter
-     // (storage_bytes_ingested), so two rows implied two quotas that do not exist
+     
+     
      {t:'More audio storage', h:'More room for keepers',
       i:'Store more lossless takes, masters and stems.'},
      'DAW marker export',
@@ -1430,11 +1360,11 @@ const TIERS=[
       i:'One Fun\u016bn contact who knows your catalogue, keeps the next steps clear and brings in the right specialist when needed. They\u2019re your point person at Fun\u016bn, not your manager, agent, publisher or lawyer. You make the calls.'},
      {t:'A\u0300 la carte label services', h:'Bring in help for a specific project',
       i:'Bring in playlist pitching, A&amp;R or consulting for a specific project, from people with decades of combined industry experience. Each engagement is scoped and priced separately. Your Fun\u016bn contact can explain the options; you decide what to book.'},
-   // OWNER 2026-09-29 supersedes the 2026-09-26 "See if Team fits" wording: during
-   // beta NOBODY can open an account, so all three CTAs read "Request an invite".
-   // The earlier reasoning still holds and is why we don't say "Talk to us" here --
-   // most teams have ten seats or fewer and would be promised a conversation that
-   // never happens. Entourage keeps "Talk to us"; there a person genuinely replies.
+   
+   
+   
+   
+   
    ], cta:'Request an invite', beta:'Funūn is invite-only while we&rsquo;re in beta. Request an invite and we&rsquo;ll be in touch about what your group needs.'},
 ];
 const TICK='<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
@@ -1442,7 +1372,7 @@ const ARROW='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke=
 const LOCK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10.5" width="16" height="10" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>';
 const INFO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M12 11v6M12 7v.1"/></svg>';
 let popN=0;
-// A feature is either a plain string or {t,h,i}. Only the second kind gets an info button.
+
 function featRow(f){
   const label = typeof f==='string' ? f : f.t;
   const row = '<li><span class="tick">'+TICK+'</span><span>'+label+'</span>';
@@ -1465,7 +1395,7 @@ function closePops(except){
     document.getElementById(b.dataset.pop).hidden=true;
   });
 }
-// delegated, so it survives every renderPricing() re-render
+
 document.addEventListener('click', e=>{
   const btn = e.target.closest && e.target.closest('.finfo');
   if(!btn){ closePops(null); return; }
@@ -1476,7 +1406,7 @@ document.addEventListener('click', e=>{
   pop.classList.remove('up');
   pop.hidden = open;
   if(!open){
-    // measure once visible: if it would run past the card, flip it upward
+    
     const card = pop.closest('.pcard');
     if(card && pop.getBoundingClientRect().bottom > card.getBoundingClientRect().bottom - 6){
       pop.classList.add('up');
@@ -1510,10 +1440,10 @@ document.querySelectorAll('[data-bill]').forEach(b=>{
     renderPricing(); };
 });
 
-// ── how it works ─────────────────────────────────
-// Steps are the arc of ONE SONG, not the setup of a tool. The source component's
-// "create account / configure workflow / invite team / ship" would contradict the
-// hero, which promises you can hum an idea with no setup at all.
+
+
+
+
 const ICON={
   hum:'<path d="M12 3v11.5"/><path d="M12 14.5a3 3 0 1 1-3 3"/><path d="M12 3c3.2.5 5 2 5 4"/>',
   people:'<circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5.8"/><path d="M17.5 14.2A5.5 5.5 0 0 1 20.5 19"/>',
@@ -1549,10 +1479,10 @@ const STEPS=[
     + '<span class="who">'+s.w+'</span></div></li>').join('');
 })();
 
-// ── the crate: Selects track list ────────────────
-// Maya's tracks and the buyer-catalogue cover art that already ship in public/.
-// 'Paper' is hers in lib/deals/catalog-sample.ts (3:24, paper.jpg) -- it replaced
-// 'Morning Light', which is the owner's own song and does not belong in a mock.
+
+
+
+
 const SEL=[
   ['Paper','paper','3:24'],
   ['Moonlight','moonlight','3:41'],
@@ -1561,10 +1491,10 @@ const SEL=[
 ];
 (function buildSelects(){
   const ol=document.getElementById('selList'); if(!ol) return;
-  // love / pass per row — the reaction pair is the interaction that makes the
-  // real player recognisable (SelectsPlayer.tsx's .cbtn.love / .cbtn.pass), and
-  // it is the one that tells the marketing story: a supervisor reacting to your
-  // song. The old mock showed a duration column instead.
+  
+  
+  
+  
   const HEART='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.3 4.7 13a4.6 4.6 0 0 1 6.5-6.5l.8.8.8-.8A4.6 4.6 0 1 1 19.3 13z"/></svg>';
   const PASS='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
   ol.innerHTML=SEL.map(([t,slug],i)=>
@@ -1577,10 +1507,10 @@ const SEL=[
     + '</span></li>').join('');
 })();
 
-// ── collaborator sphere ──────────────────────────
-// Fibonacci distribution + Y/X rotation matrices + depth-driven scale/fade,
-// ported from 21st.dev's image-sphere. IPIs are deliberately 00000-prefixed so
-// no string here can collide with a real person's real identifier.
+
+
+
+
 const PEOPLE=[
   {n:'Nia Adeyemi',r:'Songwriter · Lagos',pro:'PRS',ipi:'00000114772',pub:'Self-published',img:'/marketing/img/face-01.jpg'},
   {n:'Sam Ferreira',r:'Featured artist · Lisbon',pro:'SPA',ipi:'00000502883',pub:'Ferreira Music',img:'/marketing/img/face-02.jpg'},
@@ -1625,7 +1555,7 @@ function sphereInitials(name){
   const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const R=()=>el.clientWidth*0.34, SIZE=()=>el.clientWidth*0.115;
 
-  // Fibonacci sphere — even coverage, no clustering at the poles
+  
   const golden=(1+Math.sqrt(5))/2, inc=2*Math.PI/golden;
   const pts=PEOPLE.map((p,i)=>{
     const t=(i+0.5)/PEOPLE.length;
@@ -1638,15 +1568,15 @@ function sphereInitials(name){
     if(pt.p.img){
       const im=document.createElement('img');
       im.src=pt.p.img+'?v='+ASSET_V; im.alt=''; im.draggable=false;
-      im.loading='eager';   // NOT lazy: positioned+transformed nodes never trigger the heuristic
+      im.loading='eager';   
       d.appendChild(im);
     } else { d.textContent=sphereInitials(pt.p.n); }
     el.appendChild(d); return d;
   });
 
   let rx=14, ry=0, vx=0, vy=0, dragging=false, hot=null, last={x:0,y:0};
-  let cardH=120;   // measured once on show -- reading offsetHeight in paint() would
-                   // force a layout every frame
+  let cardH=120;   
+                   
 
   function paint(){
     const r=R(), sz=SIZE(), cx=el.clientWidth/2, cy=el.clientHeight/2;
@@ -1656,9 +1586,9 @@ function sphereInitials(name){
       let x=r*Math.sin(pt.phi)*Math.cos(pt.theta);
       let y=r*Math.cos(pt.phi);
       let z=r*Math.sin(pt.phi)*Math.sin(pt.theta);
-      const x1=x*cY+z*sY, z1=-x*sY+z*cY; x=x1; z=z1;           // yaw
-      const y2=y*cX-z*sX, z2=y*sX+z*cX;  y=y2; z=z2;           // pitch
-      const depth=(z+r)/(2*r);                                  // 0 back … 1 front
+      const x1=x*cY+z*sY, z1=-x*sY+z*cY; x=x1; z=z1;           
+      const y2=y*cX-z*sX, z2=y*sX+z*cX;  y=y2; z=z2;           
+      const depth=(z+r)/(2*r);                                  
       const scale=0.55+depth*0.6;
       const n=nodes[i], s=sz*scale;
       n.style.width=n.style.height=s+'px';
@@ -1669,7 +1599,7 @@ function sphereInitials(name){
       n.style.zIndex=String(1000+Math.round(z));
       if(hot===i && card && !card.hidden){
         let top=cy+y+s/2+12;
-        if(top+cardH>el.clientHeight) top=cy+y-s/2-12-cardH;   // flip above, as the pricing popovers do
+        if(top+cardH>el.clientHeight) top=cy+y-s/2-12-cardH;   
         card.style.left=Math.min(el.clientWidth-130, Math.max(130, cx+x))+'px';
         card.style.top=top+'px';
         card.style.transform='translateX(-50%)';
@@ -1679,7 +1609,7 @@ function sphereInitials(name){
 
   function tick(){
     if(!dragging){
-      if(hot===null && !reduce) ry+=0.18;   // auto-rotate, paused on hover
+      if(hot===null && !reduce) ry+=0.18;   
       ry+=vy; rx+=vx;
       vx*=0.94; vy*=0.94;
       if(Math.abs(vx)<0.004) vx=0;
@@ -1725,10 +1655,10 @@ function sphereInitials(name){
   requestAnimationFrame(tick);
 })();
 
-// ── header ───────────────────────────────────────
-// The sliding indicator follows the SECTION YOU ARE IN, not just the link you
-// are pointing at -- hover borrows it, scroll owns it. Hover-only would tell a
-// reader nothing about where they are on a 4,000px page.
+
+
+
+
 (function nav(){
   const bar=document.getElementById('nav');
   const wrap=document.getElementById('navlinks');
@@ -1752,7 +1682,7 @@ function sphereInitials(name){
   wrap.addEventListener('pointerleave',showActive);
   wrap.addEventListener('focusout',showActive);
 
-  // which section is in view -> that link is current
+  
   const ids=links.map(a=>a.getAttribute('href').slice(1));
   const setActive=()=>{
     const mid=innerHeight*0.38;
@@ -1776,22 +1706,22 @@ function sphereInitials(name){
   setActive();
 })();
 
-// ── section numbering ────────────────────────────
-// Numbered in document order at runtime rather than hardcoded, because four
-// sections shipped as "01" after their eyebrow markup was copied. Scoped to
-// .eyebrow .n so it never touches the testimonial names, which also use .n.
+
+
+
+
 document.querySelectorAll('.eyebrow .n').forEach((el,i)=>{
   el.textContent = String(i+1).padStart(2,'0');
 });
 
-// ── footer ───────────────────────────────────────
+
 document.querySelector('.tscta .disc').innerHTML = ARROW;
 document.getElementById('yr').textContent = new Date().getFullYear();
-// a waveform glyph rather than a generic square — it echoes the app's own bars
+
 const WAVE=[9,16,24,13,20,8];
-// One mark, built once, painted into every place it appears -- footer, header and
-// the sign-in dialog. The header briefly used a 72% reduction of it and read thin:
-// the mark is the mark at any size, the lockup scales by moving the type.
+
+
+
 document.querySelectorAll('.fmarkrow .glyph, .navmark .glyph, .authmark .glyph')
   .forEach(g=>{ g.innerHTML = WAVE.map(h=>'<i style="height:'+h+'px"></i>').join(''); });
 const SOCIAL_ICON = {
@@ -1802,15 +1732,15 @@ const SOCIAL_ICON = {
   Facebook:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 8.5V6.9c0-.8.2-1.2 1.3-1.2h1.4V3h-2.4c-2.6 0-3.6 1.4-3.6 3.7v1.8H9.3V11h1.9v10h3.3V11h2.3l.4-2.5z"/></svg>',
   X:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 4l16 16M20 4L4 20"/></svg>',
 };
-// Legal is a NOTE, not four links (owner 2026-09-26). None of those pages
-// exists, and four dead links where the terms should be is worse than saying
-// so. The note points at the waiting list, which is real: the form lives
-// inside /signup as the inline capture for anyone without an invite.
+
+
+
+
 const FCOLS=[
-  // Antenna and The Crate resolve; the other two do not. The Writer's Room and
-  // Sound Vault are step tags inside #how, and two footer links pointing at one
-  // anchor is decoration rather than navigation, so they wait for feature pages.
-  // (Antenna had no home until #tools was built — it is the default panel there.)
+  
+  
+  
+  
   {label:'Product', links:['The Writer’s Room','Sound Vault',{t:'Antenna',href:'#tools'},{t:'The Crate',href:'#crate'}]},
   {label:'Company', links:['About','Careers','Press','Contact']},
   {label:'Legal',   note:'Terms, privacy and our rights policy are on the way. We’re invite&#8209;only for now. <a href="/signup">Join the waiting list</a> and we’ll tell you when that changes.'},
@@ -1827,21 +1757,21 @@ document.getElementById('fcols').innerHTML = FCOLS.map((c,i)=>
         }).join('')+'</ul>')
   + '</div>').join('');
 
-// ── reveal on scroll (IntersectionObserver, no animation library) ──
-// arm the hidden state only now that we know the observer exists
+
+
 if('IntersectionObserver' in window) document.documentElement.classList.add('js-reveal');
 const io=new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } }),{threshold:0, rootMargin:'0px 0px 140px 0px'});
 document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
-// ── differentiators ──────────────────────────────
-// Three, not twelve. The tool bench has a dozen entries and most of them —
-// DropReady, SoundBait, SpotPitch, EPK.fyi, DistroAdvisor — are caption and
-// pitch generators every artist tool ships. Standing them next to the ones
-// nobody else does makes the set weaker, not fuller. (SplitSheet is out for a
-// different reason: lib/tools/splitsheet.ts says "Form-driven (not AI)".)
-//
-// These three tell one story in order: the brief finds you, you go after it,
-// and the clearance does not kill it. Every claim below is the tool's own
-// module, not marketing invention.
+
+
+
+
+
+
+
+
+
+
 const DIFFS=[
   {k:'Antenna', t:'The brief comes to you.',
    d:'Antenna checks open sync, playlist and brand opportunities against the music in your Sound Vault, then shows you the ones that fit. A shortlist, not another feed to dig through.',
@@ -1852,9 +1782,9 @@ const DIFFS=[
    shot:'/marketing/img/tool-pitchplug-pick-writes.png',
    art:'Midjourney pending &middot; PitchPlug &mdash; the letter that writes itself'},
   {k:'SampleClear', t:'A sample has two owners. Most people find out late.',
-   // "help", never "clear" (owner 2026-09-26). Clearance is the rights holders'
-   // decision and a meaningful share never clear -- the deliberation records an
-   // invented "typically 4-8 weeks" that nearly shipped. Say the limit out loud.
+   
+   
+   
    d:'The recording and the composition are almost never held by the same people. SampleClear works out who both are and drafts a request to each, so you are not starting from a blank page. We help you clear it. We cannot clear it for you. Some samples never do, and the tool tells you when that is likely before you spend a month finding out.',
    shot:'/marketing/img/tool-sampleclear-two-owners.png',
    art:'SampleClear &mdash; one sample, two owners'},
@@ -1877,7 +1807,7 @@ const DIFFS=[
     tabs.querySelectorAll('.dtab').forEach((b,k)=>b.setAttribute('aria-selected', String(k===i)));
   }
   tabs.querySelectorAll('.dtab').forEach(b=>b.addEventListener('click',()=>show(+b.dataset.d)));
-  // arrow keys, because a tablist that only takes clicks is a tablist in name only
+  
   tabs.addEventListener('keydown', e=>{
     const cur=[...tabs.querySelectorAll('.dtab')].findIndex(b=>b.getAttribute('aria-selected')==='true');
     if(e.key!=='ArrowRight' && e.key!=='ArrowLeft') return;

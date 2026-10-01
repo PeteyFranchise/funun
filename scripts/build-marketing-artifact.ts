@@ -14,6 +14,27 @@
 // once (or an exact expected count for repeated patterns), and throws
 // rather than guessing when that assertion fails.
 //
+// Amendment (quick task 261001-cmt): the paragraph above is now partly
+// untrue, and a contract that is quietly untrue is worse than one that
+// says so. A comment tokenizer exists (stripHtmlComments / stripCssComments
+// / stripJsComments / stripHtmlCssJsComments, in the primitives section
+// below). It is confined to exactly three comment syntaxes -- HTML
+// <!-- -->, CSS block comments, JS line and block comments -- and reads no
+// other grammar; it is still no HTML parser, no DOM, no reserializer. It is
+// pure, exported and unit-tested like every other primitive in this file,
+// it still asserts an exact count before proceeding (D-04) and still
+// throws rather than guessing on anything it cannot resolve (D-08). It
+// exists because one-off anchored strips for one-off comments were
+// multiplying -- seven of them had accumulated in sanitize() -- turning
+// every new note written into the bench into a build break until someone
+// added another bespoke removal. Ordering is load-bearing in the dangerous
+// direction (F-07): four of sanitize()'s own anchors are themselves
+// comments that gate removal of real CSS/JS (SHIP_GATE_BLOCK_START,
+// DEV_GUARD_SCRIPT_START, SHIP_TOGGLE_SCRIPT_START, AUTH_IIFE_START), so
+// the general comment strip runs after every one of those anchored passes,
+// never before -- see the call site inside sanitize() for the full
+// reasoning at the point it matters.
+//
 // CLI:
 //   npx tsx scripts/build-marketing-artifact.ts
 //     Re-verifies the frozen source (refuses to run against any other
@@ -841,10 +862,6 @@ export function injectNoncePlaceholder(html: string): NonceInjectionResult {
 // drifts, the corresponding assertOccurrences call throws immediately
 // rather than silently mis-editing a different revision.
 
-const PLACEHOLDER_MARKER_COMMENT_START = '/* PLACEHOLDER MARKER'
-const PLACEHOLDER_MARKER_COMMENT_END =
-  '.planning/todos/pending/2026-09-24-marketing-page-ideas.md */'
-
 const SHIP_GATE_BLOCK_START = '/* Ship gate: body[data-ship] hides every bench-only element'
 const SHIP_GATE_BLOCK_END =
   '.phnote{display:inline-block;margin-top:16px;font-size:9px;letter-spacing:.14em;\n' +
@@ -856,9 +873,6 @@ const SCRIPT_CLOSE = '</script>'
 
 const BENCH_DIV_START = '<div class="bench">'
 const DIV_CLOSE = '</div>'
-
-const PH_ART_COMMENT_START = '/* announcement slides 2+'
-const PH_ART_COMMENT_END = '.ph-art marks that. */'
 
 const PH_ART_RULE =
   '.ph-art{display:inline-block;margin:18px 0 0;font-size:9px;letter-spacing:.14em;\n' +
@@ -880,43 +894,6 @@ const PH_ART_PARAGRAPH_COUNT = 2
 // catches all five.
 const FLAG_PARAGRAPH_RE = /\s*<p class="flag[^"]*">[\s\S]*?<\/p>\n?/g
 const FLAG_PARAGRAPH_COUNT = 5
-
-// NOTE: deliberately ends at `-->`, not the trailing "\n    " indentation —
-// the immediately-following `.flag` paragraph is removed by
-// FLAG_PARAGRAPH_RE, whose leading `\s*` already claims that whitespace.
-// Including it here too would make this anchor's text disappear once the
-// flag-paragraph pass runs first, since the two would double-claim the same
-// whitespace region.
-const DIFFERENTIATORS_OWNER_COMMENT =
-  '<!-- OWNER DECISION 2026-09-27: these panels take real product shots, not\n' +
-  '         illustration. The Midjourney briefs move to dedicated hero banner slides\n' +
-  '         (top-of-page), swappable from the marketing console once that is built. -->'
-
-// The owner's rationale for the violet step-badge treatment belongs in the
-// bench, but verify-marketing-artifact.ts bans the literal "OWNER DECISION"
-// from the shipped artifact (this file ships to a public page). Anchored
-// removeBetween, same shape as DIFFERENTIATORS_OWNER_COMMENT above.
-const STEP_BADGE_DECISION_COMMENT_START =
-  '/* Violet, not grey. OWNER DECISION 2026-09-30: the step labels were being scanned'
-const STEP_BADGE_DECISION_COMMENT_END = '   accent. 10.5:1. */\n'
-
-// The owner's rationale for the named-tab carousel control belongs in the
-// bench, but verify-marketing-artifact.ts bans the literal "OWNER DECISION"
-// from the shipped artifact (this file ships to a public page). Anchored
-// removeBetween, same shape as DIFFERENTIATORS_OWNER_COMMENT and
-// STEP_BADGE_DECISION_COMMENT_* above — this is the third one-off strip.
-const HERO_TABS_DECISION_COMMENT_START =
-  '/* Named tabs, not anonymous bars. OWNER DECISION 2026-09-30: three 3px bars'
-const HERO_TABS_DECISION_COMMENT_END =
-  '   is the correct state attribute for a tab (aria-current was wrong here). */\n'
-
-const REVERT_NOTE_START = '// REVERT NOTE (owner 2026-09-30):'
-const REVERT_NOTE_END =
-  '// .planning/todos/pending/2026-09-29-paid-tier-interest-capture-before-stripe.md\n'
-
-const VOICES_PLACEHOLDER_COMMENT_START =
-  '  // PLACEHOLDER, owner-approved 2026-09-27. Real testimonials are not gathered yet'
-const VOICES_PLACEHOLDER_COMMENT_END = '  // back. Swap all three before this page goes public.\n'
 
 const DIALOG_START = '<dialog class="authdlg" id="authdlg" aria-labelledby="authTitle">'
 const DIALOG_END = '</dialog>\n'
@@ -968,16 +945,6 @@ const ONERROR_ATTR_COUNT = 2
 // <img> synchronously later in the same script.
 const ASSET_V_DECLARATION = "const ASSET_V='202609271636';"
 
-// The comment directly above the first onerror site names the mechanism
-// being removed; left as-is it would describe code that no longer exists.
-// This is the one prose edit this sanitizer makes -- everywhere else,
-// comments are either preserved verbatim or stripped as a whole block.
-const VOICES_FALLBACK_COMMENT_ORIGINAL =
-  '// is missing or 404s, onerror removes the <img> and the initials show through,'
-const VOICES_FALLBACK_COMMENT_UPDATED =
-  '// is missing or 404s, the shared image-error listener above removes the <img> ' +
-  'and the initials show through,'
-
 // Registered ONCE, on `document`, in the CAPTURE phase. This is not a
 // stylistic choice: the DOM 'error' event does not bubble, so a normal
 // (bubble-phase) listener on document would never see it. Capture-phase
@@ -999,6 +966,39 @@ export const IMAGE_ERROR_LISTENER =
   '}, true);'
 
 const TITLE_TAG = '<title>Funūn bench 02 — marketing page</title>'
+
+// The file's own contract on comment volume (D-04): a bench edit that adds
+// or removes a comment must bump exactly one of these integers. That is
+// still a real review step -- the thrown message below tells the
+// maintainer to confirm intent, not to bump blindly -- but it replaces
+// writing a brand new anchored removeBetween/removeExactly call for every
+// one-off note, which is the pattern this task retires (seven of them had
+// already accumulated). Counts measured against the current frozen source
+// at the strip call site in sanitize() (F-05).
+const EXPECTED_COMMENT_STRIP_COUNTS: CommentStripCounts = {
+  htmlComments: 21,
+  cssBlockComments: 60,
+  jsLineComments: 153,
+  jsBlockComments: 0,
+  scriptRegions: 1,
+  styleRegions: 2,
+}
+
+function assertCommentStripCounts(actual: CommentStripCounts): void {
+  const keys = Object.keys(EXPECTED_COMMENT_STRIP_COUNTS) as (keyof CommentStripCounts)[]
+  for (const key of keys) {
+    const expected = EXPECTED_COMMENT_STRIP_COUNTS[key]
+    const found = actual[key]
+    if (found !== expected) {
+      throw new Error(
+        `comment strip count mismatch: ${key} expected ${expected}, found ${found}. If this is ` +
+          'a deliberate new comment (or script/style region) added to the bench, confirm that is ' +
+          `really what changed, then bump this one integer in EXPECTED_COMMENT_STRIP_COUNTS -- ` +
+          'do not add another anchored removal call for it.',
+      )
+    }
+  }
+}
 
 export function buildHeadMetadata(): string {
   // Quick task 261001-rlp: the card image and both icon files now exist on
@@ -1042,6 +1042,7 @@ export type SanitizeResult = {
   html: string
   nonceScriptCount: number
   rewrittenAssetPaths: string[]
+  commentStripCounts: CommentStripCounts
 }
 
 /**
@@ -1053,40 +1054,13 @@ export type SanitizeResult = {
 export function sanitize(sourceHtml: string): SanitizeResult {
   let html = sourceHtml
 
-  html = removeBetween(
-    html,
-    PLACEHOLDER_MARKER_COMMENT_START,
-    PLACEHOLDER_MARKER_COMMENT_END,
-    'placeholder-marker comment (.planning/ path)',
-  )
   html = removeBetween(html, SHIP_GATE_BLOCK_START, SHIP_GATE_BLOCK_END, 'ship-gate CSS block')
   html = removeBetween(html, DEV_GUARD_SCRIPT_START, SCRIPT_CLOSE, 'wrong-origin dev-guard script')
   html = removeBetween(html, BENCH_DIV_START, DIV_CLOSE, 'bench toolbar div')
-  html = removeBetween(html, PH_ART_COMMENT_START, PH_ART_COMMENT_END, 'ph-art explanatory comment')
   html = removeExactly(html, PH_ART_RULE, 'ph-art CSS rule')
   html = removeExactly(html, PHNOTE_PARAGRAPH, '.phnote paragraph')
   html = removeAllMatches(html, PH_ART_PARAGRAPH_RE, PH_ART_PARAGRAPH_COUNT, '.ph-art paragraphs')
   html = removeAllMatches(html, FLAG_PARAGRAPH_RE, FLAG_PARAGRAPH_COUNT, '.flag paragraphs')
-  html = removeExactly(html, DIFFERENTIATORS_OWNER_COMMENT, 'differentiators OWNER DECISION comment')
-  html = removeBetween(
-    html,
-    STEP_BADGE_DECISION_COMMENT_START,
-    STEP_BADGE_DECISION_COMMENT_END,
-    'step-badge OWNER DECISION comment',
-  )
-  html = removeBetween(
-    html,
-    HERO_TABS_DECISION_COMMENT_START,
-    HERO_TABS_DECISION_COMMENT_END,
-    'hero-tabs OWNER DECISION comment',
-  )
-  html = removeBetween(html, REVERT_NOTE_START, REVERT_NOTE_END, 'pricing REVERT NOTE comment')
-  html = removeBetween(
-    html,
-    VOICES_PLACEHOLDER_COMMENT_START,
-    VOICES_PLACEHOLDER_COMMENT_END,
-    'voices placeholder owner-approved comment',
-  )
   html = removeBetween(html, DIALOG_START, DIALOG_END, 'sign-in dialog element')
   html = removeBetween(html, AUTHDLG_CSS_START, AUTHDLG_CSS_END, 'authdlg CSS rules')
   html = removeBetween(html, AUTH_IIFE_START, AUTH_IIFE_END, 'sign-in IIFE (incl. sparks helper)')
@@ -1107,16 +1081,28 @@ export function sanitize(sourceHtml: string): SanitizeResult {
   )
   html = replaceExactly(
     html,
-    VOICES_FALLBACK_COMMENT_ORIGINAL,
-    VOICES_FALLBACK_COMMENT_UPDATED,
-    'voices-card fallback comment (describes the mechanism just removed)',
-  )
-  html = replaceExactly(
-    html,
     ASSET_V_DECLARATION,
     ASSET_V_DECLARATION + IMAGE_ERROR_LISTENER,
     'image-error capture-phase listener injection point',
   )
+
+  // ─── general comment strip (quick task 261001-cmt) ─────────────────────
+  // Runs here, after every anchored pass above and before rewriteAssetPaths
+  // (D-02). After, because four of the anchors above are themselves
+  // comments that gate removal of real content (F-07): SHIP_GATE_BLOCK_START
+  // is a CSS comment anchoring the ship-gate rules; DEV_GUARD_SCRIPT_START
+  // opens with `// ─── Wrong-origin guard`; SHIP_TOGGLE_SCRIPT_START opens
+  // with `// Ship preview: …`; AUTH_IIFE_START opens with three `//` lines.
+  // Stripping comments before those passes run would delete their anchors
+  // and silently ship the ship-gate CSS, the dev-guard script, the
+  // ship-preview toggle and the auth IIFE. Before rewriteAssetPaths,
+  // because a comment that merely names an asset path in prose is not a
+  // request for that asset -- with the strip running first, a comment
+  // naming an off-manifest image never reaches the manifest-allowlist gate
+  // for a reason that was never a real shipping concern.
+  const { html: strippedHtml, counts: commentStripCounts } = stripHtmlCssJsComments(html)
+  html = strippedHtml
+  assertCommentStripCounts(commentStripCounts)
 
   const { html: rewrittenHtml, paths } = rewriteAssetPaths(html)
   html = rewrittenHtml
@@ -1136,7 +1122,7 @@ export function sanitize(sourceHtml: string): SanitizeResult {
     )
   }
 
-  return { html, nonceScriptCount, rewrittenAssetPaths: paths }
+  return { html, nonceScriptCount, rewrittenAssetPaths: paths, commentStripCounts }
 }
 
 // ─── CLI ────────────────────────────────────────────────────────────────
@@ -1187,11 +1173,15 @@ function main(): void {
   }
   writeFileSync(MANIFEST_PATH, `${JSON.stringify(updatedManifest, null, 2)}\n`)
 
+  const c = result.commentStripCounts
   // eslint-disable-next-line no-console
   console.log(
     `wrote ${ARTIFACT_OUTPUT_PATH} (${result.html.length} bytes), ` +
       `nonceScriptCount=${result.nonceScriptCount}, ` +
-      `${result.rewrittenAssetPaths.length} distinct rewritten asset path(s)`,
+      `${result.rewrittenAssetPaths.length} distinct rewritten asset path(s), ` +
+      `comments stripped: html=${c.htmlComments} css=${c.cssBlockComments} ` +
+      `jsLine=${c.jsLineComments} jsBlock=${c.jsBlockComments} ` +
+      `scriptRegions=${c.scriptRegions} styleRegions=${c.styleRegions}`,
   )
 }
 

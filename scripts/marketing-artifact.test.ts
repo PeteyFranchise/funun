@@ -5,8 +5,10 @@
 // small hand-built fixtures — never against the real bench page (it is
 // gitignored and changes constantly) and never through a parser/serializer.
 
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync, writeFileSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import { execFileSync } from 'node:child_process'
 import {
   computeSha256,
   expandSelArtPaths,
@@ -628,6 +630,106 @@ describeIfArtifact('the real generated artifact', () => {
     const normalizedExtracted = Array.from(new Set(relativePaths)).sort()
     const normalizedExpected = Array.from(new Set(HEAD_LOCAL_ASSET_PATHS)).sort()
     expect(normalizedExtracted).toEqual(normalizedExpected)
+  })
+
+  // ─── Quick task 261001-cmt: permanent post-strip assertions ────────────
+  // These run against the COMMITTED, comment-free artifact on every CI run
+  // (the tokenizer itself is proven in isolation by the describe blocks
+  // above; this section proves sanitize()'s wiring of it is still correct).
+
+  it('the single <script> body parses with node --check, proven with a positive control', () => {
+    const scriptMatch = html.match(/<script[^>]*>([\s\S]*?)<\/script>/)
+    expect(scriptMatch).not.toBeNull()
+    const body = scriptMatch![1]
+    expect(body.length).toBeGreaterThan(1000)
+
+    const okFile = join(tmpdir(), `cmt-script-check-${process.pid}-ok.js`)
+    const badFile = join(tmpdir(), `cmt-script-check-${process.pid}-bad.js`)
+    try {
+      writeFileSync(okFile, body)
+      expect(() => execFileSync(process.execPath, ['--check', okFile], { stdio: 'pipe' })).not.toThrow()
+
+      // Positive control: a parse check that cannot fail is not a check.
+      // Drop the script's final closing brace to unbalance it.
+      const lastBraceIdx = body.lastIndexOf('}')
+      expect(lastBraceIdx).toBeGreaterThan(-1)
+      const corrupted = body.slice(0, lastBraceIdx) + body.slice(lastBraceIdx + 1)
+      writeFileSync(badFile, corrupted)
+      expect(() => execFileSync(process.execPath, ['--check', badFile], { stdio: 'pipe' })).toThrow()
+    } finally {
+      for (const f of [okFile, badFile]) {
+        if (existsSync(f)) unlinkSync(f)
+      }
+    }
+  })
+
+  it('D-06 leak literals all count 0, including the date-stamped .md filename the .planning/ prefix ban misses (F-03a)', () => {
+    // Length asserted first, same discipline as the PROHIBITED_LITERALS
+    // guard below -- a silently shortened list must not be able to print
+    // green. These five literals plus the regex pattern are in addition to
+    // (not a replacement for) the 17 PROHIBITED_LITERALS verify-marketing-
+    // artifact.ts already checks.
+    const leakLiterals = [
+      'lib/sync-library/agreement.ts',
+      'lib/deals/catalog-sample.ts',
+      'lib/tools/splitsheet.ts',
+      'components/selects-player/SelectsPlayer.tsx',
+      'counsel/BD',
+      '4-8 weeks',
+    ]
+    expect(leakLiterals.length).toBe(6)
+    for (const literal of leakLiterals) {
+      expect(countOccurrences(html, literal)).toBe(0)
+    }
+    // F-03a: the verifier's ".planning/" prefix ban does not catch a BARE
+    // internal planning filename shipped beside it -- assert the date-
+    // stamped-.md shape directly instead. Never assert on the word
+    // "exclusivity" alone (F-03b): it also appears in legitimate, visible
+    // FAQ copy.
+    const dateStampedMdRe = /\d{4}-\d{2}-\d{2}-[a-z0-9-]+\.md/g
+    expect(html.match(dateStampedMdRe)).toBeNull()
+  })
+
+  it('is comment-free by two independent methods: the tokenizer counts and dumb regexes agreeing', () => {
+    // Dumb, tokenizer-independent regexes. F-02 proves their preconditions
+    // hold for this specific input (no legitimate "<!--" in the file, no
+    // legitimate "/*" inside <style>, no legitimate "/*" or "//" inside the
+    // single <script> body) -- a dumb regex is wrong in general, but this is
+    // a real cross-check because its failure mode differs from the
+    // tokenizer's.
+    expect(countOccurrences(html, '<!--')).toBe(0)
+
+    const styleBodies = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1])
+    expect(styleBodies.length).toBe(2)
+    for (const css of styleBodies) {
+      expect(countOccurrences(css, '/*')).toBe(0)
+    }
+
+    const scriptBodies = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1])
+    expect(scriptBodies.length).toBe(1)
+    for (const js of scriptBodies) {
+      expect(countOccurrences(js, '/*')).toBe(0)
+      expect(countOccurrences(js, '//')).toBe(0)
+    }
+  })
+
+  it('still carries the four JS regex literals, the nonce placeholder exactly once, and all six art: strings (3 with &mdash;)', () => {
+    expect(countOccurrences(html, '__CSP_NONCE_PLACEHOLDER__')).toBe(1)
+
+    for (const literal of ['/&/g', '/</g', '/"/g', '/\\s+/']) {
+      expect(countOccurrences(html, literal)).toBeGreaterThanOrEqual(1)
+    }
+
+    const artMatches = html.match(/art:'[^']*'/g) ?? []
+    expect(artMatches.length).toBe(6)
+    const mdashCount = artMatches.filter((m) => m.includes('&mdash;')).length
+    expect(mdashCount).toBe(3)
+  })
+
+  it('manifest shape: 50 assets, 7 fonts, nonceScriptCount 1', () => {
+    expect(manifest.assets.length).toBe(50)
+    expect(manifest.fonts.length).toBe(7)
+    expect(manifest.nonceScriptCount).toBe(1)
   })
 })
 
