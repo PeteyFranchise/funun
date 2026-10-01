@@ -36,7 +36,7 @@ export function OpportunityCard({
           background: `conic-gradient(#818CF8 0%, #D946EF ${score}%, rgba(255,255,255,.10) ${score}% 100%)`,
         }}
       >
-        <span className="flex h-[50px] w-[50px] items-center justify-center rounded-full bg-[#0c0b1a]">
+        <span className="flex h-[50px] w-[50px] items-center justify-center rounded-full bg-card">
           <span className="gtext tnum text-[18px] font-extrabold">{score}</span>
         </span>
       </div>

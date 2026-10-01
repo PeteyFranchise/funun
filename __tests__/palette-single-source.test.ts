@@ -214,3 +214,105 @@ describe('no lavender rgba literal survives at any alpha', () => {
     expect(offenders).toEqual([])
   })
 })
+
+// ─── Half (d): no dark, blue-dominant surface literal survives ────────────
+//
+// NAME SCOPED TO WHAT THIS ACTUALLY CHECKS (label-integrity-funun). Halves
+// (b) and (c) catch exact retired values; `bg-[#1A1840]` sits two characters
+// from the retired `#1A1838` and sailed through both unflagged, because
+// neither half is a RULE -- they are enumerated lists. This half is a RULE:
+// it flags any background, border or gradient-stop utility whose colour is
+// dark (WCAG relative luminance under 0.05) AND blue-dominant (blue exceeds
+// the larger of red and green by at least 8). It does NOT claim to catch
+// "all indigo everywhere" -- it is scoped to app/ and components/ only (not
+// lib/, which halves b and c still cover), and to background/border/
+// gradient-stop utilities only, deliberately excluding `text-`, `ring-`,
+// `shadow-` and `outline-`. That utility narrowing is exactly what keeps the
+// out-of-scope indigo TEXT literals (`#5b5f8c`, `#9b96c8`) out of this gate
+// without naming them as an exception.
+//
+// NO ALLOWLIST. Unlike halves (b)/(c), this half carries zero exclusions.
+// The rule was prototyped against the current tree and needs none -- if it
+// ever appears to need one, the rule is wrong and should be fixed, not
+// carved around.
+
+const SURFACE_UTILITY_DIRS = ['app', 'components']
+
+// Word boundary, then a background/border/gradient-stop utility prefix, then
+// an arbitrary 3- or 6-digit hex. The directional `border-[trblxy]`
+// alternative is listed before bare `border` so matching is deterministic
+// rather than dependent on regex backtracking order.
+const SURFACE_UTILITY_PATTERN =
+  /\b(bg|border-[trblxy]|border|from|via|to)-\[#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\]/g
+
+// Module-scope, export-free: bare hex in, verdict out. WCAG relative
+// luminance per-channel, then combined; "blue-dominant" means blue exceeds
+// the larger of red and green by at least 8 (0-255 scale). Case-insensitive.
+function isDarkBlueDominantHex(hex: string): boolean {
+  let h = hex.toLowerCase()
+  if (h.length === 3) h = h.split('').map(c => c + c).join('')
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  const toLinear = (channel: number): number => {
+    const v = channel / 255
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+  }
+  const luminance = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b)
+  const blueDominant = b - Math.max(r, g) >= 8
+  return luminance < 0.05 && blueDominant
+}
+
+describe('no dark, blue-dominant surface literal survives (app/components only)', () => {
+  const files = SURFACE_UTILITY_DIRS.flatMap(d => walk(path.join(ROOT, d)))
+
+  it('non-vacuity: the walker found a realistic number of source files', () => {
+    expect(files.length).toBeGreaterThan(400)
+  })
+
+  it('non-vacuity: the matcher still sees a realistic number of candidate utilities', () => {
+    // There are 65 candidate arbitrary-hex bg/border/gradient utilities
+    // today and 49 after the fix. This floor is what stops this half going
+    // green-forever if the regex ever stops matching -- the exact death
+    // this file's header warns about -- once the offender list below is
+    // permanently empty.
+    let candidateCount = 0
+    for (const file of files) {
+      const raw = readFileSync(file, 'utf8')
+      const matches = raw.match(SURFACE_UTILITY_PATTERN)
+      if (matches) candidateCount += matches.length
+    }
+    expect(candidateCount).toBeGreaterThanOrEqual(25)
+  })
+
+  it('classifier truth table: dark+blue-dominant hexes are flagged, others are not', () => {
+    expect(isDarkBlueDominantHex('0d0c1e')).toBe(true)
+    expect(isDarkBlueDominantHex('0b0a16')).toBe(true)
+    expect(isDarkBlueDominantHex('1a1840')).toBe(true)
+    expect(isDarkBlueDominantHex('1e1a0d')).toBe(false)
+    expect(isDarkBlueDominantHex('0d0d0d')).toBe(false)
+    expect(isDarkBlueDominantHex('818cf8')).toBe(false)
+    expect(isDarkBlueDominantHex('111')).toBe(false)
+    expect(isDarkBlueDominantHex('0f0d00')).toBe(false)
+    expect(isDarkBlueDominantHex('123126')).toBe(false)
+    expect(isDarkBlueDominantHex('5b5f8c')).toBe(false)
+  })
+
+  it('no dark, blue-dominant background/border/gradient-stop literal survives under app/ or components/', () => {
+    const offenders: string[] = []
+    for (const file of files) {
+      const rel = path.relative(ROOT, file)
+      const raw = readFileSync(file, 'utf8')
+      const lines = raw.split('\n')
+      lines.forEach((line, idx) => {
+        for (const match of line.matchAll(SURFACE_UTILITY_PATTERN)) {
+          const hex = match[2]
+          if (isDarkBlueDominantHex(hex)) {
+            offenders.push(`${rel}:${idx + 1}  #${hex}`)
+          }
+        }
+      })
+    }
+    expect(offenders).toEqual([])
+  })
+})
