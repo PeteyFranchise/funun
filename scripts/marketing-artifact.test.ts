@@ -23,17 +23,26 @@ import {
   type MarketingManifest,
 } from './marketing-assets'
 import {
+  absoluteSiteUrl,
   assertOccurrences,
+  buildHeadMetadata,
   countOccurrences,
+  HEAD_LOCAL_ASSET_PATHS,
   IMAGE_ERROR_LISTENER,
   injectNoncePlaceholder,
   NONCE_PLACEHOLDER,
   ARTIFACT_OUTPUT_PATH,
+  OG_IMAGE_ALT,
+  OG_IMAGE_HEIGHT,
+  OG_IMAGE_URL,
+  OG_IMAGE_WIDTH,
+  PRODUCTION_CANONICAL_URL,
   removeAllMatches,
   removeBetween,
   removeExactly,
   replaceExactly,
   rewriteAssetPaths,
+  TWITTER_CARD_TYPE,
 } from './build-marketing-artifact'
 import { verifyArtifact, PROHIBITED_LITERALS } from './verify-marketing-artifact'
 
@@ -367,6 +376,62 @@ describe('injectNoncePlaceholder', () => {
   it('returns count 0 when no script tag is present', () => {
     const { count } = injectNoncePlaceholder('<p>no scripts here</p>')
     expect(count).toBe(0)
+  })
+})
+
+describe('head metadata — rich link preview and icons', () => {
+  describe('absoluteSiteUrl', () => {
+    it('joins a root-relative path onto the production canonical url', () => {
+      expect(absoluteSiteUrl('/marketing/og.jpg')).toBe('https://www.funun.studio/marketing/og.jpg')
+    })
+
+    it('never produces a doubled slash once the scheme is stripped', () => {
+      const url = absoluteSiteUrl('/marketing/og.jpg')
+      const withoutScheme = url.replace(/^https?:\/\//, '')
+      expect(withoutScheme).not.toContain('//')
+    })
+
+    it('starts with PRODUCTION_CANONICAL_URL, proving the host has one source', () => {
+      expect(OG_IMAGE_URL.startsWith(PRODUCTION_CANONICAL_URL)).toBe(true)
+    })
+  })
+
+  describe('buildHeadMetadata', () => {
+    const block = buildHeadMetadata()
+
+    it('contains exactly one each of the new image/icon tags', () => {
+      expect(countOccurrences(block, 'og:image"')).toBe(1)
+      expect(countOccurrences(block, 'og:image:width')).toBe(1)
+      expect(countOccurrences(block, 'og:image:height')).toBe(1)
+      expect(countOccurrences(block, 'og:image:alt')).toBe(1)
+      expect(countOccurrences(block, 'twitter:image')).toBe(1)
+      expect(countOccurrences(block, 'rel="icon"')).toBe(1)
+      expect(countOccurrences(block, 'rel="apple-touch-icon"')).toBe(1)
+    })
+
+    it('declares the large-image twitter card and never the summary card', () => {
+      expect(block).toContain(`<meta name="twitter:card" content="${TWITTER_CARD_TYPE}">`)
+      expect(TWITTER_CARD_TYPE).toBe('summary_large_image')
+      expect(block).not.toContain('<meta name="twitter:card" content="summary">')
+    })
+
+    it('matches the real og.jpg dimensions (1200x630)', () => {
+      expect(OG_IMAGE_WIDTH).toBe('1200')
+      expect(OG_IMAGE_HEIGHT).toBe('630')
+      expect(block).toContain(`content="${OG_IMAGE_WIDTH}"`)
+      expect(block).toContain(`content="${OG_IMAGE_HEIGHT}"`)
+    })
+
+    it('carries the owner-approved alt text verbatim', () => {
+      expect(block).toContain(OG_IMAGE_ALT)
+    })
+
+    it('every local asset path referenced resolves to an existing file under public/', () => {
+      expect(HEAD_LOCAL_ASSET_PATHS.length).toBeGreaterThan(0)
+      for (const path of HEAD_LOCAL_ASSET_PATHS) {
+        expect(existsSync(join('public', path))).toBe(true)
+      }
+    })
   })
 })
 
