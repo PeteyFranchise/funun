@@ -51,7 +51,7 @@ export function ContractUpload({ projects }: { projects: { id: string; title: st
       </button>
 
       {open && (
-        <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-[340px] rounded-[14px] border border-hairstrong bg-[#0b0a16] p-5 shadow-[0_24px_60px_-20px_rgba(0,0,0,.8)]">
+        <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-[340px] rounded-[14px] border border-hairstrong bg-card p-5 shadow-[0_24px_60px_-20px_rgba(0,0,0,.8)]">
           <div className="mb-3 text-[13px] font-bold uppercase tracking-[.14em] text-lavdim">Upload a contract</div>
 
           <label className="mb-1 block text-[12.5px] font-semibold text-lav">Release</label>

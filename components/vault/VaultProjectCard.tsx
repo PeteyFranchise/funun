@@ -116,7 +116,7 @@ export function VaultProjectCard({ card }: { card: VaultCard }) {
             background: `conic-gradient(${b.arc} 0 ${card.score}%,rgba(255,255,255,.10) ${card.score}% 100%)`,
           }}
         >
-          <span className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-[#0c0b1a]">
+          <span className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-card">
             <span className="tnum text-[21px] font-extrabold leading-none" style={{ color: b.value }}>
               {card.score}
             </span>
