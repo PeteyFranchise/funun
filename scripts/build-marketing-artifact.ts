@@ -37,12 +37,12 @@ import {
 export const NONCE_PLACEHOLDER = '__CSP_NONCE_PLACEHOLDER__'
 export const ARTIFACT_OUTPUT_PATH = 'assets/marketing/landing.html'
 
-export const PRODUCTION_TITLE = 'Funūn — Make the song. Keep the record.'
+export const PRODUCTION_TITLE = 'Funūn · Make the song. Keep the record.'
 export const PRODUCTION_CANONICAL_URL = 'https://www.funun.studio/'
 export const PRODUCTION_DESCRIPTION =
   'Funūn is where songwriters and producers write together, keep a Sound Vault of ' +
-  'masters and rights documents, and track copyright, PRO and SoundExchange registration ' +
-  '— all in one place.'
+  'masters and rights documents, and track copyright, PRO and SoundExchange registration' +
+  ', all in one place.'
 
 // ─── primitives ─────────────────────────────────────────────────────────
 // Each of these is independently unit-tested against small fixtures. The
