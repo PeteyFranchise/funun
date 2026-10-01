@@ -555,6 +555,76 @@ describeIfArtifact('the real generated artifact', () => {
     expect(html).toContain(', true);')
     expect(html).toContain('e.target instanceof HTMLImageElement')
   })
+
+  // ─── rich link preview + favicon (quick task 261001-rlp) ────────────────
+  // Sliced to the head block (start of file to the first <style) so a stray
+  // match 1890 lines deep in the body cannot make any of these pass.
+  const styleIdx = html.indexOf('<style')
+  const headSlice = artifactExists ? html.slice(0, styleIdx) : ''
+
+  it('isolates a non-empty head slice ending before the first <style tag', () => {
+    expect(styleIdx).toBeGreaterThan(0)
+    expect(headSlice.length).toBeGreaterThan(0)
+  })
+
+  it('still carries all 17 PROHIBITED_LITERALS at 0 -- length asserted first so a silently shortened list cannot print green', () => {
+    expect(PROHIBITED_LITERALS.length).toBe(17)
+    expect(verifyArtifact(html, manifest)).toEqual([])
+  })
+
+  it('contains exactly one each of the new image/icon tags in the head', () => {
+    // og:image" (closing quote) isolates the property itself from its three
+    // sub-properties, which all contain "og:image" as a bare prefix.
+    expect(countOccurrences(headSlice, 'og:image"')).toBe(1)
+    expect(countOccurrences(headSlice, 'og:image:width')).toBe(1)
+    expect(countOccurrences(headSlice, 'og:image:height')).toBe(1)
+    expect(countOccurrences(headSlice, 'og:image:alt')).toBe(1)
+    expect(countOccurrences(headSlice, 'twitter:image')).toBe(1)
+    expect(countOccurrences(headSlice, 'rel="icon"')).toBe(1)
+    expect(countOccurrences(headSlice, 'rel="apple-touch-icon"')).toBe(1)
+    // Pinned relationship, not dodged: the bare prefix is exactly 4 because
+    // og:image:width/height/alt each contain "og:image" as a prefix.
+    expect(countOccurrences(headSlice, 'og:image')).toBe(4)
+  })
+
+  it('declares the large-image twitter card and never ships the summary card', () => {
+    expect(headSlice).toContain(`<meta name="twitter:card" content="${TWITTER_CARD_TYPE}">`)
+    expect(html).not.toContain('<meta name="twitter:card" content="summary">')
+  })
+
+  it('resolves every head image/icon URL to a file that exists under public/', () => {
+    const ogImageMatch = headSlice.match(/<meta property="og:image" content="([^"]+)">/)
+    const twitterImageMatch = headSlice.match(/<meta name="twitter:image" content="([^"]+)">/)
+    const iconHrefs = [...headSlice.matchAll(/<link rel="([^"]*)" href="([^"]+)"/g)]
+      .filter(([, rel]) => rel.includes('icon'))
+      .map(([, , href]) => href)
+
+    expect(ogImageMatch).not.toBeNull()
+    expect(twitterImageMatch).not.toBeNull()
+
+    const rawUrls = [ogImageMatch![1], twitterImageMatch![1], ...iconHrefs]
+    // Non-empty-set guard: an empty extracted set would make the resolution
+    // loop below pass vacuously, which is the exact failure mode the old
+    // "nothing to point at" comment existed to avoid.
+    expect(rawUrls.length).toBeGreaterThan(0)
+
+    const toPublicRelative = (url: string): string => {
+      if (/^https?:\/\//.test(url)) {
+        expect(url.startsWith(PRODUCTION_CANONICAL_URL)).toBe(true)
+        return `/${url.slice(PRODUCTION_CANONICAL_URL.length)}`
+      }
+      return url
+    }
+
+    const relativePaths = rawUrls.map(toPublicRelative)
+    for (const path of relativePaths) {
+      expect(existsSync(join('public', path))).toBe(true)
+    }
+
+    const normalizedExtracted = Array.from(new Set(relativePaths)).sort()
+    const normalizedExpected = Array.from(new Set(HEAD_LOCAL_ASSET_PATHS)).sort()
+    expect(normalizedExtracted).toEqual(normalizedExpected)
+  })
 })
 
 // CodeQL js/bad-tag-filter: the nonce regex was lowercase-only, so <SCRIPT>
