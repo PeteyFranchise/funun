@@ -274,6 +274,14 @@ const DIFFERENTIATORS_OWNER_COMMENT =
   '         illustration. The Midjourney briefs move to dedicated hero banner slides\n' +
   '         (top-of-page), swappable from the marketing console once that is built. -->'
 
+// The owner's rationale for the violet step-badge treatment belongs in the
+// bench, but verify-marketing-artifact.ts bans the literal "OWNER DECISION"
+// from the shipped artifact (this file ships to a public page). Anchored
+// removeBetween, same shape as DIFFERENTIATORS_OWNER_COMMENT above.
+const STEP_BADGE_DECISION_COMMENT_START =
+  '/* Violet, not grey. OWNER DECISION 2026-09-30: the step labels were being scanned'
+const STEP_BADGE_DECISION_COMMENT_END = '   accent. 10.5:1. */\n'
+
 const REVERT_NOTE_START = '// REVERT NOTE (owner 2026-09-30):'
 const REVERT_NOTE_END =
   '// .planning/todos/pending/2026-09-29-paid-tier-interest-capture-before-stripe.md\n'
@@ -414,6 +422,12 @@ export function sanitize(sourceHtml: string): SanitizeResult {
   html = removeAllMatches(html, PH_ART_PARAGRAPH_RE, PH_ART_PARAGRAPH_COUNT, '.ph-art paragraphs')
   html = removeAllMatches(html, FLAG_PARAGRAPH_RE, FLAG_PARAGRAPH_COUNT, '.flag paragraphs')
   html = removeExactly(html, DIFFERENTIATORS_OWNER_COMMENT, 'differentiators OWNER DECISION comment')
+  html = removeBetween(
+    html,
+    STEP_BADGE_DECISION_COMMENT_START,
+    STEP_BADGE_DECISION_COMMENT_END,
+    'step-badge OWNER DECISION comment',
+  )
   html = removeBetween(html, REVERT_NOTE_START, REVERT_NOTE_END, 'pricing REVERT NOTE comment')
   html = removeBetween(
     html,
