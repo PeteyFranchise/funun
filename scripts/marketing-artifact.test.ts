@@ -23,17 +23,26 @@ import {
   type MarketingManifest,
 } from './marketing-assets'
 import {
+  absoluteSiteUrl,
   assertOccurrences,
+  buildHeadMetadata,
   countOccurrences,
+  HEAD_LOCAL_ASSET_PATHS,
   IMAGE_ERROR_LISTENER,
   injectNoncePlaceholder,
   NONCE_PLACEHOLDER,
   ARTIFACT_OUTPUT_PATH,
+  OG_IMAGE_ALT,
+  OG_IMAGE_HEIGHT,
+  OG_IMAGE_URL,
+  OG_IMAGE_WIDTH,
+  PRODUCTION_CANONICAL_URL,
   removeAllMatches,
   removeBetween,
   removeExactly,
   replaceExactly,
   rewriteAssetPaths,
+  TWITTER_CARD_TYPE,
 } from './build-marketing-artifact'
 import { verifyArtifact, PROHIBITED_LITERALS } from './verify-marketing-artifact'
 
@@ -370,6 +379,62 @@ describe('injectNoncePlaceholder', () => {
   })
 })
 
+describe('head metadata — rich link preview and icons', () => {
+  describe('absoluteSiteUrl', () => {
+    it('joins a root-relative path onto the production canonical url', () => {
+      expect(absoluteSiteUrl('/marketing/og.jpg')).toBe('https://www.funun.studio/marketing/og.jpg')
+    })
+
+    it('never produces a doubled slash once the scheme is stripped', () => {
+      const url = absoluteSiteUrl('/marketing/og.jpg')
+      const withoutScheme = url.replace(/^https?:\/\//, '')
+      expect(withoutScheme).not.toContain('//')
+    })
+
+    it('starts with PRODUCTION_CANONICAL_URL, proving the host has one source', () => {
+      expect(OG_IMAGE_URL.startsWith(PRODUCTION_CANONICAL_URL)).toBe(true)
+    })
+  })
+
+  describe('buildHeadMetadata', () => {
+    const block = buildHeadMetadata()
+
+    it('contains exactly one each of the new image/icon tags', () => {
+      expect(countOccurrences(block, 'og:image"')).toBe(1)
+      expect(countOccurrences(block, 'og:image:width')).toBe(1)
+      expect(countOccurrences(block, 'og:image:height')).toBe(1)
+      expect(countOccurrences(block, 'og:image:alt')).toBe(1)
+      expect(countOccurrences(block, 'twitter:image')).toBe(1)
+      expect(countOccurrences(block, 'rel="icon"')).toBe(1)
+      expect(countOccurrences(block, 'rel="apple-touch-icon"')).toBe(1)
+    })
+
+    it('declares the large-image twitter card and never the summary card', () => {
+      expect(block).toContain(`<meta name="twitter:card" content="${TWITTER_CARD_TYPE}">`)
+      expect(TWITTER_CARD_TYPE).toBe('summary_large_image')
+      expect(block).not.toContain('<meta name="twitter:card" content="summary">')
+    })
+
+    it('matches the real og.jpg dimensions (1200x630)', () => {
+      expect(OG_IMAGE_WIDTH).toBe('1200')
+      expect(OG_IMAGE_HEIGHT).toBe('630')
+      expect(block).toContain(`content="${OG_IMAGE_WIDTH}"`)
+      expect(block).toContain(`content="${OG_IMAGE_HEIGHT}"`)
+    })
+
+    it('carries the owner-approved alt text verbatim', () => {
+      expect(block).toContain(OG_IMAGE_ALT)
+    })
+
+    it('every local asset path referenced resolves to an existing file under public/', () => {
+      expect(HEAD_LOCAL_ASSET_PATHS.length).toBeGreaterThan(0)
+      for (const path of HEAD_LOCAL_ASSET_PATHS) {
+        expect(existsSync(join('public', path))).toBe(true)
+      }
+    })
+  })
+})
+
 describe('idempotence', () => {
   it('produces byte-identical output across two calls with the same input', () => {
     const input = fixture('bench-toolbar.html')
@@ -489,6 +554,76 @@ describeIfArtifact('the real generated artifact', () => {
     expect(html).toContain("document.addEventListener('error'")
     expect(html).toContain(', true);')
     expect(html).toContain('e.target instanceof HTMLImageElement')
+  })
+
+  // ─── rich link preview + favicon (quick task 261001-rlp) ────────────────
+  // Sliced to the head block (start of file to the first <style) so a stray
+  // match 1890 lines deep in the body cannot make any of these pass.
+  const styleIdx = html.indexOf('<style')
+  const headSlice = artifactExists ? html.slice(0, styleIdx) : ''
+
+  it('isolates a non-empty head slice ending before the first <style tag', () => {
+    expect(styleIdx).toBeGreaterThan(0)
+    expect(headSlice.length).toBeGreaterThan(0)
+  })
+
+  it('still carries all 17 PROHIBITED_LITERALS at 0 -- length asserted first so a silently shortened list cannot print green', () => {
+    expect(PROHIBITED_LITERALS.length).toBe(17)
+    expect(verifyArtifact(html, manifest)).toEqual([])
+  })
+
+  it('contains exactly one each of the new image/icon tags in the head', () => {
+    // og:image" (closing quote) isolates the property itself from its three
+    // sub-properties, which all contain "og:image" as a bare prefix.
+    expect(countOccurrences(headSlice, 'og:image"')).toBe(1)
+    expect(countOccurrences(headSlice, 'og:image:width')).toBe(1)
+    expect(countOccurrences(headSlice, 'og:image:height')).toBe(1)
+    expect(countOccurrences(headSlice, 'og:image:alt')).toBe(1)
+    expect(countOccurrences(headSlice, 'twitter:image')).toBe(1)
+    expect(countOccurrences(headSlice, 'rel="icon"')).toBe(1)
+    expect(countOccurrences(headSlice, 'rel="apple-touch-icon"')).toBe(1)
+    // Pinned relationship, not dodged: the bare prefix is exactly 4 because
+    // og:image:width/height/alt each contain "og:image" as a prefix.
+    expect(countOccurrences(headSlice, 'og:image')).toBe(4)
+  })
+
+  it('declares the large-image twitter card and never ships the summary card', () => {
+    expect(headSlice).toContain(`<meta name="twitter:card" content="${TWITTER_CARD_TYPE}">`)
+    expect(html).not.toContain('<meta name="twitter:card" content="summary">')
+  })
+
+  it('resolves every head image/icon URL to a file that exists under public/', () => {
+    const ogImageMatch = headSlice.match(/<meta property="og:image" content="([^"]+)">/)
+    const twitterImageMatch = headSlice.match(/<meta name="twitter:image" content="([^"]+)">/)
+    const iconHrefs = [...headSlice.matchAll(/<link rel="([^"]*)" href="([^"]+)"/g)]
+      .filter(([, rel]) => rel.includes('icon'))
+      .map(([, , href]) => href)
+
+    expect(ogImageMatch).not.toBeNull()
+    expect(twitterImageMatch).not.toBeNull()
+
+    const rawUrls = [ogImageMatch![1], twitterImageMatch![1], ...iconHrefs]
+    // Non-empty-set guard: an empty extracted set would make the resolution
+    // loop below pass vacuously, which is the exact failure mode the old
+    // "nothing to point at" comment existed to avoid.
+    expect(rawUrls.length).toBeGreaterThan(0)
+
+    const toPublicRelative = (url: string): string => {
+      if (/^https?:\/\//.test(url)) {
+        expect(url.startsWith(PRODUCTION_CANONICAL_URL)).toBe(true)
+        return `/${url.slice(PRODUCTION_CANONICAL_URL.length)}`
+      }
+      return url
+    }
+
+    const relativePaths = rawUrls.map(toPublicRelative)
+    for (const path of relativePaths) {
+      expect(existsSync(join('public', path))).toBe(true)
+    }
+
+    const normalizedExtracted = Array.from(new Set(relativePaths)).sort()
+    const normalizedExpected = Array.from(new Set(HEAD_LOCAL_ASSET_PATHS)).sort()
+    expect(normalizedExtracted).toEqual(normalizedExpected)
   })
 })
 
