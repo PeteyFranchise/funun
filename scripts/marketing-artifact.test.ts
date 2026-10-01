@@ -42,6 +42,10 @@ import {
   removeExactly,
   replaceExactly,
   rewriteAssetPaths,
+  stripCssComments,
+  stripHtmlComments,
+  stripHtmlCssJsComments,
+  stripJsComments,
   TWITTER_CARD_TYPE,
 } from './build-marketing-artifact'
 import { verifyArtifact, PROHIBITED_LITERALS } from './verify-marketing-artifact'
@@ -643,5 +647,320 @@ describe('injectNoncePlaceholder — tag casing (CodeQL js/bad-tag-filter)', () 
   it('does not double-nonce a tag that already has one', () => {
     const { count } = injectNoncePlaceholder('<script nonce="x">a</script>')
     expect(count).toBe(1)
+  })
+})
+
+// ─── Quick task 261001-cmt: the comment tokenizer ───────────────────────────
+// Every fixture below is a small hand-built string, never the real bench
+// page (gitignored, changes constantly) and never routed through an HTML
+// parser/serializer — exactly the house style of the primitives above.
+// `sanitize()` is not wired to any of this yet (Task 2); these tests prove
+// the tokenizer in isolation first.
+
+describe('stripJsComments', () => {
+  describe('regex-literal vs string/division traps (F-02)', () => {
+    it('does not let a double-quote inside a regex literal open a string', () => {
+      const input = 'esc(/"/g)'
+      const result = stripJsComments(input)
+      expect(result.js).toBe(input)
+      expect(result.lineComments).toBe(0)
+      expect(result.blockComments).toBe(0)
+    })
+
+    it('does not let a single-quote inside a regex literal open a string', () => {
+      const input = "x(/'/g)"
+      expect(stripJsComments(input).js).toBe(input)
+    })
+
+    it('does not let a backtick inside a regex literal open a template literal', () => {
+      const input = 'x(/`/g)'
+      expect(stripJsComments(input).js).toBe(input)
+    })
+
+    it('does not let a / inside a regex character class close the regex', () => {
+      const input = 'const r = /[/]/g;'
+      expect(stripJsComments(input).js).toBe(input)
+    })
+
+    it('opens a regex after a comma, an equals sign, a colon, and the return keyword', () => {
+      const cases = [
+        'f(a, /x/, b);',
+        'let r = /x/;',
+        '({a: /x/});',
+        'function g(){ return /x/; }',
+      ]
+      for (const input of cases) {
+        expect(stripJsComments(input).js).toBe(input)
+      }
+    })
+
+    it('treats / as division (never regex) after a closing paren or an identifier/number', () => {
+      // If either were misclassified as regex-opening, the scanner would
+      // run to end-of-input looking for a closing delimiter that does not
+      // exist and throw — so this test is a real behavioral check, not
+      // just a byte-identity assertion.
+      const cases = ['const q = (a + b) / c;', 's/2;']
+      for (const input of cases) {
+        expect(stripJsComments(input).js).toBe(input)
+      }
+    })
+  })
+
+  describe('comment-content traps — quotes/backticks inside comments (F-02)', () => {
+    it('does not open a string on an apostrophe inside a line comment', () => {
+      const input = "// the Writer's Room alone"
+      const result = stripJsComments(input)
+      expect(result.lineComments).toBe(1)
+      expect(result.js).toBe('')
+    })
+
+    it('does not open a string on a double quote inside a line comment', () => {
+      const input = '// he said "no"'
+      const result = stripJsComments(input)
+      expect(result.lineComments).toBe(1)
+      expect(result.js).toBe('')
+    })
+
+    it('does not open a template literal on a backtick inside a line comment', () => {
+      const input = '// the `beta:` field'
+      const result = stripJsComments(input)
+      expect(result.lineComments).toBe(1)
+      expect(result.js).toBe('')
+    })
+
+    it('a line comment containing /* is not read as opening a block comment', () => {
+      const input = '// see /* not a block */'
+      const result = stripJsComments(input)
+      expect(result.lineComments).toBe(1)
+      expect(result.blockComments).toBe(0)
+      expect(result.js).toBe('')
+    })
+
+    it('a block comment containing // does not terminate early as a line comment', () => {
+      const input = '/* contains // not a line comment */'
+      const result = stripJsComments(input)
+      expect(result.blockComments).toBe(1)
+      expect(result.lineComments).toBe(0)
+      expect(result.js).toBe(' ')
+    })
+
+    it('// inside each quote style survives, byte-identical', () => {
+      for (const input of ["'a // b'", '"a // b"', '`a // b`']) {
+        const result = stripJsComments(input)
+        expect(result.js).toBe(input)
+        expect(result.lineComments).toBe(0)
+      }
+    })
+
+    it('/* inside each quote style survives, byte-identical', () => {
+      for (const input of ["'a /* b'", '"a /* b"', '`a /* b`']) {
+        const result = stripJsComments(input)
+        expect(result.js).toBe(input)
+        expect(result.blockComments).toBe(0)
+      }
+    })
+
+    it('strips a comment inside a template substitution without touching the literal text', () => {
+      const input = '`x ${ a /* c */ + b } y`'
+      const result = stripJsComments(input)
+      expect(result.blockComments).toBe(1)
+      expect(result.js).not.toContain('/*')
+      expect(result.js.startsWith('`x ${')).toBe(true)
+      expect(result.js.endsWith('} y`')).toBe(true)
+      expect(result.js).toContain('a')
+      expect(result.js).toContain('+ b')
+    })
+
+    it('does not end a single-quoted string on an escaped quote', () => {
+      const input = "code(); var s = 'it\\'s'; done();"
+      expect(stripJsComments(input).js).toBe(input)
+    })
+
+    it('does not end a double-quoted string on an escaped quote', () => {
+      const input = 'code(); var s = "say \\"hi\\""; done();'
+      expect(stripJsComments(input).js).toBe(input)
+    })
+  })
+
+  describe('whitespace policy (D-03)', () => {
+    it('keeps the trailing newline after a line comment (ASI)', () => {
+      const input = 'code();// tail\nmore();'
+      const result = stripJsComments(input)
+      expect(result.lineComments).toBe(1)
+      expect(result.js).toBe('code();\nmore();')
+    })
+
+    it('handles a trailing line comment with no newline at end of file', () => {
+      const input = 'code();// tail'
+      const result = stripJsComments(input)
+      expect(result.lineComments).toBe(1)
+      expect(result.js).toBe('code();')
+    })
+
+    it('collapses a multi-line block comment to a single newline', () => {
+      const input = 'before/* one\ntwo */after'
+      const result = stripJsComments(input)
+      expect(result.blockComments).toBe(1)
+      expect(result.js).toBe('before\nafter')
+    })
+
+    it('collapses a single-line block comment to a single space so adjacent tokens never merge', () => {
+      const input = 'a/*x*/b'
+      const result = stripJsComments(input)
+      expect(result.blockComments).toBe(1)
+      expect(result.js).toBe('a b')
+    })
+  })
+
+  describe('unterminated input throws (D-08)', () => {
+    it('throws on an unterminated block comment', () => {
+      expect(() => stripJsComments('a /* not closed')).toThrow(/unterminated/i)
+    })
+
+    it('throws on an unterminated single-quoted string', () => {
+      expect(() => stripJsComments("var s = 'not closed")).toThrow(/unterminated/i)
+    })
+
+    it('throws on an unterminated regex literal', () => {
+      expect(() => stripJsComments('var r = /not closed')).toThrow(/unterminated/i)
+    })
+
+    it('throws on an unterminated template literal', () => {
+      expect(() => stripJsComments('`not closed')).toThrow(/unterminated/i)
+    })
+  })
+
+  describe('idempotence', () => {
+    it('produces byte-identical output across two calls with the same input', () => {
+      const input = '// a\nf();/* b */g();'
+      const once = stripJsComments(input)
+      const twiceFromSameInput = stripJsComments(input)
+      expect(once.js).toBe(twiceFromSameInput.js)
+    })
+
+    it('reports all-zero counts on a second pass over already-stripped output', () => {
+      const input = '// a\nf();/* b */g();'
+      const first = stripJsComments(input)
+      const second = stripJsComments(first.js)
+      expect(second.lineComments).toBe(0)
+      expect(second.blockComments).toBe(0)
+      expect(second.js).toBe(first.js)
+    })
+  })
+})
+
+describe('stripCssComments', () => {
+  it('does not treat a comment-looking string as a comment', () => {
+    const input = "content:'/* not a comment */'"
+    const result = stripCssComments(input)
+    expect(result.blockComments).toBe(0)
+    expect(result.css).toBe(input)
+  })
+
+  it('does not interpret // inside an unquoted url() token as anything special', () => {
+    const input = 'background:url(data:image/svg+xml;base64,aa//bb)'
+    const result = stripCssComments(input)
+    expect(result.blockComments).toBe(0)
+    expect(result.css).toBe(input)
+  })
+
+  it('does not open a string on a quote inside a CSS comment', () => {
+    const input = "before/* a 'quoted' word */after"
+    const result = stripCssComments(input)
+    expect(result.blockComments).toBe(1)
+    expect(result.css).toBe('beforeafter')
+  })
+
+  it('a nested-looking comment ends at the first close marker', () => {
+    const input = 'before/* /* nested-looking */after'
+    const result = stripCssComments(input)
+    expect(result.blockComments).toBe(1)
+    expect(result.css).toBe('beforeafter')
+  })
+
+  it('throws on an unterminated CSS comment', () => {
+    expect(() => stripCssComments('a { color: red } /* not closed')).toThrow(/unterminated/i)
+  })
+})
+
+describe('stripHtmlComments', () => {
+  it('removes an HTML comment and leaves a doctype declaration untouched', () => {
+    const input = '<!DOCTYPE html><html><!-- note --><body></body></html>'
+    const result = stripHtmlComments(input)
+    expect(result.comments).toBe(1)
+    expect(result.markup).toBe('<!DOCTYPE html><html><body></body></html>')
+  })
+
+  it('throws on an unterminated HTML comment', () => {
+    expect(() => stripHtmlComments('<!-- never closed')).toThrow(/unterminated/i)
+  })
+})
+
+describe('stripHtmlCssJsComments', () => {
+  it('never looks inside a <script> raw-text region for an HTML comment', () => {
+    const input = "<script>var s='<!-- not a comment -->';</script>"
+    const result = stripHtmlCssJsComments(input)
+    expect(result.html).toBe(input)
+    expect(result.counts.htmlComments).toBe(0)
+    expect(result.counts.scriptRegions).toBe(1)
+  })
+
+  it('does not let --> inside JS terminate anything', () => {
+    const input = "<script>var s='a --> b';</script>"
+    const result = stripHtmlCssJsComments(input)
+    expect(result.html).toBe(input)
+  })
+
+  it('recognises <SCRIPT>, <Style> and <script nonce="x"> regardless of casing/attributes', () => {
+    const input =
+      '<SCRIPT>a();//c\n</SCRIPT><Style>.a{color:red}/*c*/</Style><script nonce="x">b();</script>'
+    const result = stripHtmlCssJsComments(input)
+    expect(result.counts.scriptRegions).toBe(2)
+    expect(result.counts.styleRegions).toBe(1)
+    expect(result.counts.jsLineComments).toBe(1)
+    expect(result.counts.cssBlockComments).toBe(1)
+  })
+
+  it('throws when a <script type="text/template"> body is fed to the JS stripper (D-08)', () => {
+    const input = '<script type="text/template"><div>{{x}}</div></script>'
+    expect(() => stripHtmlCssJsComments(input)).toThrow(/text\/template|not a JS type/i)
+  })
+
+  it('does not throw for <script type="module">', () => {
+    const input = '<script type="module">import x from "y";//c\n</script>'
+    expect(() => stripHtmlCssJsComments(input)).not.toThrow()
+  })
+
+  it('throws on an unclosed <style> tag', () => {
+    expect(() => stripHtmlCssJsComments('<style>.a{color:red}')).toThrow(/unclosed|unterminated/i)
+  })
+
+  it('returns exactly the known comment counts for a fixture built to have them', () => {
+    const input =
+      '<!-- h1 --><div>x</div><!-- h2 -->' +
+      '<style>/* c1 */a{}/* c2 */</style>' +
+      '<script>//l1\n//l2\nf();/* b1 */g();</script>'
+    const result = stripHtmlCssJsComments(input)
+    expect(result.counts.htmlComments).toBe(2)
+    expect(result.counts.cssBlockComments).toBe(2)
+    expect(result.counts.jsLineComments).toBe(2)
+    expect(result.counts.jsBlockComments).toBe(1)
+    expect(result.counts.scriptRegions).toBe(1)
+    expect(result.counts.styleRegions).toBe(1)
+  })
+
+  it('is idempotent: a second pass is a no-op and reports all-zero counts', () => {
+    const input = '<!-- h --><style>/* c */a{}</style><script>//l\nf();</script>'
+    const first = stripHtmlCssJsComments(input)
+    const second = stripHtmlCssJsComments(first.html)
+    expect(second.html).toBe(first.html)
+    expect(second.counts).toEqual({
+      htmlComments: 0,
+      cssBlockComments: 0,
+      jsLineComments: 0,
+      jsBlockComments: 0,
+      scriptRegions: 1,
+      styleRegions: 1,
+    })
   })
 })
