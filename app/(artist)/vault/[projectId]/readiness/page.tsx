@@ -199,7 +199,7 @@ export default async function ReadinessPage({ params }: { params: Promise<{ proj
               background: `conic-gradient(#818CF8 0%, #D946EF ${score}%, rgba(255,255,255,.08) ${score}% 100%)`,
             }}
           >
-            <div className="flex h-[244px] w-[244px] flex-col items-center justify-center rounded-full bg-[#0c0b1a]">
+            <div className="flex h-[244px] w-[244px] flex-col items-center justify-center rounded-full bg-card">
               <div className="gtext tnum text-[92px] font-black leading-[.9] tracking-[-.04em]">{score}</div>
               <div className="mt-[6px] text-[20px] font-semibold text-lavdim">/ 100</div>
               <div className="gtext mt-3 text-[13px] font-bold uppercase tracking-[.14em]">{label}</div>

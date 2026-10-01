@@ -361,7 +361,7 @@ export function PlaybackView({
       </div>
 
       {/* Persistent mini-player */}
-      <div className="fixed bottom-0 right-0 z-20 flex items-center gap-4 border-t border-hair bg-[#0b0a16]/95 px-9 py-3 backdrop-blur" style={{ left: miniLeft }}>
+      <div className="fixed bottom-0 right-0 z-20 flex items-center gap-4 border-t border-hair bg-card/95 px-9 py-3 backdrop-blur" style={{ left: miniLeft }}>
         <div
           className="h-11 w-11 flex-none rounded-[8px] bg-gradient-to-br from-brandindigo/40 to-brandfuchsia/30 bg-cover bg-center"
           style={coverUrl ? { backgroundImage: `url('${coverUrl}')` } : undefined}

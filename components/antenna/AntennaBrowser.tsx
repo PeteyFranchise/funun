@@ -56,7 +56,7 @@ export function AntennaBrowser({ rows }: { rows: AntennaRow[] }) {
       </div>
 
       {/* Filter panel */}
-      <div className="h-fit rounded-[16px] border border-hair bg-[#0b0a16] p-[22px]">
+      <div className="h-fit rounded-[16px] border border-hair bg-card p-[22px]">
         <div className="mb-[18px] text-[13px] font-bold uppercase tracking-[.14em] text-lavdim">Filters</div>
 
         <div className="mb-[22px]">

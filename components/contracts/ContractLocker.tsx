@@ -455,7 +455,7 @@ function HideFromViewButton({ row }: { row: ContractRow }) {
 function VerifyPanel({ row, projects }: { row: ContractRow | null; projects: { id: string; title: string }[] }) {
   if (!row) {
     return (
-      <div className="h-fit rounded-[18px] border border-hair bg-[#0b0a16] p-6 text-[13px] text-lavdim">
+      <div className="h-fit rounded-[18px] border border-hair bg-card p-6 text-[13px] text-lavdim">
         Select a contract to see its AI verification.
       </div>
     )
@@ -495,7 +495,7 @@ function VerifyPanel({ row, projects }: { row: ContractRow | null; projects: { i
             : { cls: 'text-money2 bg-money/12 border-money/30', text: 'Pending review' }
 
   return (
-    <div className="h-fit rounded-[18px] border border-hair bg-[#0b0a16] p-6">
+    <div className="h-fit rounded-[18px] border border-hair bg-card p-6">
       <div className="mb-[18px] flex items-center gap-[10px] text-[12px] font-bold uppercase tracking-[.14em] text-brandindigo">
         <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="#818CF8" strokeWidth={1.8}>
           <path d="M12 2v4m0 0a6 6 0 0 1 6 6c0 4-3 5-3 8H9c0-3-3-4-3-8a6 6 0 0 1 6-6Z" />

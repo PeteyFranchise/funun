@@ -116,7 +116,7 @@ export function SessionIdentityGuard({
           aria-modal="true"
           aria-labelledby="account-change-title"
         >
-          <div className="w-full max-w-[480px] rounded-2xl border border-white/15 bg-[#11111d] p-7 text-white shadow-2xl">
+          <div className="w-full max-w-[480px] rounded-2xl border border-white/15 bg-card2 p-7 text-white shadow-2xl">
             <div className="text-[11px] font-bold uppercase tracking-[.18em] text-[#9b96c8]">
               Account protection
             </div>

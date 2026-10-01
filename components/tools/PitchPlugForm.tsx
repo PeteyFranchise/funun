@@ -131,7 +131,7 @@ export function PitchPlugForm({
                   onClick={() => toggle(c.type)}
                   className={`flex items-start gap-3 rounded-xl border p-3 text-left transition ${
                     isOn
-                      ? 'border-[#818CF8] bg-[#1A1840]'
+                      ? 'border-brandindigo bg-brandindigo/10'
                       : 'border-card2 bg-card hover:border-white/25'
                   }`}
                 >
