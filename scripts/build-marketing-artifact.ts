@@ -282,6 +282,16 @@ const STEP_BADGE_DECISION_COMMENT_START =
   '/* Violet, not grey. OWNER DECISION 2026-09-30: the step labels were being scanned'
 const STEP_BADGE_DECISION_COMMENT_END = '   accent. 10.5:1. */\n'
 
+// The owner's rationale for the named-tab carousel control belongs in the
+// bench, but verify-marketing-artifact.ts bans the literal "OWNER DECISION"
+// from the shipped artifact (this file ships to a public page). Anchored
+// removeBetween, same shape as DIFFERENTIATORS_OWNER_COMMENT and
+// STEP_BADGE_DECISION_COMMENT_* above — this is the third one-off strip.
+const HERO_TABS_DECISION_COMMENT_START =
+  '/* Named tabs, not anonymous bars. OWNER DECISION 2026-09-30: three 3px bars'
+const HERO_TABS_DECISION_COMMENT_END =
+  '   is the correct state attribute for a tab (aria-current was wrong here). */\n'
+
 const REVERT_NOTE_START = '// REVERT NOTE (owner 2026-09-30):'
 const REVERT_NOTE_END =
   '// .planning/todos/pending/2026-09-29-paid-tier-interest-capture-before-stripe.md\n'
@@ -427,6 +437,12 @@ export function sanitize(sourceHtml: string): SanitizeResult {
     STEP_BADGE_DECISION_COMMENT_START,
     STEP_BADGE_DECISION_COMMENT_END,
     'step-badge OWNER DECISION comment',
+  )
+  html = removeBetween(
+    html,
+    HERO_TABS_DECISION_COMMENT_START,
+    HERO_TABS_DECISION_COMMENT_END,
+    'hero-tabs OWNER DECISION comment',
   )
   html = removeBetween(html, REVERT_NOTE_START, REVERT_NOTE_END, 'pricing REVERT NOTE comment')
   html = removeBetween(
