@@ -638,7 +638,7 @@ describeIfArtifact('the real generated artifact', () => {
   // above; this section proves sanitize()'s wiring of it is still correct).
 
   it('the single <script> body parses with node --check, proven with a positive control', () => {
-    const scriptMatch = html.match(/<script[^>]*>([\s\S]*?)<\/script>/i)
+    const scriptMatch = html.match(/<script[^>]*>([\s\S]*?)<\/script\s*>/i)
     expect(scriptMatch).not.toBeNull()
     const body = scriptMatch![1]
     expect(body.length).toBeGreaterThan(1000)
@@ -699,13 +699,13 @@ describeIfArtifact('the real generated artifact', () => {
     // tokenizer's.
     expect(countOccurrences(html, '<!--')).toBe(0)
 
-    const styleBodies = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1])
+    const styleBodies = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style\s*>/gi)].map((m) => m[1])
     expect(styleBodies.length).toBe(2)
     for (const css of styleBodies) {
       expect(countOccurrences(css, '/*')).toBe(0)
     }
 
-    const scriptBodies = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1])
+    const scriptBodies = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script\s*>/gi)].map((m) => m[1])
     expect(scriptBodies.length).toBe(1)
     for (const js of scriptBodies) {
       expect(countOccurrences(js, '/*')).toBe(0)
