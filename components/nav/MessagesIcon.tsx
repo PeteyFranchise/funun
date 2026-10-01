@@ -118,7 +118,7 @@ export function MessagesIcon({ userId }: { userId: string }) {
           id="global-messages-drawer"
           role="dialog"
           aria-label="Recent messages"
-          className="absolute right-0 top-[calc(100%+12px)] z-50 w-[min(380px,calc(100vw-32px))] overflow-hidden rounded-2xl border border-hairstrong bg-[#0f0e1d] shadow-[0_24px_80px_rgba(0,0,0,.55)]"
+          className="absolute right-0 top-[calc(100%+12px)] z-50 w-[min(380px,calc(100vw-32px))] overflow-hidden rounded-2xl border border-hairstrong bg-card2 shadow-[0_24px_80px_rgba(0,0,0,.55)]"
         >
           <div className="flex items-center justify-between border-b border-hair px-5 py-4">
             <div>

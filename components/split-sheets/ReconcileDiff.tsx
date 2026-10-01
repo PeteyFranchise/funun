@@ -125,7 +125,7 @@ export function ReconcileDiff({ sheetId }: { sheetId: string }) {
   }
 
   return (
-    <div className="rounded-[18px] border border-hair bg-[#0b0a16] p-5">
+    <div className="rounded-[18px] border border-hair bg-card p-5">
       <div className="flex items-center justify-between">
         <div className="text-[14px] font-extrabold text-white">Signed sheet vs. {trackTitle}</div>
         {mismatchExists && (

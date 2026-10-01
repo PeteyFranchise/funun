@@ -56,7 +56,7 @@ export function WorkspaceContextSwitcher({
 
       <div
         className={[
-          'absolute z-[80] mt-2 overflow-hidden rounded-[14px] border border-hairstrong bg-[#121120] p-2 shadow-2xl',
+          'absolute z-[80] mt-2 overflow-hidden rounded-[14px] border border-hairstrong bg-card2 p-2 shadow-2xl',
           collapsed ? 'left-0 w-[250px]' : 'left-0 right-0',
         ].join(' ')}
       >

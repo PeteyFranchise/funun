@@ -155,7 +155,7 @@ export function OpportunityForm({ demo }: { demo?: boolean }) {
                 onClick={() => toggleStage(n)}
                 className={`rounded-lg border px-4 py-2 text-sm transition ${
                   stages.has(n)
-                    ? 'border-[#818CF8] bg-[#1A1840] text-white'
+                    ? 'border-brandindigo bg-brandindigo/10 text-white'
                     : 'border-card2 text-white/50 hover:border-white/25'
                 }`}
               >
