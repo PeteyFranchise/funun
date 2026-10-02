@@ -236,12 +236,15 @@ describe('middleware.ts marketing-document wiring', () => {
     expect(source).not.toContain('favicon.ico|marketing|api')
   })
 
-  it('never changed the CSP directives (out of scope for this task)', () => {
+  it('keeps script-src nonce-based and pins the exact script-src and frame-src source lists', () => {
     const source = middlewareSource()
     expect(source).toContain("style-src 'self' 'unsafe-inline'")
     expect(source).not.toContain("'unsafe-inline'\"\n    `script-src")
     expect(source).toContain(
-      "`script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://js.stripe.com`",
+      "`script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://js.stripe.com https://challenges.cloudflare.com`",
+    )
+    expect(source).toContain(
+      "\"frame-src https://js.stripe.com https://*.docuseal.com https://challenges.cloudflare.com\"",
     )
   })
 })
