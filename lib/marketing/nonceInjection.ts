@@ -19,10 +19,6 @@ export type NonceInjectionResult = {
   replacedCount: number
 }
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
 /**
  * Replaces every occurrence of the nonce placeholder with the real,
  * per-request CSP nonce, by literal string replacement only (no parse, no
@@ -30,6 +26,15 @@ function escapeRegExp(value: string): string {
  * out: an absent nonce, a replacement count that does not match the
  * manifest-recorded expectation, a placeholder surviving the replace, or a
  * `<script` tag that does not carry the nonce afterward.
+ *
+ * The final guard matches `<script` case-insensitively (HTML tag names are
+ * case-insensitive; a lowercase-only count and a lowercase-only nonced-count
+ * were previously both blind to the same uppercase tag, so they agreed with
+ * each other while disagreeing with the document -- a guard that fails open
+ * by matching luck, not correctness). Both counts come from a single scan
+ * so they cannot drift apart from each other again. The nonce VALUE
+ * comparison stays case-sensitive on purpose: the nonce is a secret, not a
+ * tag name, and a guard must not launder a wrong-case secret as a match.
  */
 export function injectNonce(html: string, nonce: string, expectedCount: number): NonceInjectionResult {
   if (!nonce || nonce.trim().length === 0) {
@@ -49,9 +54,22 @@ export function injectNonce(html: string, nonce: string, expectedCount: number):
     throw new Error('injectNonce: a placeholder survived replacement')
   }
 
-  const scriptTagCount = (replaced.match(/<script/g) ?? []).length
-  const noncedScriptTagRe = new RegExp(`<script nonce="${escapeRegExp(nonce)}"`, 'g')
-  const noncedScriptTagCount = (replaced.match(noncedScriptTagRe) ?? []).length
+  // Declared locally (not module scope): a module-level /g regex carries
+  // lastIndex across calls, and injectNonce runs once per request.
+  // Lookahead requires the next character after `<script` to be
+  // whitespace, `/`, or `>`, so `<scriptfoo>` -- not a script tag -- is not
+  // miscounted as one.
+  const scriptTagRe = /<script(?=[\s/>])/gi
+  let scriptTagCount = 0
+  let noncedScriptTagCount = 0
+  let match: RegExpExecArray | null
+  while ((match = scriptTagRe.exec(replaced)) !== null) {
+    scriptTagCount++
+    const tagNameEnd = match.index + match[0].length
+    if (replaced.startsWith(` nonce="${nonce}"`, tagNameEnd)) {
+      noncedScriptTagCount++
+    }
+  }
   if (scriptTagCount !== noncedScriptTagCount) {
     throw new Error(
       `injectNonce: ${scriptTagCount} <script> tag(s) present but only ${noncedScriptTagCount} ` +
