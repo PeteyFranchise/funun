@@ -7,6 +7,7 @@ import {
   type AuthHealthData,
   type AuthHealthFilters,
 } from '@/lib/auth/health'
+import { attemptCopy } from '@/lib/clipboard/attempt-copy'
 
 const EVENT_LABELS: Record<string, string> = {
   sign_in_failed: 'Sign-in failed',
@@ -79,11 +80,11 @@ export function AuthHealthPanel({ data }: { data: AuthHealthData }) {
   }
 
   async function copyReference(correlationId: string) {
-    try {
-      await navigator.clipboard.writeText(correlationId)
+    const outcome = await attemptCopy(correlationId)
+    if (outcome === 'copied') {
       setCopiedReference(correlationId)
       setCopyFailed(null)
-    } catch {
+    } else {
       setCopiedReference(null)
       setCopyFailed(correlationId)
     }

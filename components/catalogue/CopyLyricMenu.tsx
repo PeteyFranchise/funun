@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { serializeLyrics, type LyricBlockRecord } from '@/lib/catalogue/blocks'
+import { attemptCopy } from '@/lib/clipboard/attempt-copy'
 
 // ─── "Copy full lyric" — the two-flavour export (S-04) ─────────────────
 // LOCKED DECISION (CONTEXT S-04): the wording is tool-agnostic. The tagged
@@ -59,23 +60,15 @@ export function CopyLyricMenu({ blocks }: CopyLyricMenuProps) {
     setCopiedFlavor(null)
     setFallbackText(null)
 
-    const clipboard =
-      typeof navigator !== 'undefined' && 'clipboard' in navigator
-        ? (navigator as Navigator & { clipboard?: { writeText?: (t: string) => Promise<void> } }).clipboard
-        : undefined
+    const outcome = await attemptCopy(text)
 
-    if (!clipboard?.writeText) {
-      setFallbackFlavor(flavor)
-      setFallbackText(text)
-      setOpen(false)
-      return
-    }
-
-    try {
-      await clipboard.writeText(text)
+    // Both non-'copied' outcomes ('unavailable' and 'rejected') keep setting
+    // fallbackText/fallbackFlavor and closing the menu, exactly as before —
+    // the selectable fallback must not be lost.
+    if (outcome === 'copied') {
       setCopiedFlavor(flavor)
       setOpen(false)
-    } catch {
+    } else {
       setFallbackFlavor(flavor)
       setFallbackText(text)
       setOpen(false)

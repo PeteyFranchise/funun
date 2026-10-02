@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { CollaboratorProfile } from '@/lib/collaborators'
+import { attemptCopy } from '@/lib/clipboard/attempt-copy'
 
 // ─── QuickInviteModal ──────────────────────────────────────────────────
 // Standalone "Invite collaborator" path (260825-i4i): first name + email
@@ -109,17 +110,15 @@ export function QuickInviteModal({ onClose, onInvited }: Props) {
   }
 
   async function handleCopyLink() {
-    if (!navigator.clipboard) {
+    const outcome = await attemptCopy(inviteLink)
+    if (outcome === 'unavailable') {
       setCopyError('Clipboard unavailable — select the link above and copy it manually')
-      return
-    }
-    try {
-      await navigator.clipboard.writeText(inviteLink)
+    } else if (outcome === 'rejected') {
+      setCopyError('Could not copy — select the link above and copy it manually')
+    } else {
       setCopied(true)
       setCopyError(null)
       setTimeout(() => setCopied(false), 2000)
-    } catch {
-      setCopyError('Could not copy — select the link above and copy it manually')
     }
   }
 

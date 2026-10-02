@@ -23,6 +23,7 @@ import { GENRES } from '@/lib/genres'
 import { isLegalSelectsTransition } from '@/lib/selects/stage-machine'
 import type { SelectsStatus, SelectsTrackSource } from '@/lib/selects/types'
 import type { SelectsCatalogTrackHit } from '@/app/api/admin/selects/catalog/route'
+import { attemptCopy } from '@/lib/clipboard/attempt-copy'
 
 // ─── SelectsBuilder (R11, D-11, D-12) ───────────────────────────────────────
 // The AE's curate-and-send console: a Crate-search pane on one side, the
@@ -565,7 +566,7 @@ export function SelectsBuilder({
   )
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
-  const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle')
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle')
 
   const canSend = tracks.length > 0 && isLegalSelectsTransition(status, 'sent')
 
@@ -590,13 +591,12 @@ export function SelectsBuilder({
     }
   }, [canSend, selects.id])
 
-  const handleCopyLink = useCallback(() => {
+  const handleCopyLink = useCallback(async () => {
     if (!shareUrl || typeof window === 'undefined') return
     const absolute = `${window.location.origin}${shareUrl}`
-    navigator.clipboard?.writeText(absolute).then(() => {
-      setCopyState('copied')
-      setTimeout(() => setCopyState('idle'), 2000)
-    }).catch(() => {})
+    const outcome = await attemptCopy(absolute)
+    setCopyState(outcome === 'copied' ? 'copied' : 'failed')
+    setTimeout(() => setCopyState('idle'), 2000)
   }, [shareUrl])
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -659,7 +659,7 @@ export function SelectsBuilder({
                 {shareUrl}
               </a>
               <button onClick={handleCopyLink} className={GHOST_BTN_CLASS}>
-                {copyState === 'copied' ? 'Copied ✓' : 'Copy link'}
+                {copyState === 'copied' ? 'Copied ✓' : copyState === 'failed' ? "Couldn't copy" : 'Copy link'}
               </button>
             </div>
           )}

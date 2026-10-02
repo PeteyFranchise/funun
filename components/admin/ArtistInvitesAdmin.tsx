@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState, type FormEvent } from 'react'
+import { attemptCopy } from '@/lib/clipboard/attempt-copy'
 
 // ─── ArtistInvitesAdmin ───────────────────────────────────────────────────
 // Team Console surface for Phase 27's waitlist/invite system (D-14).
@@ -160,10 +161,10 @@ export function ArtistInvitesAdmin({ initialWaitlist, isLeadership }: Props) {
 
   async function handleCopyInviteLink() {
     if (!inviteResult?.inviteLink) return
-    try {
-      await navigator.clipboard.writeText(inviteResult.inviteLink)
+    const outcome = await attemptCopy(inviteResult.inviteLink)
+    if (outcome === 'copied') {
       setCopiedInviteLink(true)
-    } catch {
+    } else {
       setInviteError('Could not copy the link. Open it and copy it from the address bar instead.')
     }
   }

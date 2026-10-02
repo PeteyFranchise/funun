@@ -12,6 +12,7 @@ import {
   type ProducerFeedbackSnapshot,
   type ProducerHandoffStage,
 } from '@/lib/catalogue/producer-handoff'
+import { attemptCopy } from '@/lib/clipboard/attempt-copy'
 
 export type ProducerHandoffTimelineReturn = {
   returnId: string
@@ -175,26 +176,24 @@ function HandoffCard({
   }
 
   async function copyRecap() {
-    if (!navigator.clipboard) {
+    const outcome = await attemptCopy(buildProducerHandoffRecap({
+      songTitle: item.songTitle,
+      senderName: item.senderName,
+      recipientName: item.recipientName,
+      stage,
+      roundLabel: item.roundLabel,
+      bpm: item.bpm,
+      musicalKey: item.musicalKey,
+      referenceUrl: item.referenceUrl,
+      direction: item.direction,
+      feedbackCount: item.feedback.length,
+    }))
+    if (outcome === 'unavailable') {
       setError('Copy is unavailable in this browser.')
-      return
-    }
-    try {
-      await navigator.clipboard.writeText(buildProducerHandoffRecap({
-        songTitle: item.songTitle,
-        senderName: item.senderName,
-        recipientName: item.recipientName,
-        stage,
-        roundLabel: item.roundLabel,
-        bpm: item.bpm,
-        musicalKey: item.musicalKey,
-        referenceUrl: item.referenceUrl,
-        direction: item.direction,
-        feedbackCount: item.feedback.length,
-      }))
-      setCopied(true)
-    } catch {
+    } else if (outcome === 'rejected') {
       setError('Could not copy the handoff recap.')
+    } else {
+      setCopied(true)
     }
   }
 

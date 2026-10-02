@@ -11,6 +11,7 @@ import {
   readIdentityHints,
 } from '@/lib/collaborators/display-identity'
 import { CollaboratorIdentityLabel } from '@/components/collaborators/CollaboratorIdentityLabel'
+import { attemptCopy } from '@/lib/clipboard/attempt-copy'
 import { PRO_LABELS, PRO_VALUES } from '@/lib/metadata/schema'
 import {
   isAutoInviteEligible,
@@ -347,17 +348,15 @@ function FastAddForm({
   }
 
   async function handleCopyLink() {
-    if (!navigator.clipboard) {
+    const outcome = await attemptCopy(inviteLink)
+    if (outcome === 'unavailable') {
       setCopyError('Clipboard unavailable — select the link above and copy it manually')
-      return
-    }
-    try {
-      await navigator.clipboard.writeText(inviteLink)
+    } else if (outcome === 'rejected') {
+      setCopyError('Could not copy — select the link above and copy it manually')
+    } else {
       setCopied(true)
       setCopyError(null)
       setTimeout(() => setCopied(false), 2000)
-    } catch {
-      setCopyError('Could not copy — select the link above and copy it manually')
     }
   }
 

@@ -16,6 +16,7 @@ import type { StaffRole } from '@/lib/admin/gate'
 // re-exports these from, extracted precisely so client components can use them.
 import { ALL_STAFF_ROLES, primaryStaffRole } from '@/lib/admin/staff-role'
 import { formatPhone, isValidPhone } from '@/lib/staff/phone'
+import { attemptCopy } from '@/lib/clipboard/attempt-copy'
 
 // ─── StaffAdmin ─────────────────────────────────────────────────────────────
 // Team Members management surface (leadership + TMS). A pixel port of the
@@ -872,7 +873,13 @@ export function StaffAdmin({
       if (!res.ok || !json.data?.inviteLink) {
         throw new Error(json.error ?? 'Could not generate an invite link.')
       }
-      await navigator.clipboard.writeText(json.data.inviteLink)
+      const outcome = await attemptCopy(json.data.inviteLink)
+      if (outcome !== 'copied') {
+        // Replaces the raw `Cannot read properties of undefined (reading
+        // 'writeText')` TypeError string that used to reach staff here on a
+        // non-secure origin with no feature detect.
+        throw new Error('Could not copy the invite link — try again or copy it from the network response.')
+      }
       showToast(`Invite link for ${who} copied — send it to them directly.`, 'ok')
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not copy the invite link.', 'bad')

@@ -10,6 +10,7 @@ import {
   type WorkTier,
 } from '@/lib/catalogue/membership'
 import { LearnWhy } from '@/components/ui/LearnWhy'
+import { attemptCopy } from '@/lib/clipboard/attempt-copy'
 import {
   PRIMARY_WRITER_DESIGNATIONS,
   WRITER_DESIGNATIONS,
@@ -192,6 +193,7 @@ export function WorkRoster({
   const [admission, setAdmission] = useState<'direct' | 'invite-required' | null>(null)
   const [inviteError, setInviteError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [copyFailed, setCopyFailed] = useState(false)
   const [promotingId, setPromotingId] = useState<string | null>(null)
   const [promotionMessage, setPromotionMessage] = useState<string | null>(null)
   // The member currently choosing their DDEX/PRO designation before the
@@ -286,14 +288,19 @@ export function WorkRoster({
   }
 
   async function handleCopyLink() {
-    if (!navigator.clipboard) return
-    try {
-      await navigator.clipboard.writeText(inviteLink)
+    const outcome = await attemptCopy(inviteLink)
+    if (outcome === 'copied') {
+      setCopyFailed(false)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // Selection fallback — the input is readOnly and select-on-click below.
+      return
     }
+    setCopied(false)
+    setCopyFailed(true)
+    // Selection fallback — the input is readOnly and select-on-click, and on
+    // a failed copy this focuses it directly so the fallback is actually
+    // reachable, not merely a passive claim.
+    linkInputRef.current?.focus()
   }
 
   async function handlePromote(member: WorkRosterMember, designation: WriterDesignation | null) {
@@ -574,7 +581,7 @@ export function WorkRoster({
                     onClick={handleCopyLink}
                     className="rounded-lg bg-grad px-3 py-1.5 text-[12px] font-semibold text-white shadow-cta"
                   >
-                    {copied ? 'Copied ✓' : 'Copy invite link'}
+                    {copied ? 'Copied ✓' : copyFailed ? "Couldn't copy — select the link above" : 'Copy invite link'}
                   </button>
                 )}
                 <button
