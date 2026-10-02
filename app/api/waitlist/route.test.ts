@@ -1,6 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
-import { verifyTurnstileToken } from '@/lib/security/turnstile'
+import { turnstileConfigStatus, verifyTurnstileToken } from '@/lib/security/turnstile'
 import { checkRateLimit } from '@/lib/security/rate-limit'
+import * as Sentry from '@sentry/nextjs'
 import { POST } from './route'
 
 // ─── POST /api/waitlist (27-07 Task 1; H2/L3 fix 27-CODEX-REVIEW.md) ──────
@@ -10,8 +11,10 @@ import { POST } from './route'
 // success, captcha-fail short-circuits before any DB write (fail-closed),
 // invalid email -> 400, missing name -> 400 (L3), ip/email rate limits ->
 // 429, the RPC's error/null-id result -> neutral 500 failure (H2 — never
-// {ok:true} without a persisted row), and the sanitizeWaitlistEntry
-// mass-assignment allowlist.
+// {ok:true} without a persisted row), the sanitizeWaitlistEntry
+// mass-assignment allowlist, and (261002-wtl) that a misconfigured
+// Turnstile reports once to Sentry with an identical client-visible
+// response, while a fully configured one reports nothing.
 
 jest.mock('@/lib/supabase/server', () => ({
   createServiceClient: jest.fn(),
@@ -19,6 +22,11 @@ jest.mock('@/lib/supabase/server', () => ({
 
 jest.mock('@/lib/security/turnstile', () => ({
   verifyTurnstileToken: jest.fn(),
+  turnstileConfigStatus: jest.fn(),
+}))
+
+jest.mock('@sentry/nextjs', () => ({
+  captureMessage: jest.fn(),
 }))
 
 // The limiter is DB-backed now (audit #7) — mock it so these tests don't route
@@ -63,6 +71,7 @@ beforeEach(() => {
   jest.clearAllMocks()
   ;(verifyTurnstileToken as jest.Mock).mockResolvedValue(true)
   ;(checkRateLimit as jest.Mock).mockResolvedValue(false)
+  ;(turnstileConfigStatus as jest.Mock).mockReturnValue('configured')
 })
 
 describe('POST /api/waitlist', () => {
@@ -100,6 +109,43 @@ describe('POST /api/waitlist', () => {
     expect([400, 403]).toContain(res.status)
     expect(createServiceClient).not.toHaveBeenCalled()
     expect(service.rpc).not.toHaveBeenCalled()
+  })
+
+  it('reports to Sentry (once) when verification fails due to a missing secret, with the same response as a genuine captcha failure (261002-wtl)', async () => {
+    ;(verifyTurnstileToken as jest.Mock).mockResolvedValue(false)
+    ;(turnstileConfigStatus as jest.Mock).mockReturnValue('secret-missing')
+    const service = mockService()
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await POST(
+      jsonRequest(validBody({ email: 'misconfigured@example.test' }), {
+        'x-forwarded-for': '20.0.5.1',
+      })
+    )
+
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toBe('Verification failed. Please try again.')
+    expect(Sentry.captureMessage).toHaveBeenCalledTimes(1)
+    expect(createServiceClient).not.toHaveBeenCalled()
+  })
+
+  it('does not report to Sentry when verification fails but Turnstile is fully configured (261002-wtl)', async () => {
+    ;(verifyTurnstileToken as jest.Mock).mockResolvedValue(false)
+    ;(turnstileConfigStatus as jest.Mock).mockReturnValue('configured')
+    const service = mockService()
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await POST(
+      jsonRequest(validBody({ email: 'genuine-bot@example.test' }), {
+        'x-forwarded-for': '20.0.5.2',
+      })
+    )
+
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toBe('Verification failed. Please try again.')
+    expect(Sentry.captureMessage).not.toHaveBeenCalled()
   })
 
   it('returns 400 on an invalid email and never calls Turnstile or the DB', async () => {

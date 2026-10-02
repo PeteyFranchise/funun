@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { createServiceClient } from '@/lib/supabase/server'
 import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
-import { verifyTurnstileToken } from '@/lib/security/turnstile'
+import { turnstileConfigStatus, verifyTurnstileToken } from '@/lib/security/turnstile'
 import { sanitizeWaitlistEntry } from '@/lib/invites/schema'
 
 // ─── POST /api/waitlist — public, unauthenticated (27-07 Task 1) ──────────
@@ -28,6 +29,19 @@ import { sanitizeWaitlistEntry } from '@/lib/invites/schema'
 // (LOWER(email)) DO UPDATE` atomically server-side (Postgres itself has no
 // such conflict-target limitation — only the PostgREST client does), so
 // this route now has exactly ONE write to check the error/result of.
+//
+// Misconfiguration signal (quick task 261002-wtl): a half-configured
+// Turnstile (site key set, secret missing) is the genuinely invisible
+// case — the widget renders, a visitor completes a challenge, believes
+// they succeeded, and this route silently refuses. turnstileConfigStatus()
+// distinguishes that from a fully configured Turnstile reporting a
+// genuine bot-check failure, and reports ONLY to Sentry (server-side).
+// The client-visible response below is byte-identical regardless of
+// configuration state, so this cannot become an attacker oracle for
+// whether the gate is live. It deliberately does not fire for the
+// "neither key set" case — the client gate (waitlist-gate.ts) now
+// disables submit entirely in that state, so no request reaches here for
+// it; that case is made visible to the human in the UI instead.
 
 function errorResponse(message: string, status: number) {
   return NextResponse.json({ error: message }, { status })
@@ -54,7 +68,21 @@ export async function POST(request: Request) {
   const turnstileToken = typeof raw.turnstileToken === 'string' ? raw.turnstileToken : ''
   const verified = await verifyTurnstileToken(turnstileToken, ip)
   if (!verified) {
-    // Fail-closed (RESEARCH Pitfall 7) — no DB call has happened yet.
+    const configStatus = turnstileConfigStatus()
+    // Only the HALF-configured states are the invisible case worth paging
+    // on. 'unconfigured' (neither key set) never reaches this route at all
+    // once the client gate is live (Task 2), and surfacing it here as well
+    // would duplicate a signal the UI already makes honest to the visitor.
+    if (configStatus === 'secret-missing' || configStatus === 'site-key-missing') {
+      Sentry.captureMessage('Waitlist Turnstile verification failed due to misconfiguration', {
+        level: 'error',
+        tags: { feature: 'waitlist-turnstile', configStatus },
+      })
+    }
+    // Fail-closed (RESEARCH Pitfall 7) — no DB call has happened yet. The
+    // response is identical whether Turnstile is misconfigured or a
+    // genuine bot check failed — see the misconfiguration-signal note
+    // above the imports for why that must not vary.
     return errorResponse('Verification failed. Please try again.', 400)
   }
 
