@@ -116,6 +116,63 @@ describe('injectNonce', () => {
   })
 })
 
+// CodeQL js/bad-tag-filter sibling: injectNonce's own two counts (the raw
+// `<script` count and the `<script nonce="...">` count) were both
+// case-sensitive, so an uppercase/mixed-case tag was absent from BOTH and the
+// counts still agreed -- the guard fails OPEN rather than throwing. HTML tag
+// names are case-insensitive; a guard that only recognises the casing its
+// current input happens to use is a guard that works by luck.
+//
+// R1/R2/R3 are expected to FAIL before the fix (that failure IS the RED
+// evidence for NGC-02). G1/G2/G3 are over-correction guards, expected to
+// PASS on both sides of the fix -- they are not evidence of the defect, they
+// are proof the fix does not go too far. G2 in particular is the assertion
+// that discriminates the chosen fix (case-sensitive nonce VALUE comparison)
+// from the rejected bare-`i`-flag fix (which would make the nonce value
+// comparison case-insensitive too).
+describe('injectNonce — tag casing (sibling of CodeQL js/bad-tag-filter)', () => {
+  const NONCE = 'abc123nonce'
+
+  // R1 -- expected RED before the fix.
+  it('throws when an uppercase <SCRIPT> tag is present unnonced alongside a correctly nonced lowercase script', () => {
+    const html = `<script nonce="${NONCE}">a()</script><SCRIPT>b()</SCRIPT>`
+    expect(() => injectNonce(html, NONCE, 0)).toThrow(/carry the nonce/)
+  })
+
+  // R2 -- expected RED before the fix.
+  it('throws when a mixed-case <Script> tag is present unnonced alongside a correctly nonced lowercase script', () => {
+    const html = `<script nonce="${NONCE}">a()</script><Script>b()</Script>`
+    expect(() => injectNonce(html, NONCE, 0)).toThrow(/carry the nonce/)
+  })
+
+  // R3 -- expected RED before the fix (today this throws: a spurious
+  // fail-closed miscount, not a security hole, but still wrong).
+  it('does not throw for a <scriptfoo> element alongside one correctly nonced script', () => {
+    const html = `<script nonce="${NONCE}">a()</script><scriptfoo>not a script tag</scriptfoo>`
+    expect(() => injectNonce(html, NONCE, 0)).not.toThrow()
+  })
+
+  // G1 -- over-correction guard, expected to PASS before and after the fix.
+  it('does not throw for a correctly nonced uppercase <SCRIPT> tag, and counts it', () => {
+    const html = `<script nonce="${NONCE}">a()</script><SCRIPT nonce="${NONCE}">b()</SCRIPT>`
+    const result = injectNonce(html, NONCE, 0)
+    expect(result.html).toBe(html)
+  })
+
+  // G2 -- over-correction guard, expected to PASS before and after the fix.
+  // Discriminates the chosen fix from the rejected bare-`i` fix: a
+  // case-variant of the nonce VALUE must still fail the guard, because the
+  // nonce is a secret and its comparison must stay case-sensitive.
+  it('still throws when a tag carries a case-variant of the nonce VALUE rather than the real nonce', () => {
+    const html = `<script nonce="${NONCE}">a()</script><script nonce="ABC123NONCE">b()</script>`
+    expect(() => injectNonce(html, NONCE, 0)).toThrow(/carry the nonce/)
+  })
+
+  // G3 -- the 7 pre-existing injectNonce tests above (:60-117) are
+  // unmodified and continue to pass; no fixture above routes through this
+  // block, and no existing test was reordered or edited.
+})
+
 // ─── middleware wiring (source-text assertions, matching the existing
 // __tests__/middleware-auth.test.ts convention: middleware.ts imports
 // @supabase/ssr + next/server primitives that need substantial mocking to
