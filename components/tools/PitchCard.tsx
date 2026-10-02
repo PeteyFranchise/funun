@@ -2,21 +2,48 @@
 
 import { useState } from 'react'
 import { getCurator, type CuratorType, type GeneratedPitch } from '@/lib/tools/pitchplug'
+import { attemptCopy } from '@/lib/clipboard/attempt-copy'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function CopyButton({ text, label }: { text: string; label: string }) {
-  const [copied, setCopied] = useState(false)
+  const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle')
   return (
     <button
       onClick={async () => {
-        await navigator.clipboard.writeText(text)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 1500)
+        const outcome = await attemptCopy(text)
+        setState(outcome === 'copied' ? 'copied' : 'failed')
+        setTimeout(() => setState('idle'), 1500)
       }}
       className="rounded-md border border-white/15 px-2.5 py-1 text-xs text-white/70 transition hover:border-white/30 hover:text-white"
     >
-      {copied ? 'Copied' : label}
+      {state === 'copied' ? 'Copied' : state === 'failed' ? "Couldn't copy" : label}
+    </button>
+  )
+}
+
+// The SubmitHub hand-off only opens the tab when the copy actually
+// succeeded — a tab opened over an empty clipboard reads as success and the
+// user discovers the failure on a third-party site with the source text no
+// longer in front of them. On a non-'copied' outcome this stays on the page
+// (the email body is already rendered above and selectable) and shows the
+// same transient failure label CopyButton uses.
+function SubmitHubCopyButton({ text }: { text: string }) {
+  const [failed, setFailed] = useState(false)
+  return (
+    <button
+      onClick={async () => {
+        const outcome = await attemptCopy(text)
+        if (outcome === 'copied') {
+          window.open('https://www.submithub.com/', '_blank', 'noopener')
+          return
+        }
+        setFailed(true)
+        setTimeout(() => setFailed(false), 1500)
+      }}
+      className="rounded-md border border-white/15 px-2.5 py-1 text-xs text-white/70 transition hover:border-white/30 hover:text-white"
+    >
+      {failed ? "Couldn't copy" : 'Copy & open SubmitHub'}
     </button>
   )
 }
@@ -133,17 +160,7 @@ export function PitchCard({
 
       <div className="mt-4 flex flex-wrap gap-2">
         <CopyButton text={fullEmail} label="Copy full email" />
-        {isSubmitHub && (
-          <button
-            onClick={async () => {
-              await navigator.clipboard.writeText(fullEmail)
-              window.open('https://www.submithub.com/', '_blank', 'noopener')
-            }}
-            className="rounded-md border border-white/15 px-2.5 py-1 text-xs text-white/70 transition hover:border-white/30 hover:text-white"
-          >
-            Copy &amp; open SubmitHub
-          </button>
-        )}
+        {isSubmitHub && <SubmitHubCopyButton text={fullEmail} />}
       </div>
 
       {!sent && (

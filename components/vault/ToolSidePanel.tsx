@@ -7,6 +7,7 @@ import {
   type SplitRole,
 } from '@/lib/tools/splitsheet'
 import { readSampleClearOutput as parseSampleClearOutput, type SampleClearView } from '@/lib/tools/sampleclear'
+import { attemptCopy } from '@/lib/clipboard/attempt-copy'
 
 // ─── ToolSidePanel ───────────────────────────────────────────────────
 // Slide-in panel from the right that hosts any Stage 3 tool, pre-filled
@@ -383,18 +384,22 @@ function SplitSheetResult({ output }: { output: Record<string, unknown> }) {
 // component whenever the payload does not parse, so the call site above
 // stays a single clean branch arm.
 
+// These are the SampleClear rights-holder letters — a failed copy here
+// means the artist might send nothing to the sample's rights holder, so the
+// failure label must be legible enough to tell them to select the letter
+// text manually instead.
 function CopyButton({ text, label }: { text: string; label: string }) {
-  const [copied, setCopied] = useState(false)
+  const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle')
   return (
     <button
       onClick={async () => {
-        await navigator.clipboard.writeText(text)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 1500)
+        const outcome = await attemptCopy(text)
+        setState(outcome === 'copied' ? 'copied' : 'failed')
+        setTimeout(() => setState('idle'), 1500)
       }}
       className="rounded-md border border-hairstrong px-2.5 py-1 text-xs text-lav transition hover:border-white/30 hover:text-white"
     >
-      {copied ? 'Copied' : label}
+      {state === 'copied' ? 'Copied' : state === 'failed' ? "Couldn't copy — select the letter text" : label}
     </button>
   )
 }

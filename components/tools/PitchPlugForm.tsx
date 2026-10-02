@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { CURATORS, type CuratorType, type PitchPlugOutput } from '@/lib/tools/pitchplug'
 import { PitchCard } from './PitchCard'
+import { attemptCopy } from '@/lib/clipboard/attempt-copy'
 
 export type PitchProjectOption = { id: string; title: string; type: string; isPublic?: boolean }
 
@@ -23,13 +24,21 @@ export function PitchPlugForm({
 }) {
   const [projectId, setProjectId] = useState(initialProjectId ?? projects[0]?.id ?? '')
   const [copied, setCopied] = useState<string | null>(null)
+  const [copyFailed, setCopyFailed] = useState<string | null>(null)
 
   const selectedProject = projects.find(p => p.id === projectId)
-  function copyLink(path: string) {
+  async function copyLink(path: string) {
     const url = typeof window !== 'undefined' ? window.location.origin + path : path
-    navigator.clipboard?.writeText(url)
-    setCopied(path)
-    setTimeout(() => setCopied(c => (c === path ? null : c)), 1500)
+    const outcome = await attemptCopy(url)
+    if (outcome === 'copied') {
+      setCopyFailed(null)
+      setCopied(path)
+      setTimeout(() => setCopied(c => (c === path ? null : c)), 1500)
+    } else {
+      setCopied(null)
+      setCopyFailed(path)
+      setTimeout(() => setCopyFailed(f => (f === path ? null : f)), 1500)
+    }
   }
   const [selected, setSelected] = useState<Set<CuratorType>>(new Set())
   const [loading, setLoading] = useState(false)
@@ -101,7 +110,8 @@ export function PitchPlugForm({
                   label="Your profile"
                   path={`/u/${artistHandle}`}
                   copied={copied === `/u/${artistHandle}`}
-                  onCopy={() => copyLink(`/u/${artistHandle}`)}
+                  failed={copyFailed === `/u/${artistHandle}`}
+                  onCopy={() => void copyLink(`/u/${artistHandle}`)}
                 />
               )}
               {selectedProject?.isPublic && (
@@ -109,7 +119,8 @@ export function PitchPlugForm({
                   label={`Listen — ${selectedProject.title}`}
                   path={`/r/${selectedProject.id}`}
                   copied={copied === `/r/${selectedProject.id}`}
-                  onCopy={() => copyLink(`/r/${selectedProject.id}`)}
+                  failed={copyFailed === `/r/${selectedProject.id}`}
+                  onCopy={() => void copyLink(`/r/${selectedProject.id}`)}
                 />
               )}
             </div>
@@ -191,11 +202,13 @@ function LinkRow({
   label,
   path,
   copied,
+  failed,
   onCopy,
 }: {
   label: string
   path: string
   copied: boolean
+  failed: boolean
   onCopy: () => void
 }) {
   return (
@@ -203,13 +216,14 @@ function LinkRow({
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-medium text-white">{label}</span>
         <span className="block truncate text-xs text-white/40">{path}</span>
+        {failed && <span className="block text-xs text-rose-400">Couldn&apos;t copy — select and copy manually</span>}
       </span>
       <button
         type="button"
         onClick={onCopy}
         className="shrink-0 rounded-md border border-white/15 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10"
       >
-        {copied ? 'Copied' : 'Copy'}
+        {copied ? 'Copied' : failed ? "Couldn't copy" : 'Copy'}
       </button>
     </div>
   )

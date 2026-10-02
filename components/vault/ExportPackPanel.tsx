@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { attemptCopy } from '@/lib/clipboard/attempt-copy'
 
 // ─── ExportPackPanel ─────────────────────────────────────────────────────
 // Right-side slide-over panel (matching ToolSidePanel.tsx pattern) that lets
@@ -36,6 +37,7 @@ export function ExportPackPanel({
   const [panelState, setPanelState] = useState<PanelState>('idle')
   const [signedUrl, setSignedUrl] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [copyFailed, setCopyFailed] = useState(false)
   // Large packs assemble on the background worker (audit #10) — flips the
   // "generating" copy to a longer-wait message while we poll.
   const [queuedNote, setQueuedNote] = useState(false)
@@ -126,13 +128,19 @@ export function ExportPackPanel({
     }
   }
 
-  function copyLink() {
+  async function copyLink() {
     if (!signedUrl) return
-    navigator.clipboard.writeText(signedUrl).then(() => {
+    const outcome = await attemptCopy(signedUrl)
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current)
+    if (outcome === 'copied') {
+      setCopyFailed(false)
       setCopied(true)
-      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current)
       copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000)
-    }).catch(() => undefined)
+    } else {
+      setCopied(false)
+      setCopyFailed(true)
+      copyTimeoutRef.current = setTimeout(() => setCopyFailed(false), 2000)
+    }
   }
 
   return (
@@ -259,10 +267,10 @@ export function ExportPackPanel({
                 />
               </div>
               <button
-                onClick={copyLink}
+                onClick={() => void copyLink()}
                 className="w-full rounded-[10px] bg-grad px-5 py-3 text-[15px] font-bold text-white transition hover:opacity-90"
               >
-                {copied ? 'Copied!' : 'Copy link'}
+                {copied ? 'Copied!' : copyFailed ? "Couldn't copy — select the link above" : 'Copy link'}
               </button>
               <p className="text-center text-[13px] text-lavdim">This link expires in 7 days.</p>
               <button

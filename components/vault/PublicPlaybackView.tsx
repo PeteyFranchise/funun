@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { LyricsPanel } from '@/components/vault/LyricsPanel'
+import { attemptCopy } from '@/lib/clipboard/attempt-copy'
 
 // Public-only track shape (D-11: names+roles credits, no split/splitTotal;
 // D-09: per-track lyrics text so the panel can hide when absent). This is a
@@ -61,7 +62,9 @@ export function PublicPlaybackView({
   const [creditsOpen, setCreditsOpen] = useState(false)
   const [lyricsOpen, setLyricsOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [copyFailed, setCopyFailed] = useState(false)
   const [shared, setShared] = useState(false)
+  const [shareFailed, setShareFailed] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   const current = useMemo(() => tracks.find(t => t.id === currentId) ?? tracks[0], [tracks, currentId])
@@ -112,9 +115,16 @@ export function PublicPlaybackView({
 
   async function copyLink() {
     const url = typeof window !== 'undefined' ? window.location.href : ''
-    await navigator.clipboard.writeText(`${shareCaption()} → ${url}`)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
+    const outcome = await attemptCopy(`${shareCaption()} → ${url}`)
+    if (outcome === 'copied') {
+      setCopyFailed(false)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } else {
+      setCopied(false)
+      setCopyFailed(true)
+      setTimeout(() => setCopyFailed(false), 1500)
+    }
   }
 
   // Web-Share-first, clipboard-fallback (D-05) — .share() must be the first
@@ -130,9 +140,16 @@ export function PublicPlaybackView({
         if ((err as DOMException)?.name === 'AbortError') return
       }
     }
-    await navigator.clipboard.writeText(`${caption} → ${url}`)
-    setShared(true)
-    setTimeout(() => setShared(false), 1500)
+    const outcome = await attemptCopy(`${caption} → ${url}`)
+    if (outcome === 'copied') {
+      setShareFailed(false)
+      setShared(true)
+      setTimeout(() => setShared(false), 1500)
+    } else {
+      setShared(false)
+      setShareFailed(true)
+      setTimeout(() => setShareFailed(false), 1500)
+    }
   }
 
   if (!current) return <p className="px-9 py-8 text-lavdim">No tracks in this release yet.</p>
@@ -193,7 +210,7 @@ export function PublicPlaybackView({
                   }}
                   className="flex w-full items-center gap-3 px-[14px] py-[10px] text-left text-[15px] font-semibold text-white hover:bg-card2"
                 >
-                  {copied ? 'Link copied!' : 'Copy link'}
+                  {copied ? 'Link copied!' : copyFailed ? "Couldn't copy" : 'Copy link'}
                 </button>
               </div>
             )}
@@ -326,7 +343,7 @@ export function PublicPlaybackView({
                 onClick={shareTrack}
                 className="inline-flex items-center gap-[9px] rounded-[11px] border border-hairstrong bg-card px-[22px] py-[13px] text-[15px] font-bold text-white"
               >
-                {shared ? 'Link copied!' : 'Share'}
+                {shared ? 'Link copied!' : shareFailed ? "Couldn't copy" : 'Share'}
               </button>
             </div>
           )}

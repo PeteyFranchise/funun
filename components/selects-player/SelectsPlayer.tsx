@@ -26,6 +26,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { SELP_CSS } from './theme'
 import { SELECTS_VIEWER_COOKIE } from '@/lib/selects/viewer-cookie'
 import { useAudibleTimeAccumulator, type AudibleFlushEvent } from './useAudibleTimeAccumulator'
+import { attemptCopy } from '@/lib/clipboard/attempt-copy'
 
 export type PlayerReaction = 'love' | 'pass' | 'more_like_this' | null
 export type PlayerAttribution = { name: string; kind: 'ae' | 'client' } | null
@@ -524,10 +525,10 @@ export default function SelectsPlayer({ data }: { data: SelectsPlayerData }) {
     showToast(look === '1' ? 'Flat view' : '✨ Glow Up View — on')
   }
 
-  function share() {
+  async function share() {
     const url = typeof window !== 'undefined' ? window.location.href : ''
-    if (navigator.clipboard) navigator.clipboard.writeText(url).catch(() => {})
-    showToast('Copied link to this Selects')
+    const outcome = await attemptCopy(url)
+    showToast(outcome === 'copied' ? 'Copied link to this Selects' : "Couldn't copy the link — try again")
   }
 
   function licenseTrack(trackId: string, title: string) {

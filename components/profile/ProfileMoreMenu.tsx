@@ -19,6 +19,7 @@ export function ProfileMoreMenu({
 }) {
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [failed, setFailed] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -32,9 +33,16 @@ export function ProfileMoreMenu({
   }, [open])
 
   function handleCopyLink() {
-    shareOrCopy(profileUrl, caption, () => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
+    shareOrCopy(profileUrl, caption, outcome => {
+      if (outcome === 'copied') {
+        setFailed(false)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 1500)
+      } else {
+        setCopied(false)
+        setFailed(true)
+        setTimeout(() => setFailed(false), 1500)
+      }
     })
   }
 
@@ -66,7 +74,7 @@ export function ProfileMoreMenu({
             onClick={handleCopyLink}
             className="w-full px-[14px] py-[10px] text-left text-[15px] font-semibold text-white hover:bg-card2"
           >
-            {copied ? 'Link copied!' : 'Copy profile link'}
+            {copied ? 'Link copied!' : failed ? "Couldn't copy" : 'Copy profile link'}
           </button>
 
           {/*
