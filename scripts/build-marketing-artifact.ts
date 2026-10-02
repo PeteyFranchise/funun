@@ -14,6 +14,27 @@
 // once (or an exact expected count for repeated patterns), and throws
 // rather than guessing when that assertion fails.
 //
+// Amendment (quick task 261001-cmt): the paragraph above is now partly
+// untrue, and a contract that is quietly untrue is worse than one that
+// says so. A comment tokenizer exists (stripHtmlComments / stripCssComments
+// / stripJsComments / stripHtmlCssJsComments, in the primitives section
+// below). It is confined to exactly three comment syntaxes -- HTML
+// <!-- -->, CSS block comments, JS line and block comments -- and reads no
+// other grammar; it is still no HTML parser, no DOM, no reserializer. It is
+// pure, exported and unit-tested like every other primitive in this file,
+// it still asserts an exact count before proceeding (D-04) and still
+// throws rather than guessing on anything it cannot resolve (D-08). It
+// exists because one-off anchored strips for one-off comments were
+// multiplying -- seven of them had accumulated in sanitize() -- turning
+// every new note written into the bench into a build break until someone
+// added another bespoke removal. Ordering is load-bearing in the dangerous
+// direction (F-07): four of sanitize()'s own anchors are themselves
+// comments that gate removal of real CSS/JS (SHIP_GATE_BLOCK_START,
+// DEV_GUARD_SCRIPT_START, SHIP_TOGGLE_SCRIPT_START, AUTH_IIFE_START), so
+// the general comment strip runs after every one of those anchored passes,
+// never before -- see the call site inside sanitize() for the full
+// reasoning at the point it matters.
+//
 // CLI:
 //   npx tsx scripts/build-marketing-artifact.ts
 //     Re-verifies the frozen source (refuses to run against any other
@@ -188,6 +209,586 @@ export function removeAllMatches(
   return haystack.replace(regex, '')
 }
 
+// ─── comment stripping (quick task 261001-cmt) ─────────────────────────
+// A general-purpose comment tokenizer for the three comment syntaxes this
+// document uses: HTML <!-- -->, CSS block comments, and JS comments (both
+// // and block form). It exists because one-off anchored strips for
+// one-off comments were multiplying in sanitize() -- seven of them -- and
+// every new note written into the bench failed the build until someone
+// added another. This tokenizer is confined to exactly those three comment
+// syntaxes and reads no other grammar: it is not a parser, and it
+// deliberately does not understand a comment-looking sequence inside an
+// inline style="" attribute, inside <svg><desc>, or inside a non-JS
+// <script type="text/template"> body -- a script carrying such a type is
+// refused outright (D-08) rather than fed to the JS stripper and
+// mis-handled. Per label-integrity-funun: the function names below
+// (stripHtmlComments / stripCssComments / stripJsComments /
+// stripHtmlCssJsComments) describe exactly that shape. Neither this
+// comment nor the function names claim "no comment remains" -- that is not
+// what is checked, and it would be false for the syntaxes above.
+//
+// Whitespace policy (D-03): delete the comment span and nothing else.
+//   - a JS line comment ends before its trailing newline; the newline
+//     survives (ASI is never affected by removing a line comment)
+//   - a JS block comment that spans a newline collapses to a single
+//     newline (a multiline comment is itself a line terminator for ASI);
+//     one that does not span a newline collapses to a single space, so
+//     adjacent tokens can never merge into one (`a/*x*/b` becomes `a b`,
+//     never `ab`)
+//   - CSS and HTML comment spans are deleted outright, with nothing put in
+//     their place
+//
+// Comment state is tested before string state. Concretely: once the
+// scanner has entered a line- or block-comment state, nothing else is
+// checked until that comment's own end condition is met, so no quote
+// character inside a comment is ever read as opening a string. This is
+// not a stylistic preference -- 56 quote characters live inside comments
+// in the real artifact (20 ' + 30 " + 6 backticks in JS comment tails; 15
+// ' + 4 " inside CSS comments), and a stripper that checked string state
+// first would open a phantom string on "Writer's" and swallow the rest of
+// the file.
+export type CommentStripCounts = {
+  // HTML comment spans removed from markup regions.
+  htmlComments: number
+  // CSS comment spans removed from <style> bodies.
+  cssBlockComments: number
+  // JS single-line comment spans removed from <script> bodies. Counts one
+  // span per line, so six consecutive single-line comments are six, not
+  // one, even though they read as a single paragraph.
+  jsLineComments: number
+  // JS block comment spans removed from <script> bodies.
+  jsBlockComments: number
+  // Number of <script>...</script> regions the region split found.
+  scriptRegions: number
+  // Number of <style>...</style> regions the region split found.
+  styleRegions: number
+}
+
+const JS_WORD_CHAR_RE = /[A-Za-z0-9_$]/
+
+// A `/` opens a regex literal, rather than meaning division, when the
+// previous significant (non-whitespace, non-comment) character is one of
+// these -- or when the previous significant token was one of the keywords
+// below, or when nothing precedes it at all (start of a code region or of
+// a template substitution). Otherwise a `/` is division.
+//
+// The limit: a `}` is genuinely ambiguous in real JS -- a block-closing `}`
+// is followed by a value position (regex-opening), but an object-literal
+// or function-expression `}` is followed by an operator position
+// (division). This implementation deliberately treats `}` as
+// regex-opening, same as the characters below. The real artifact has zero
+// sites where this choice matters (F-02); Task 2's exact-count assertion
+// on the tokenizer's own output is what would catch it if one ever
+// appeared.
+const REGEX_PRECEDING_CHARS = new Set([
+  '(', ',', '=', ':', '[', '!', '&', '|', '?', '{', '}', ';', '+', '-', '*', '%', '<', '>', '~', '^',
+])
+const REGEX_PRECEDING_WORDS = new Set([
+  'return', 'typeof', 'case', 'in', 'of', 'new', 'delete', 'void', 'do', 'else', 'yield', 'await',
+  'instanceof',
+])
+
+function isRegexOpenPosition(prevSignificant: string, lastWord: string): boolean {
+  if (prevSignificant === '') return true
+  if (REGEX_PRECEDING_CHARS.has(prevSignificant)) return true
+  if (JS_WORD_CHAR_RE.test(prevSignificant)) return REGEX_PRECEDING_WORDS.has(lastWord)
+  return false
+}
+
+/**
+ * Strips `//` and block comments from a single JS source body (the
+ * contents of exactly one <script> tag -- this function knows nothing
+ * about HTML). A hand-written state machine, not a regex: a regex cannot
+ * track string/template/regex nesting, which is exactly what both quote-
+ * handling traps below require.
+ *
+ * States: code (incl. inside a template substitution), single-quote
+ * string, double-quote string, template literal (a stack tracks nested
+ * `${}` substitutions, since a substitution can itself contain a nested
+ * template), regex literal (tracks `[...]` character-class state so a `/`
+ * inside a class does not close the regex), line comment, block comment.
+ * Backslash escapes the next character inside strings, templates and
+ * regexes. Throws on an unterminated comment, string, template or regex
+ * (D-08) -- guessing is not this file's contract.
+ */
+export function stripJsComments(
+  js: string,
+): { js: string; lineComments: number; blockComments: number } {
+  const n = js.length
+  let out = ''
+  let lineComments = 0
+  let blockComments = 0
+
+  type Frame = { kind: 'template' } | { kind: 'subst'; depth: number }
+  const stack: Frame[] = []
+
+  type Mode = 'code' | 'sq' | 'dq' | 'regex' | 'lineComment' | 'blockComment'
+  let mode: Mode = 'code'
+
+  let prevSignificant = ''
+  let lastWord = ''
+  let wordBuf = ''
+  let regexInClass = false
+  let commentStart = -1
+
+  const finalizeWord = (): void => {
+    if (wordBuf.length > 0) {
+      lastWord = wordBuf
+      wordBuf = ''
+    }
+  }
+
+  let i = 0
+  while (i < n) {
+    const c = js[i]
+    const inTemplate = stack.length > 0 && stack[stack.length - 1].kind === 'template'
+
+    if (inTemplate) {
+      if (c === '\\') {
+        out += c + (js[i + 1] ?? '')
+        i += 2
+        continue
+      }
+      if (c === '`') {
+        out += c
+        stack.pop()
+        prevSignificant = c
+        i += 1
+        continue
+      }
+      if (c === '$' && js[i + 1] === '{') {
+        out += '${'
+        stack.push({ kind: 'subst', depth: 0 })
+        prevSignificant = ''
+        lastWord = ''
+        wordBuf = ''
+        i += 2
+        continue
+      }
+      out += c
+      i += 1
+      continue
+    }
+
+    if (mode === 'lineComment') {
+      if (c === '\n') {
+        mode = 'code'
+        lineComments += 1
+        continue // do not consume the newline -- it survives (ASI)
+      }
+      i += 1
+      continue
+    }
+
+    if (mode === 'blockComment') {
+      if (c === '*' && js[i + 1] === '/') {
+        const body = js.slice(commentStart, i + 2)
+        out += body.includes('\n') ? '\n' : ' '
+        blockComments += 1
+        mode = 'code'
+        i += 2
+        continue
+      }
+      i += 1
+      continue
+    }
+
+    if (mode === 'sq' || mode === 'dq') {
+      const quote = mode === 'sq' ? "'" : '"'
+      if (c === '\\') {
+        out += c + (js[i + 1] ?? '')
+        i += 2
+        continue
+      }
+      if (c === quote) {
+        out += c
+        prevSignificant = c
+        mode = 'code'
+        i += 1
+        continue
+      }
+      if (c === '\n') {
+        throw new Error('stripJsComments: unterminated string literal (unescaped newline)')
+      }
+      out += c
+      i += 1
+      continue
+    }
+
+    if (mode === 'regex') {
+      if (c === '\\') {
+        out += c + (js[i + 1] ?? '')
+        i += 2
+        continue
+      }
+      if (c === '\n') {
+        throw new Error('stripJsComments: unterminated regex literal (unescaped newline)')
+      }
+      if (c === '[') {
+        regexInClass = true
+        out += c
+        i += 1
+        continue
+      }
+      if (c === ']') {
+        regexInClass = false
+        out += c
+        i += 1
+        continue
+      }
+      if (c === '/' && !regexInClass) {
+        out += c
+        prevSignificant = c
+        mode = 'code'
+        i += 1
+        continue
+      }
+      out += c
+      i += 1
+      continue
+    }
+
+    // mode === 'code' (top-level, or inside a template substitution)
+    if (JS_WORD_CHAR_RE.test(c)) {
+      wordBuf += c
+      prevSignificant = c
+      out += c
+      i += 1
+      continue
+    }
+    finalizeWord()
+
+    if (c === '/' && js[i + 1] === '/') {
+      mode = 'lineComment'
+      i += 2
+      continue
+    }
+    if (c === '/' && js[i + 1] === '*') {
+      mode = 'blockComment'
+      commentStart = i
+      i += 2
+      continue
+    }
+    if (c === '/') {
+      if (isRegexOpenPosition(prevSignificant, lastWord)) {
+        mode = 'regex'
+        regexInClass = false
+        out += c
+        i += 1
+        continue
+      }
+      out += c
+      prevSignificant = c
+      i += 1
+      continue
+    }
+    if (c === "'") {
+      out += c
+      mode = 'sq'
+      i += 1
+      continue
+    }
+    if (c === '"') {
+      out += c
+      mode = 'dq'
+      i += 1
+      continue
+    }
+    if (c === '`') {
+      out += c
+      stack.push({ kind: 'template' })
+      i += 1
+      continue
+    }
+    if (c === '{' || c === '}') {
+      const top = stack.length > 0 ? stack[stack.length - 1] : undefined
+      if (top !== undefined && top.kind === 'subst') {
+        if (c === '{') {
+          top.depth += 1
+        } else if (top.depth > 0) {
+          top.depth -= 1
+        } else {
+          stack.pop()
+        }
+        out += c
+        prevSignificant = c
+        i += 1
+        continue
+      }
+    }
+    if (/\s/.test(c)) {
+      out += c
+      i += 1
+      continue
+    }
+    out += c
+    prevSignificant = c
+    i += 1
+  }
+
+  if (mode === 'blockComment') {
+    throw new Error('stripJsComments: unterminated block comment')
+  }
+  if (mode === 'sq' || mode === 'dq') {
+    throw new Error('stripJsComments: unterminated string literal')
+  }
+  if (mode === 'regex') {
+    throw new Error('stripJsComments: unterminated regex literal')
+  }
+  if (mode === 'lineComment') {
+    // EOF with no trailing newline still closes the comment (D-03's "a
+    // comment on the last line with no trailing newline" case).
+    lineComments += 1
+  }
+  if (inTemplateAtEof(stack)) {
+    throw new Error('stripJsComments: unterminated template literal')
+  }
+
+  return { js: out, lineComments, blockComments }
+}
+
+function inTemplateAtEof(stack: ReadonlyArray<{ kind: string }>): boolean {
+  return stack.length > 0
+}
+
+/**
+ * Strips block comments from a single CSS source body (the contents of
+ * exactly one <style> tag). States: code, single-quote string,
+ * double-quote string, an unquoted url(...) token (CSS's one other
+ * comment-opaque region -- a data: URI can legitimately contain `//`),
+ * and comment. Same precedence rule as the JS stripper: comment state
+ * fully owns the scan once entered, so a quote inside a CSS comment is
+ * never read as opening a string.
+ */
+export function stripCssComments(css: string): { css: string; blockComments: number } {
+  const n = css.length
+  let out = ''
+  let blockComments = 0
+
+  type Mode = 'code' | 'sq' | 'dq' | 'url' | 'comment'
+  let mode: Mode = 'code'
+  let commentStart = -1
+
+  let i = 0
+  while (i < n) {
+    const c = css[i]
+
+    if (mode === 'comment') {
+      if (c === '*' && css[i + 1] === '/') {
+        blockComments += 1
+        mode = 'code'
+        i += 2
+        continue
+      }
+      i += 1
+      continue
+    }
+
+    if (mode === 'sq' || mode === 'dq') {
+      const quote = mode === 'sq' ? "'" : '"'
+      if (c === '\\') {
+        out += c + (css[i + 1] ?? '')
+        i += 2
+        continue
+      }
+      if (c === quote) {
+        out += c
+        mode = 'code'
+        i += 1
+        continue
+      }
+      if (c === '\n') {
+        throw new Error('stripCssComments: unterminated string literal (unescaped newline)')
+      }
+      out += c
+      i += 1
+      continue
+    }
+
+    if (mode === 'url') {
+      if (c === ')') {
+        out += c
+        mode = 'code'
+        i += 1
+        continue
+      }
+      if (c === '\\') {
+        out += c + (css[i + 1] ?? '')
+        i += 2
+        continue
+      }
+      out += c
+      i += 1
+      continue
+    }
+
+    // mode === 'code'
+    if (c === '/' && css[i + 1] === '*') {
+      mode = 'comment'
+      commentStart = i
+      i += 2
+      continue
+    }
+    if (c === "'") {
+      out += c
+      mode = 'sq'
+      i += 1
+      continue
+    }
+    if (c === '"') {
+      out += c
+      mode = 'dq'
+      i += 1
+      continue
+    }
+    if (/url\(/i.test(css.slice(i, i + 4))) {
+      out += css.slice(i, i + 4)
+      i += 4
+      let j = i
+      while (j < n && /\s/.test(css[j])) j += 1
+      if (css[j] !== "'" && css[j] !== '"') {
+        mode = 'url'
+      }
+      continue
+    }
+    out += c
+    i += 1
+  }
+
+  if (mode === 'comment') throw new Error('stripCssComments: unterminated comment')
+  if (mode === 'sq' || mode === 'dq') throw new Error('stripCssComments: unterminated string literal')
+  if (mode === 'url') throw new Error('stripCssComments: unterminated url() token')
+
+  // commentStart is read above only to compute positions during scanning;
+  // nothing in the output depends on the comment body text (CSS/HTML
+  // comments are deleted outright per D-03), so no further use is needed.
+  void commentStart
+
+  return { css: out, blockComments }
+}
+
+/**
+ * Strips `<!-- -->` comments from an HTML markup region. Does not parse
+ * attributes, elements or any other grammar -- a literal scan for the
+ * exact comment delimiters, which is sufficient and correct for markup
+ * that has already had its <script>/<style> raw-text regions routed
+ * elsewhere by stripHtmlCssJsComments. `<!DOCTYPE html>` does not match
+ * `<!--` and is left untouched.
+ */
+export function stripHtmlComments(markup: string): { markup: string; comments: number } {
+  let out = ''
+  let comments = 0
+  let i = 0
+  while (i < markup.length) {
+    const start = markup.indexOf('<!--', i)
+    if (start === -1) {
+      out += markup.slice(i)
+      break
+    }
+    const end = markup.indexOf('-->', start + 4)
+    if (end === -1) {
+      throw new Error('stripHtmlComments: unterminated HTML comment (no matching close)')
+    }
+    out += markup.slice(i, start)
+    comments += 1
+    i = end + 3
+  }
+  return { markup: out, comments }
+}
+
+const SCRIPT_OR_STYLE_OPEN_RE = /<(script|style)(\s[^>]*)?>/gi
+const SCRIPT_TYPE_ATTR_RE = /\btype\s*=\s*"([^"]*)"|\btype\s*=\s*'([^']*)'/i
+const JS_SCRIPT_TYPES = new Set(['', 'module', 'text/javascript', 'application/javascript'])
+
+/**
+ * The region split: finds every <script>/<style> region case-insensitively
+ * (matching the precedent and rationale at injectNoncePlaceholder, builder
+ * :240-247, CodeQL js/bad-tag-filter -- HTML tag names are
+ * case-insensitive), routes each body to the JS or CSS stripper, and
+ * routes everything else to the HTML stripper. Throws (D-08) on an
+ * unclosed <script>/<style>, or on a <script> whose `type` attribute is
+ * present and is not module / text/javascript / application/javascript --
+ * a template script's body is not JS and must never be fed to the JS
+ * stripper.
+ */
+export function stripHtmlCssJsComments(
+  html: string,
+): { html: string; counts: CommentStripCounts } {
+  const counts: CommentStripCounts = {
+    htmlComments: 0,
+    cssBlockComments: 0,
+    jsLineComments: 0,
+    jsBlockComments: 0,
+    scriptRegions: 0,
+    styleRegions: 0,
+  }
+
+  let out = ''
+  let cursor = 0
+  const lowerHtml = html.toLowerCase()
+  SCRIPT_OR_STYLE_OPEN_RE.lastIndex = 0
+  let match: RegExpExecArray | null
+
+  while ((match = SCRIPT_OR_STYLE_OPEN_RE.exec(html)) !== null) {
+    const tagName = match[1].toLowerCase()
+    const attrs = match[2] ?? ''
+    const openStart = match.index
+    const openEnd = match.index + match[0].length
+
+    const before = html.slice(cursor, openStart)
+    const strippedBefore = stripHtmlComments(before)
+    out += strippedBefore.markup
+    counts.htmlComments += strippedBefore.comments
+
+    const closeNeedle = `</${tagName}`
+    const closeIdx = lowerHtml.indexOf(closeNeedle, openEnd)
+    if (closeIdx === -1) {
+      throw new Error(`stripHtmlCssJsComments: unclosed <${tagName}> starting at offset ${openStart}`)
+    }
+    const closeTagEnd = html.indexOf('>', closeIdx)
+    if (closeTagEnd === -1) {
+      throw new Error(
+        `stripHtmlCssJsComments: malformed closing tag for <${tagName}> starting at offset ${openStart}`,
+      )
+    }
+
+    const body = html.slice(openEnd, closeIdx)
+    const fullOpenTag = html.slice(openStart, openEnd)
+    const fullCloseTag = html.slice(closeIdx, closeTagEnd + 1)
+
+    if (tagName === 'script') {
+      const typeMatch = attrs.match(SCRIPT_TYPE_ATTR_RE)
+      const typeValue = (typeMatch ? typeMatch[1] ?? typeMatch[2] ?? '' : '').trim().toLowerCase()
+      if (!JS_SCRIPT_TYPES.has(typeValue)) {
+        throw new Error(
+          `stripHtmlCssJsComments: <script type="${typeValue}"> is not a JS type and must not ` +
+            'be fed to the JS stripper',
+        )
+      }
+      const stripped = stripJsComments(body)
+      out += fullOpenTag + stripped.js + fullCloseTag
+      counts.jsLineComments += stripped.lineComments
+      counts.jsBlockComments += stripped.blockComments
+      counts.scriptRegions += 1
+    } else {
+      const stripped = stripCssComments(body)
+      out += fullOpenTag + stripped.css + fullCloseTag
+      counts.cssBlockComments += stripped.blockComments
+      counts.styleRegions += 1
+    }
+
+    cursor = closeTagEnd + 1
+    SCRIPT_OR_STYLE_OPEN_RE.lastIndex = cursor
+  }
+
+  const tail = html.slice(cursor)
+  const strippedTail = stripHtmlComments(tail)
+  out += strippedTail.markup
+  counts.htmlComments += strippedTail.comments
+
+  return { html: out, counts }
+}
+
 // ─── asset path rewrite (finding F1) ───────────────────────────────────
 // Every asset reference in the frozen source is relative (`img/…`,
 // `fonts/…`). The document is served at `/`, but the files live under
@@ -261,10 +862,6 @@ export function injectNoncePlaceholder(html: string): NonceInjectionResult {
 // drifts, the corresponding assertOccurrences call throws immediately
 // rather than silently mis-editing a different revision.
 
-const PLACEHOLDER_MARKER_COMMENT_START = '/* PLACEHOLDER MARKER'
-const PLACEHOLDER_MARKER_COMMENT_END =
-  '.planning/todos/pending/2026-09-24-marketing-page-ideas.md */'
-
 const SHIP_GATE_BLOCK_START = '/* Ship gate: body[data-ship] hides every bench-only element'
 const SHIP_GATE_BLOCK_END =
   '.phnote{display:inline-block;margin-top:16px;font-size:9px;letter-spacing:.14em;\n' +
@@ -276,9 +873,6 @@ const SCRIPT_CLOSE = '</script>'
 
 const BENCH_DIV_START = '<div class="bench">'
 const DIV_CLOSE = '</div>'
-
-const PH_ART_COMMENT_START = '/* announcement slides 2+'
-const PH_ART_COMMENT_END = '.ph-art marks that. */'
 
 const PH_ART_RULE =
   '.ph-art{display:inline-block;margin:18px 0 0;font-size:9px;letter-spacing:.14em;\n' +
@@ -300,43 +894,6 @@ const PH_ART_PARAGRAPH_COUNT = 2
 // catches all five.
 const FLAG_PARAGRAPH_RE = /\s*<p class="flag[^"]*">[\s\S]*?<\/p>\n?/g
 const FLAG_PARAGRAPH_COUNT = 5
-
-// NOTE: deliberately ends at `-->`, not the trailing "\n    " indentation —
-// the immediately-following `.flag` paragraph is removed by
-// FLAG_PARAGRAPH_RE, whose leading `\s*` already claims that whitespace.
-// Including it here too would make this anchor's text disappear once the
-// flag-paragraph pass runs first, since the two would double-claim the same
-// whitespace region.
-const DIFFERENTIATORS_OWNER_COMMENT =
-  '<!-- OWNER DECISION 2026-09-27: these panels take real product shots, not\n' +
-  '         illustration. The Midjourney briefs move to dedicated hero banner slides\n' +
-  '         (top-of-page), swappable from the marketing console once that is built. -->'
-
-// The owner's rationale for the violet step-badge treatment belongs in the
-// bench, but verify-marketing-artifact.ts bans the literal "OWNER DECISION"
-// from the shipped artifact (this file ships to a public page). Anchored
-// removeBetween, same shape as DIFFERENTIATORS_OWNER_COMMENT above.
-const STEP_BADGE_DECISION_COMMENT_START =
-  '/* Violet, not grey. OWNER DECISION 2026-09-30: the step labels were being scanned'
-const STEP_BADGE_DECISION_COMMENT_END = '   accent. 10.5:1. */\n'
-
-// The owner's rationale for the named-tab carousel control belongs in the
-// bench, but verify-marketing-artifact.ts bans the literal "OWNER DECISION"
-// from the shipped artifact (this file ships to a public page). Anchored
-// removeBetween, same shape as DIFFERENTIATORS_OWNER_COMMENT and
-// STEP_BADGE_DECISION_COMMENT_* above — this is the third one-off strip.
-const HERO_TABS_DECISION_COMMENT_START =
-  '/* Named tabs, not anonymous bars. OWNER DECISION 2026-09-30: three 3px bars'
-const HERO_TABS_DECISION_COMMENT_END =
-  '   is the correct state attribute for a tab (aria-current was wrong here). */\n'
-
-const REVERT_NOTE_START = '// REVERT NOTE (owner 2026-09-30):'
-const REVERT_NOTE_END =
-  '// .planning/todos/pending/2026-09-29-paid-tier-interest-capture-before-stripe.md\n'
-
-const VOICES_PLACEHOLDER_COMMENT_START =
-  '  // PLACEHOLDER, owner-approved 2026-09-27. Real testimonials are not gathered yet'
-const VOICES_PLACEHOLDER_COMMENT_END = '  // back. Swap all three before this page goes public.\n'
 
 const DIALOG_START = '<dialog class="authdlg" id="authdlg" aria-labelledby="authTitle">'
 const DIALOG_END = '</dialog>\n'
@@ -388,16 +945,6 @@ const ONERROR_ATTR_COUNT = 2
 // <img> synchronously later in the same script.
 const ASSET_V_DECLARATION = "const ASSET_V='202609271636';"
 
-// The comment directly above the first onerror site names the mechanism
-// being removed; left as-is it would describe code that no longer exists.
-// This is the one prose edit this sanitizer makes -- everywhere else,
-// comments are either preserved verbatim or stripped as a whole block.
-const VOICES_FALLBACK_COMMENT_ORIGINAL =
-  '// is missing or 404s, onerror removes the <img> and the initials show through,'
-const VOICES_FALLBACK_COMMENT_UPDATED =
-  '// is missing or 404s, the shared image-error listener above removes the <img> ' +
-  'and the initials show through,'
-
 // Registered ONCE, on `document`, in the CAPTURE phase. This is not a
 // stylistic choice: the DOM 'error' event does not bubble, so a normal
 // (bubble-phase) listener on document would never see it. Capture-phase
@@ -419,6 +966,39 @@ export const IMAGE_ERROR_LISTENER =
   '}, true);'
 
 const TITLE_TAG = '<title>Funūn bench 02 — marketing page</title>'
+
+// The file's own contract on comment volume (D-04): a bench edit that adds
+// or removes a comment must bump exactly one of these integers. That is
+// still a real review step -- the thrown message below tells the
+// maintainer to confirm intent, not to bump blindly -- but it replaces
+// writing a brand new anchored removeBetween/removeExactly call for every
+// one-off note, which is the pattern this task retires (seven of them had
+// already accumulated). Counts measured against the current frozen source
+// at the strip call site in sanitize() (F-05).
+const EXPECTED_COMMENT_STRIP_COUNTS: CommentStripCounts = {
+  htmlComments: 21,
+  cssBlockComments: 60,
+  jsLineComments: 153,
+  jsBlockComments: 0,
+  scriptRegions: 1,
+  styleRegions: 2,
+}
+
+function assertCommentStripCounts(actual: CommentStripCounts): void {
+  const keys = Object.keys(EXPECTED_COMMENT_STRIP_COUNTS) as (keyof CommentStripCounts)[]
+  for (const key of keys) {
+    const expected = EXPECTED_COMMENT_STRIP_COUNTS[key]
+    const found = actual[key]
+    if (found !== expected) {
+      throw new Error(
+        `comment strip count mismatch: ${key} expected ${expected}, found ${found}. If this is ` +
+          'a deliberate new comment (or script/style region) added to the bench, confirm that is ' +
+          `really what changed, then bump this one integer in EXPECTED_COMMENT_STRIP_COUNTS -- ` +
+          'do not add another anchored removal call for it.',
+      )
+    }
+  }
+}
 
 export function buildHeadMetadata(): string {
   // Quick task 261001-rlp: the card image and both icon files now exist on
@@ -462,6 +1042,7 @@ export type SanitizeResult = {
   html: string
   nonceScriptCount: number
   rewrittenAssetPaths: string[]
+  commentStripCounts: CommentStripCounts
 }
 
 /**
@@ -473,40 +1054,13 @@ export type SanitizeResult = {
 export function sanitize(sourceHtml: string): SanitizeResult {
   let html = sourceHtml
 
-  html = removeBetween(
-    html,
-    PLACEHOLDER_MARKER_COMMENT_START,
-    PLACEHOLDER_MARKER_COMMENT_END,
-    'placeholder-marker comment (.planning/ path)',
-  )
   html = removeBetween(html, SHIP_GATE_BLOCK_START, SHIP_GATE_BLOCK_END, 'ship-gate CSS block')
   html = removeBetween(html, DEV_GUARD_SCRIPT_START, SCRIPT_CLOSE, 'wrong-origin dev-guard script')
   html = removeBetween(html, BENCH_DIV_START, DIV_CLOSE, 'bench toolbar div')
-  html = removeBetween(html, PH_ART_COMMENT_START, PH_ART_COMMENT_END, 'ph-art explanatory comment')
   html = removeExactly(html, PH_ART_RULE, 'ph-art CSS rule')
   html = removeExactly(html, PHNOTE_PARAGRAPH, '.phnote paragraph')
   html = removeAllMatches(html, PH_ART_PARAGRAPH_RE, PH_ART_PARAGRAPH_COUNT, '.ph-art paragraphs')
   html = removeAllMatches(html, FLAG_PARAGRAPH_RE, FLAG_PARAGRAPH_COUNT, '.flag paragraphs')
-  html = removeExactly(html, DIFFERENTIATORS_OWNER_COMMENT, 'differentiators OWNER DECISION comment')
-  html = removeBetween(
-    html,
-    STEP_BADGE_DECISION_COMMENT_START,
-    STEP_BADGE_DECISION_COMMENT_END,
-    'step-badge OWNER DECISION comment',
-  )
-  html = removeBetween(
-    html,
-    HERO_TABS_DECISION_COMMENT_START,
-    HERO_TABS_DECISION_COMMENT_END,
-    'hero-tabs OWNER DECISION comment',
-  )
-  html = removeBetween(html, REVERT_NOTE_START, REVERT_NOTE_END, 'pricing REVERT NOTE comment')
-  html = removeBetween(
-    html,
-    VOICES_PLACEHOLDER_COMMENT_START,
-    VOICES_PLACEHOLDER_COMMENT_END,
-    'voices placeholder owner-approved comment',
-  )
   html = removeBetween(html, DIALOG_START, DIALOG_END, 'sign-in dialog element')
   html = removeBetween(html, AUTHDLG_CSS_START, AUTHDLG_CSS_END, 'authdlg CSS rules')
   html = removeBetween(html, AUTH_IIFE_START, AUTH_IIFE_END, 'sign-in IIFE (incl. sparks helper)')
@@ -527,16 +1081,28 @@ export function sanitize(sourceHtml: string): SanitizeResult {
   )
   html = replaceExactly(
     html,
-    VOICES_FALLBACK_COMMENT_ORIGINAL,
-    VOICES_FALLBACK_COMMENT_UPDATED,
-    'voices-card fallback comment (describes the mechanism just removed)',
-  )
-  html = replaceExactly(
-    html,
     ASSET_V_DECLARATION,
     ASSET_V_DECLARATION + IMAGE_ERROR_LISTENER,
     'image-error capture-phase listener injection point',
   )
+
+  // ─── general comment strip (quick task 261001-cmt) ─────────────────────
+  // Runs here, after every anchored pass above and before rewriteAssetPaths
+  // (D-02). After, because four of the anchors above are themselves
+  // comments that gate removal of real content (F-07): SHIP_GATE_BLOCK_START
+  // is a CSS comment anchoring the ship-gate rules; DEV_GUARD_SCRIPT_START
+  // opens with `// ─── Wrong-origin guard`; SHIP_TOGGLE_SCRIPT_START opens
+  // with `// Ship preview: …`; AUTH_IIFE_START opens with three `//` lines.
+  // Stripping comments before those passes run would delete their anchors
+  // and silently ship the ship-gate CSS, the dev-guard script, the
+  // ship-preview toggle and the auth IIFE. Before rewriteAssetPaths,
+  // because a comment that merely names an asset path in prose is not a
+  // request for that asset -- with the strip running first, a comment
+  // naming an off-manifest image never reaches the manifest-allowlist gate
+  // for a reason that was never a real shipping concern.
+  const { html: strippedHtml, counts: commentStripCounts } = stripHtmlCssJsComments(html)
+  html = strippedHtml
+  assertCommentStripCounts(commentStripCounts)
 
   const { html: rewrittenHtml, paths } = rewriteAssetPaths(html)
   html = rewrittenHtml
@@ -556,7 +1122,7 @@ export function sanitize(sourceHtml: string): SanitizeResult {
     )
   }
 
-  return { html, nonceScriptCount, rewrittenAssetPaths: paths }
+  return { html, nonceScriptCount, rewrittenAssetPaths: paths, commentStripCounts }
 }
 
 // ─── CLI ────────────────────────────────────────────────────────────────
@@ -607,11 +1173,15 @@ function main(): void {
   }
   writeFileSync(MANIFEST_PATH, `${JSON.stringify(updatedManifest, null, 2)}\n`)
 
+  const c = result.commentStripCounts
   // eslint-disable-next-line no-console
   console.log(
     `wrote ${ARTIFACT_OUTPUT_PATH} (${result.html.length} bytes), ` +
       `nonceScriptCount=${result.nonceScriptCount}, ` +
-      `${result.rewrittenAssetPaths.length} distinct rewritten asset path(s)`,
+      `${result.rewrittenAssetPaths.length} distinct rewritten asset path(s), ` +
+      `comments stripped: html=${c.htmlComments} css=${c.cssBlockComments} ` +
+      `jsLine=${c.jsLineComments} jsBlock=${c.jsBlockComments} ` +
+      `scriptRegions=${c.scriptRegions} styleRegions=${c.styleRegions}`,
   )
 }
 
