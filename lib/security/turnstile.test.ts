@@ -1,4 +1,4 @@
-import { verifyTurnstileToken } from './turnstile'
+import { turnstileConfigStatus, verifyTurnstileToken } from './turnstile'
 
 const ORIGINAL_ENV = process.env
 
@@ -9,6 +9,36 @@ beforeEach(() => {
 
 afterAll(() => {
   process.env = ORIGINAL_ENV
+})
+
+describe('turnstileConfigStatus', () => {
+  it('reports configured when both vars are set', () => {
+    process.env.TURNSTILE_SECRET = 'test-secret'
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'test-site-key'
+
+    expect(turnstileConfigStatus()).toBe('configured')
+  })
+
+  it('reports secret-missing when only the site key is set', () => {
+    delete process.env.TURNSTILE_SECRET
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'test-site-key'
+
+    expect(turnstileConfigStatus()).toBe('secret-missing')
+  })
+
+  it('reports site-key-missing when only the secret is set', () => {
+    process.env.TURNSTILE_SECRET = 'test-secret'
+    delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+
+    expect(turnstileConfigStatus()).toBe('site-key-missing')
+  })
+
+  it('reports unconfigured when neither var is set', () => {
+    delete process.env.TURNSTILE_SECRET
+    delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+
+    expect(turnstileConfigStatus()).toBe('unconfigured')
+  })
 })
 
 describe('verifyTurnstileToken', () => {

@@ -22,20 +22,42 @@ definitive, not a runtime hiccup.
 
 ## What it means
 
-The waitlist form is public, unauthenticated, and writes to `waitlist` with **nothing
-between a script and the table**. It holds 0 rows today, so nothing has been abused — but
-it is an open write endpoint on a public page, and the signup gate rejects everyone
-without an invite, which makes the waitlist the only path for an unknown artist.
+**CORRECTED 2026-10-02 (quick task 261002-wtl) — the claim below was false.** The waitlist
+form is public, unauthenticated, and writes to `waitlist` with nothing between a script and
+the table. It holds 0 rows today, but not because nothing has been abused — because
+**nobody has ever been able to join.** Verified against production:
 
-**Production degrades gracefully** — the copy reads "Verification will appear here" and
-the submit button stays enabled, so real people can still join. This is a missing
-protection, not a broken form.
+```
+curl -s -X POST https://www.funun.studio/api/waitlist \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"probe-261002-wtl@example.test","name":"Probe","note":""}'
+→ 400 {"error":"Verification failed. Please try again."}
+```
 
-## The code is already done
+~~Production degrades gracefully — the copy reads "Verification will appear here" and the
+submit button stays enabled, so real people can still join. This is a missing protection,
+not a broken form.~~ **This was wrong.** `app/api/waitlist/route.ts` hard-rejects an empty
+Turnstile token before any DB call, every time, regardless of whether a site key is
+configured — the old client gate (`app/(auth)/signup/waitlist-gate.ts`) enabled the submit
+button in exactly the state the server always refuses. It is a broken form, not a missing
+protection, and it has been broken since the waitlist shipped.
 
-Someone built this properly: the client widget in `app/(auth)/signup/page.tsx`, server
-verification in `lib/security/turnstile.ts`, and a graceful no-op when unconfigured.
-**Only the key was never added.**
+## The code is already done — and the client/server disagreement is now fixed
+
+Someone built the client widget (`app/(auth)/signup/page.tsx`) and server verification
+(`lib/security/turnstile.ts`) properly. Quick task 261002-wtl (this branch) fixed the two
+things env vars alone could not have fixed:
+
+- The CSP had no `frame-src` allowance for the Turnstile challenge iframe — now added,
+  alongside the vendor-documented (if currently inert under `'strict-dynamic'`) `script-src`
+  entry.
+- The client gate (`waitlist-gate.ts`, now `waitlistSubmitState`) mirrored the server's
+  precondition instead of silently enabling a submit the server rejects, and a coherence
+  test (`__tests__/waitlist-turnstile-coherence.test.ts`) binds the two together so they
+  cannot drift apart again. With no site key configured, the form now says plainly that
+  verification is unavailable instead of promising a widget that never appears.
+
+**Setting the keys below is now sufficient** — before this branch, it would not have been.
 
 ## To fix
 
@@ -48,9 +70,11 @@ verification in `lib/security/turnstile.ts`, and a graceful no-op when unconfigu
 
 ## Also worth checking while in there
 
-- **Does the server actually reject a missing token when the key is unset?** If the API
-  accepts it, protection is fully off. If it rejects, the waitlist would be *broken* rather
-  than unprotected — worth knowing which.
+- **Does the server actually reject a missing token when the key is unset? ANSWERED
+  2026-10-02.** Yes — `app/api/waitlist/route.ts:56` (the `if (!verified)` branch) hard-
+  rejects before any DB call, with or without a site key configured. The waitlist has been
+  fully broken (400 for everyone), never merely unprotected.
 - **Local dev renders a blank white rectangle** where the widget would be (dark UI, white
-  box). Cosmetic and local-only — production shows the muted "Verification will appear
-  here" line instead — but an unset key should render nothing, not an empty container.
+  box). Cosmetic and local-only — production shows a legible "verification isn't available"
+  line instead (`waitlist-gate.ts` + `page.tsx`, 261002-wtl) — but an unset key should
+  render nothing, not an empty container.

@@ -9,6 +9,27 @@
 
 const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
 
+// ─── Config-state visibility (quick task 261002-wtl) ───────────────────────
+// Distinct from verifyTurnstileToken, which stays byte-for-byte unchanged
+// above (fail-closed proof: its seven existing tests pass unmodified).
+// This reports WHICH half of a half-configured Turnstile is missing, so a
+// caller can raise an operator-visible signal for the genuinely invisible
+// case — site key set (widget renders, visitor completes a challenge) but
+// secret missing (server silently refuses). It returns a status only,
+// never either key's value, and reads both vars inside the function body,
+// never at module top level, matching this file's existing discipline.
+export type TurnstileConfigStatus = 'configured' | 'secret-missing' | 'site-key-missing' | 'unconfigured'
+
+export function turnstileConfigStatus(): TurnstileConfigStatus {
+  const hasSecret = Boolean(process.env.TURNSTILE_SECRET)
+  const hasSiteKey = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY)
+
+  if (hasSecret && hasSiteKey) return 'configured'
+  if (!hasSecret && !hasSiteKey) return 'unconfigured'
+  if (!hasSecret) return 'secret-missing'
+  return 'site-key-missing'
+}
+
 export async function verifyTurnstileToken(token: string, remoteIp?: string): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET
   if (!secret || !token) return false

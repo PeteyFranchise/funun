@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Script from 'next/script'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { isWaitlistSubmitDisabled } from './waitlist-gate'
+import { waitlistSubmitState } from './waitlist-gate'
 import { signupCompletionState } from './completion'
 import { handleFieldState } from '@/lib/handles/availability'
 import { HANDLE_MIN_LENGTH, HANDLE_MAX_LENGTH, handleFormatError } from '@/lib/handles/validate'
@@ -690,7 +690,10 @@ function SignUpFlow() {
 
               <div ref={attachTurnstile} className="min-h-[65px]">
                 {!siteKey && (
-                  <p className="text-xs text-white/30">Verification will appear here.</p>
+                  <p className={AUTH_HINT}>
+                    Verification isn&rsquo;t available right now, so we can&rsquo;t accept
+                    waiting-list sign-ups at the moment. Please try again later.
+                  </p>
                 )}
                 {siteKey && turnstileScriptError && (
                   <p className="text-xs text-rose-300">
@@ -703,7 +706,9 @@ function SignUpFlow() {
 
               <button
                 type="submit"
-                disabled={isWaitlistSubmitDisabled(wlSubmitting, siteKey, turnstileToken)}
+                disabled={
+                  waitlistSubmitState({ submitting: wlSubmitting, siteKey, turnstileToken }).disabled
+                }
                 className={AUTH_CTA}
               >
                 {wlSubmitting ? 'Joining…' : 'Join the waiting list'}
