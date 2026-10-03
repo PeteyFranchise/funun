@@ -562,6 +562,17 @@ describeIfArtifact('the real generated artifact', () => {
     expect(html).toContain('e.target instanceof HTMLImageElement')
   })
 
+  it('describes current narrow exports without promising a complete account export', () => {
+    expect(countOccurrences(html, 'you can always export all of your data')).toBe(0)
+    expect(
+      countOccurrences(
+        html,
+        'You can export individual songs, project files and metadata in standard industry formats.'
+      )
+    ).toBe(1)
+    expect(countOccurrences(html, 'A complete account export is planned.')).toBe(1)
+  })
+
   // ─── rich link preview + favicon (quick task 261001-rlp) ────────────────
   // Sliced to the head block (start of file to the first <style) so a stray
   // match 1890 lines deep in the body cannot make any of these pass.
