@@ -5,6 +5,7 @@
 // repo (jest.config.js is testEnvironment: 'node'); nothing here touches the
 // DOM.
 
+import { readFileSync } from 'node:fs'
 import {
   AUDIT_DEFERRALS,
   advisoryId,
@@ -294,3 +295,50 @@ describe('AUDIT_DEFERRALS (committed const guard)', () => {
   })
 })
 
+describe('Verification Gate doc/workflow drift guard', () => {
+  const workflow = readFileSync('.github/workflows/quality.yml', 'utf8')
+  const claudeMd = readFileSync('.claude/CLAUDE.md', 'utf8')
+
+  // Every `run: npm ...` step inside the `validate` job, in file order,
+  // whether written inline (`- run: npm foo`) or as a named step (`- name: ...`
+  // followed by `run: npm foo` on its own line) -- EXCLUDING `npm ci`, which
+  // installs dependencies and is not one of the verification commands the
+  // Verification Gate section documents.
+  const npmSteps = Array.from(workflow.matchAll(/run:\s*(npm [^\n]+)/g))
+    .map((m) => m[1].trim())
+    .filter((step) => step !== 'npm ci')
+
+  function extractVerificationGateBlock(doc: string): string {
+    const marker = '## Verification Gate'
+    const start = doc.indexOf(marker)
+    expect(start).toBeGreaterThanOrEqual(0)
+    const fenceStart = doc.indexOf('```bash', start)
+    expect(fenceStart).toBeGreaterThanOrEqual(0)
+    const fenceEnd = doc.indexOf('```', fenceStart + 7)
+    expect(fenceEnd).toBeGreaterThan(fenceStart)
+    return doc.slice(fenceStart + 7, fenceEnd)
+  }
+
+  it('lists every npm-invoking validate-job step, with none missing and none left over', () => {
+    const block = extractVerificationGateBlock(claudeMd)
+    const blockCommands = block
+      .split('\n')
+      .map((line) => line.split('#')[0].trim())
+      .filter((line) => line.length > 0)
+
+    expect(npmSteps.length).toBeGreaterThan(0)
+    expect(blockCommands).toHaveLength(npmSteps.length)
+    for (const step of npmSteps) {
+      expect(blockCommands).toContain(step)
+    }
+    for (const command of blockCommands) {
+      expect(npmSteps).toContain(command)
+    }
+  })
+
+  it('keeps the production audit line byte-identical in both files, with no deferral path', () => {
+    const PRODUCTION_AUDIT_LINE = 'npm audit --omit=dev --audit-level=moderate'
+    expect(workflow).toContain(PRODUCTION_AUDIT_LINE)
+    expect(claudeMd).toContain(PRODUCTION_AUDIT_LINE)
+  })
+})

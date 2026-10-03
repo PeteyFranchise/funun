@@ -469,7 +469,7 @@ npm run typecheck:strict     # not just `tsc --noEmit` — adds noUnusedLocals/n
 npm run lint                 # --max-warnings=0, so ANY warning fails the build
 npm test -- --runInBand
 npm audit --omit=dev --audit-level=moderate
-npm audit --audit-level=high
+npm run audit:gate          # npm audit at the high threshold, plus dated deferrals that expire
 ```
 
 Notes:
@@ -483,6 +483,11 @@ Notes:
   `document` listener on every render, caught only when CI finally ran lint.
 - `main` is protected: direct pushes are rejected until `validate` and CodeQL pass. Ship through a
   PR, never by pushing `main`.
+- **`npm run audit:gate` deferrals expire on purpose.** A dated entry in `scripts/audit-gate.ts`
+  stops suppressing its advisory on its `expires` date and the build goes red again — that is the
+  mechanism working, not a bug. The correct response to a lapsed entry is to re-evaluate the
+  advisory (is there a patch now? does the reason still hold?), not to reflexively push the date
+  further out.
 
 A check that prints green without exercising what it claims to cover is worse than no check,
 because it buys false confidence. Two known traps in this repo: a bracketed Jest path

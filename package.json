@@ -13,6 +13,7 @@
     "db:types": "supabase gen types typescript --local > types/supabase.ts",
     "db:push": "supabase db push",
     "security:migrations:verify": "node scripts/verify-beta-security-migrations.mjs",
+    "audit:gate": "tsx scripts/audit-gate.ts",
     "break-glass": "tsx scripts/break-glass.ts",
     "marketing:assets": "tsx scripts/marketing-assets.ts",
     "marketing:assets:check": "tsx scripts/marketing-assets.ts --check",
