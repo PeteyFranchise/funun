@@ -38,11 +38,10 @@ import type { SyncListingEntrySource, SyncListingStatus } from '@/types'
 //   the remove route (T-26-35) stays leadership-only. This is the ONE
 //   remaining use of `isLeadership` in this component — it no longer also
 //   gates Admit/Reject.
-// - `canInvite` (leadership + ae) gates the invite button/panel, mirroring
-//   the invite route's own requireStaff(['leadership','ae']). Deliberately
-//   does NOT include anr (OWNER DECISION 2026-10-04 widened the PAGE view
-//   to anr, not this write) — an anr viewer sees the queue but never a
-//   control that would 403 on click.
+// - `canInvite` (leadership + ae + anr) gates the invite button/panel,
+//   mirroring the invite route's own requireStaff(['leadership','ae','anr']).
+//   OWNER DECISION 2026-10-04 ("A&R gets artist invite capabilities from
+//   here on out.") widened this from leadership + ae to also include anr.
 //
 // Admitting is additionally gated server-side by the inclusion gate
 // (evaluateInclusionGate, 30-04) — an admit attempt on a track that hasn't
@@ -334,9 +333,10 @@ export function SyncLibraryAdmin({
 
       {/* Invite panel — collapsed toggle-form idiom (BuyerOrgsAdmin.tsx:285 /
           StaffAdmin.tsx's fncon-cta equivalent). Gated on `canInvite`
-          (leadership + ae — the invite route's own allowlist), NOT
-          `isLeadership` — an anr viewer sees the queue but never this
-          control, so it never renders a button that 403s on click. */}
+          (leadership + ae + anr — the invite route's own allowlist), NOT
+          `isLeadership` — an ae/anr viewer sees this control too, mirroring
+          the route exactly, so it never renders a button that 403s on
+          click. */}
       {canInvite && !showInviteForm && (
         <button
           onClick={() => {

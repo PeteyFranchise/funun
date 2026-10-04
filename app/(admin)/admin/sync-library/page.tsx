@@ -28,23 +28,20 @@ import type { SyncListingEntrySource, SyncListingStatus, VaultProjectType } from
 //   should be able to admit, that is part of their job." — see
 //   app/api/sync-library/admin/[listingId]/route.ts). `canAdmit` below
 //   mirrors that allowlist.
-// - quality-review: still leadership-only (30-CONTEXT.md's access
-//   decision — see .../quality/route.ts). OPEN QUESTION for the owner:
-//   quality review is arguably also "part of A&R's job," but the 2026-10-04
-//   decision said "admit," not quality review — not widened here on a
-//   guess.
+// - quality-review: leadership + anr (OWNER DECISION 2026-10-04: "Quality
+//   review is part of A&R's job." — see .../quality/route.ts, widened the
+//   same day as admit/reject above, same rationale). `canReviewQuality`
+//   below mirrors that allowlist and is handed to SyncReadinessWorklist
+//   in place of isLeadership — isLeadership no longer gates anything in
+//   that component.
 // - remove: still leadership-only (unchanged) — takedown of an
 //   already-live catalogue song is a different-weight action from
 //   admitting a new submission, not touched by this decision.
-// - invite: still leadership + ae (requireStaff(['leadership','ae']) in
-//   app/api/sync-library/invite) — anr is deliberately NOT in that set, so
-//   `canInvite` below hides the invite control for an anr viewer rather
-//   than rendering a button that 403s. OPEN QUESTION for the owner: A&R
-//   inviting artists to submit has been discussed, but that would be a
-//   new Crate-submission invite that does not exist yet — this route
-//   grants a different capability (sync_library access for an existing
-//   member) and is not widened here. bd is not part of the "broader
-//   permissioned-staff curation role" per 26-CONTEXT.md.
+// - invite: leadership + ae + anr (OWNER DECISION 2026-10-04: "A&R gets
+//   artist invite capabilities from here on out." — widened
+//   requireStaff(['leadership','ae']) to also include anr in
+//   app/api/sync-library/invite). `canInvite` below mirrors that
+//   allowlist.
 //
 // The worklist section below is built server-side via buildWorklist() over
 // data this page already batch-loads (listings/tracks/projects/artists),
@@ -84,13 +81,21 @@ export default async function AdminSyncLibraryPage() {
   if (!user) redirect('/signin')
   const role = getStaffRole(user)
   if (role !== 'leadership' && role !== 'ae' && role !== 'anr') redirect('/')
+  // The ONE remaining use of isLeadership on this page — gates Remove
+  // only (SyncLibraryAdmin.tsx), a different-weight action from admit or
+  // quality review that stays leadership-only (unchanged by 2026-10-04).
   const isLeadership = role === 'leadership'
   // Mirrors the admit/reject route's own allowlist
   // (requireStaff(['leadership','anr'])) — OWNER DECISION 2026-10-04.
   const canAdmit = role === 'leadership' || role === 'anr'
-  // Mirrors the invite route's own allowlist (requireStaff(['leadership','ae']))
-  // — an anr viewer can see the page but must not see a control that 403s.
-  const canInvite = role === 'leadership' || role === 'ae'
+  // Mirrors the quality-review route's own allowlist
+  // (requireStaff(['leadership','anr'])) — OWNER DECISION 2026-10-04
+  // ("Quality review is part of A&R's job.").
+  const canReviewQuality = role === 'leadership' || role === 'anr'
+  // Mirrors the invite route's own allowlist
+  // (requireStaff(['leadership','ae','anr'])) — OWNER DECISION 2026-10-04
+  // ("A&R gets artist invite capabilities from here on out.").
+  const canInvite = role === 'leadership' || role === 'ae' || role === 'anr'
 
   const service = createServiceClient()
 
@@ -299,7 +304,7 @@ export default async function AdminSyncLibraryPage() {
         gaps — incomplete isn&apos;t rejected.
       </p>
       <div className="mt-6">
-        <SyncReadinessWorklist rows={worklistRows} isLeadership={isLeadership} />
+        <SyncReadinessWorklist rows={worklistRows} canReviewQuality={canReviewQuality} />
       </div>
     </div>
   )
