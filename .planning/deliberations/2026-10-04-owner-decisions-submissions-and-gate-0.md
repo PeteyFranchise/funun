@@ -208,3 +208,102 @@ record).
 idea exposure and the submissions-room intake question. The pattern is consistent enough to state
 plainly: whenever a surface shows one person's material to someone else, establish who consented
 to what *before* the surface exists, because afterwards it looks like working software.
+
+---
+
+## 5. Getting an accepted song rights-ready (DECIDED, owner 2026-10-04)
+
+### The contradiction this resolves
+
+Step 10 advances a song into The Crate (licensable), but documents are chased *after* acceptance.
+Between those two points a buyer could license a song whose splits nobody has signed.
+
+**Decided: visible and pitchable, but routed to "contact" until rights-ready.** The song appears in
+the catalogue and can be pitched; it cannot be instantly licensed until the paperwork is in. This
+is **an existing pattern, not a new concept** — `lib/sync-library/gate.ts` already routes a song
+with an uncleared sample to `'contact'` rather than a clean licence.
+
+Rejected: hiding accepted songs until rights-ready (A&R could not pitch what they love while
+paperwork catches up), and full licensability on acceptance (a buyer licensing unsigned splits is
+the defect that costs real money).
+
+### Who does the work: the artist, with staff able to help
+
+**Decided, in priority order:**
+
+1. **Default and strongly preferred — staff see and prompt, the artist acts.** Every rights-bearing
+   entry (splits, signatures, ownership claims) is made by the artist or their collaborators.
+   **Staff always encourage the artist to handle it first.**
+2. **Staff may draft for the artist to confirm** — available when necessary, with a
+   proposed-vs-confirmed state so nothing takes effect until the rightsholder agrees.
+3. **Staff may fill in directly** — available only when *absolutely* necessary.
+
+Both fallbacks must exist, and both must be visibly exceptional rather than the easy path. The
+reason for the ordering is unchanged: a Funūn Team Member entering a split is asserting who owns
+what, and that is a claim nobody at Funūn is positioned to make.
+
+**Transparency is a requirement of the design, on both sides.** The artist can see what staff see
+about their song's outstanding items, and anything staff did on their behalf is visible to them.
+
+### Contact information — a new requirement
+
+Reaching the artist is now part of the flow, so **contact details must be captured** and available
+to staff when something is outstanding. This is new data about a person: capture it deliberately,
+state why it is being collected, and scope who can see it.
+
+### Chasing: the system nudges, staff can step in
+
+Automatic reminders on a cadence, with a Funūn Team Member able to send a personal push when it
+matters. Does not depend on anyone remembering, and reserves the personal touch for where it counts.
+
+### One definition of done
+
+There are already at least three readiness notions — vault readiness (`lib/vault/readiness.ts`),
+CWR readiness (`assessCwrReadiness`), and the sync gate (`lib/sync-library/gate.ts`) — plus an
+existing `SyncReadinessWorklist` built on `lib/sync-library/worklist.ts`. **A fourth "rights-ready"
+bar that disagrees with the others is worse than no bar.** One list behind one authority; extend
+what exists rather than adding a rival.
+
+---
+
+## 6. CORRECTION — the screen is substantially already built
+
+Recorded because this document previously asserted the opposite, and the error would have produced
+a duplicate surface.
+
+**`/admin/sync-library` already exists** (`app/(admin)/admin/sync-library/page.tsx`) and is the
+staff review queue over song submissions — the supply side. It already has:
+
+- admit / reject / remove, with a status enum whose single authority is `LEGAL_TRANSITIONS`
+  (`lib/sync-library/submission.ts:31-41`): `applied | invited | agreement_pending | pending_admit
+  | admitted | rejected | withdrawn | removed`
+- actor and timestamp columns (`decided_by`/`decided_at`, `removed_by`/`removed_at`) and a
+  universal `logStaffAction` audit into `staff_audit_log` on every staff write
+- **`SyncReadinessWorklist`** / `buildWorklist()` — the outstanding-items surface
+- **`blanket_agreement_document_id`**, plus SQL functions that move a listing to `pending_admit`
+  when the agreement completes — the artist→Funūn agreement is real and wired
+- quality-review fields (`quality_ok`, `quality_note`, `quality_reviewed_by`, `staff_notes`)
+
+**What is genuinely missing:**
+
+1. **Arrival provenance** — confirmed absent. No signup source, referrer, campaign or arrival
+   intent exists anywhere. `entry_source` is only `admin_invited | self_applied`, derived from a
+   `capability_grants` row. Migration 105's intent-id is a single-use auth token, deleted at
+   consumption, and cannot carry this.
+2. **A&R cannot see the screen** — it is gated to `leadership` and `ae`. `anr` is a real
+   `StaffRole` and is not on the list. The owner wants leadership and A&R.
+3. **No pre-decision assignment** — only post-decision actor columns exist, so shared-pool
+   "claim to review" needs a new field.
+4. **No artist-facing status and no nudges.**
+5. **The lighter "I'd like this looked at" door** does not exist.
+
+### The one real structural problem
+
+**Per-track Crate eligibility cannot be resolved today.** `ai_entries` keys off `work_id`
+(`135_works_core.sql:273-288`); `sync_listings` keys off `track_id` / `vault_project_id`. The only
+bridge is `works.graduated_project_id → vault_projects.id`, and because a project may hold several
+tracks, that join **cannot resolve to one specific submitted track**. `/admin/sync-library` never
+queries `ai_entries` today.
+
+This needs designing, not wiring — and it matters because step 10 is rights-bearing and eligibility
+is one of the things the advance action must enforce.
