@@ -725,3 +725,65 @@ invite route would have refused — a control asserting a capability the server 
 flag must mirror its route's allowlist exactly, and a flag named `isLeadership` must not survive
 as the gate for something A&R can now do. A name that outlives its meaning is the same defect in
 miniature.
+
+---
+
+## 15. Multi-reviewer: collaborative review of a submission (DECIDED, owner 2026-10-04)
+
+Several Funūn Team Members review the same song together — comments, reactions, and sharing with
+colleagues. This is the first surface in The Crate that is **the team talking to each other**
+rather than to the artist, and that distinction drives every decision below.
+
+### Internal only — the artist sees none of it
+
+Comments, reactions and discussion are **staff-only, permanently**. The artist learns the
+**outcome** — accepted, declined, we want this — and nothing about how it was reached.
+
+The reason is not secrecy for its own sake: a team that knows the artist is reading stops being
+candid, and a review that is not candid is not a review. Rejected: a per-comment "share with the
+artist" action (every comment then needs an audience, and eventually the wrong one is sent) and
+full transparency.
+
+**This matters structurally.** Funūn already has a timestamped-comment pattern — the artist's
+collaborators leaving notes at a point in a take. It is the obvious thing to reuse and **the store
+must NOT be shared.** Same shape, opposite audiences: your team's blunt verdict would sit in the
+same table as a co-writer's note. A **separate staff-only store** is required; the *interaction
+pattern* may be reused, the data may not.
+
+### Comments: both overall and pinned to moments
+
+A general thread per submission, **plus** comments pinned to a point in the track — *"the drop is
+late"*, *"that vocal take"*. Both, because an accept/decline judgement needs somewhere to say
+*"great writer, wrong song for us"*, and musical feedback needs somewhere to be specific.
+
+### The design bar is explicit
+
+**Owner:** this *"needs to look as good as the designs we have in The Crate, The Selects Player,
+and the new Writer's Room redesign."* Those three are the reference. This is not an admin table
+with a comment box bolted on — it is a listening surface, and it is held to the same standard as
+the artist-facing work.
+
+### Sharing: two distinct actions, both audited
+
+1. **Nudge a colleague** who already has access — *"check this out, tell me what you think."* No
+   permission change.
+2. **Grant a look to someone who cannot normally see the queue** — the owner's example: an **A&R
+   sharing with an AE** for a project or sale the AE is working on. This is a **permission grant
+   dressed as a share**, and the owner has asked for it to be auditable.
+
+They must be **clearly distinguished in the UI** — different wording, different weight — because
+one is free and the other opens a door. The grant needs a record of who shared what with whom and
+who opened it. `logStaffAction` into `staff_audit_log` is the existing pattern.
+
+### The risk the A&R→AE case creates
+
+An AE works deals with buyers. A submission shared with an AE is, by definition, **not yet
+admitted** — not rights-ready, possibly not even Crate-eligible. If an AE hears something they
+love and pitches it to a client, a buyer may want a song Funūn cannot license, which puts pressure
+on exactly the review the process exists to protect.
+
+**To verify before building:** Selects is believed to be catalogue-only and gated to rights-ready
+Crate tracks, which would already prevent a shared submission being added to a Selects. **Confirm
+that gate holds** rather than assuming it. If it does, the remaining exposure is a verbal pitch,
+which no code prevents — but a shared, unadmitted song should at minimum be **visibly marked as
+not licensable** wherever an AE encounters it.
