@@ -493,3 +493,45 @@ Someone with a large catalogue and people working alongside them is plausibly al
 **Entourage** customer. Same person, two conversations — the Crate submission and the tier
 qualification. Neither flow currently knows about the other; worth remembering before either is
 extended.
+
+---
+
+## 12. Submitting is how you get in (DECIDED, owner 2026-10-04)
+
+**Both "Submit a song" CTAs lead to the real submission flow.** Anyone may create an account for
+the purpose of submitting a song — no invite required for this path.
+
+This makes the page's own line literally true: *"Submitting is free; getting in is earned."* The
+song **is** the application.
+
+### What this changes
+
+Invite-only stops being absolute. The review queue becomes **the front door to Funūn**, not a
+back room — which is a different thing from what it was designed as an hour ago.
+
+Consequences to design for, not to discover:
+
+- **Real volume and real spam.** Audio files are large and storage is not free. Unsolicited
+  uploads from people with no relationship to Funūn are now the expected case, not an edge one.
+- **Account creation is open on this path**, so everything that protects signup has to actually
+  hold.
+- **The queue's quality floor matters more.** Previously every submitter had been invited by
+  somebody; now nobody has.
+
+### The valve — required, not optional
+
+**Owner requirement:** *"we need the ability to close unsolicited submissions whenever we are
+overwhelmed with submissions."*
+
+A deliberate off switch for unsolicited intake. This is what makes an open front door survivable:
+the team can shut it when the queue outgrows the people reading it, rather than letting quality
+collapse quietly or letting artists wait months for a reply nobody has time to write.
+
+Still to settle: who may flip it, what a visitor sees while it is closed, and whether in-flight
+submissions complete. **Closing the door must not strand someone mid-upload.**
+
+### Note
+
+A valve is necessary but **not sufficient**. An open upload path also needs the ordinary
+protections — rate limiting, file type and size validation, and abuse handling — and those are
+not the same thing as a switch the team flips when tired.
