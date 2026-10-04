@@ -570,6 +570,8 @@ export type Track = {
   iswc: string | null
   language: string | null
   metadata: Record<string, unknown>
+  /** The Catalogue work that produced this track. NULL means "we do not know" -- never "no work". */
+  work_id: string | null
   created_at: string
 }
 
