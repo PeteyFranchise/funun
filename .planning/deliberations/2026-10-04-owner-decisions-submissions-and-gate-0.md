@@ -307,3 +307,64 @@ queries `ai_entries` today.
 
 This needs designing, not wiring — and it matters because step 10 is rights-bearing and eligibility
 is one of the things the advance action must enforce.
+
+---
+
+## 7. The work→track eligibility gap (DECIDED, owner 2026-10-04)
+
+**The problem in plain terms.** Funūn stores a song in two places: the writing side (a `work`) and
+the release side (a `track` on a `vault_project`). The AI disclosure lives on the writing side; a
+sync submission lives on the release side. The only connection points at the whole release, so on
+a single it resolves fine and **on an EP it cannot say which disclosure belongs to which song.**
+
+This blocks the owner's own decision that advancing a song into The Crate is rights-bearing: the
+advance must enforce eligibility, and it cannot enforce what it cannot resolve per track.
+
+### Decided
+
+1. **When the system cannot be certain, it says so and asks for a manual check.** Not a best guess,
+   not a marked guess — an explicit "cannot determine, check this by hand." A labelled guess is
+   still the thing a busy person clicks past, and the cost of being wrong here is a licensed song
+   that should not have been licensable.
+2. **Model it properly — make the real connection between a song and its released track.** Accepted
+   as worth a migration, because registration, the song passport and provenance will all want the
+   same link; this is not a fix for one screen.
+
+**A migration is therefore expected. It is human-gated — the owner pushes it. An executor must
+NEVER run `supabase db push`.**
+
+### Still to confirm before any migration is written
+
+A deliberation is in flight on two questions that could change the shape or remove the need:
+
+- **Is the absence deliberate?** Migration 135 carries a comment listing what was intentionally
+  left out of the works↔vault link. If a work→track link is among the refusals, adding one
+  reverses a considered decision and must be argued, not assumed. Precedent: that same migration's
+  `author_user_id` is documented as *"the fact that MOVES SPLITS,"* and a 2026-09-24 plan nearly
+  attributed a writing credit to whoever added an instrumental break.
+- **Does the link already exist?** `song_passport_master_designations` is append-only and
+  identifies a designated master. If graduation already carries that to a specific track, there may
+  be nothing to migrate.
+
+---
+
+## 8. CORRECTION — "See if Team fits" never shipped
+
+This document and the source todo both treated the Team card's relabel as done. **It is not.**
+
+The commit claiming it (`c2b1ec23`) touched only the todo file — zero marketing source lines. It
+was then **superseded by the owner on 2026-09-29**: during invite-only beta nobody can open an
+account, so **all three pricing CTAs read "Request an invite"** (verified live in
+`assets/marketing/landing.html`, three occurrences). Entourage keeps "Talk to us." That comment was
+later stripped from the artifact as internal cruft, but the behaviour it describes is what ships.
+
+**So the pricing CTAs are already honest, and the precedent cited earlier in this document was not
+a precedent at all.**
+
+**What is still wrong: "Submit a song" appears twice** — the hero and The Crate section — and
+**both link to `/signup`**, which shows a waitlist to anyone without an invite. One sits directly
+under the line *"Submitting is free; getting in is earned."* The owner's decision to fix this
+stands and is still needed; it is the only dishonest CTA left on the page.
+
+Note the mechanism: changing it requires the gitignored `private/bench/marketing.html` re-freeze
+pipeline, not an edit to the committed artifact.
