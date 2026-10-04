@@ -42,6 +42,14 @@ The dedicated contract-system discussion must answer:
 Full discussion and final-destination model:
 `.planning/deliberations/contract-locker-generation-and-legal-services.md`.
 
+Implementation architecture recorded 2026-10-04:
+`.planning/deliberations/contract-template-system-implementation-blueprint.md`.
+
+The blueprint recommends a three-layer design: repository research sources remain outside
+runtime; immutable counsel-reviewed template versions enter a server-owned production
+registry; individual document instances carry structured fields, review, signing and
+evidence while `vault_documents` remains the Contract Locker compatibility index.
+
 ## Recommended legal-team drafting order
 
 1. Split sheet

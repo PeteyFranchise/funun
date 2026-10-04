@@ -454,3 +454,42 @@ backwards with no migration — was **put to the owner and declined**; he chose 
 3. **The back-fill is partial and must say so.** Song-Passport-graduated tracks can be filled from
    the existing chain. Legacy uploads cannot be filled honestly and must be left null — not
    guessed at, not defaulted.
+
+---
+
+## 11. Someone arrives with a catalogue, not a song (DECIDED, owner 2026-10-04)
+
+**Raised by the owner**, not by the planning work — worth noting, because nothing in the designed
+flow would have surfaced it. The submit path takes one song at a time, up to three. That is right
+for a writer with a song and **completely wrong for someone arriving with five hundred**, who is
+also worth considerably more.
+
+### The real risk is authority, not scale
+
+A writer submitting their own song can agree to it being licensable, because it is theirs.
+
+**A manager or small label submitting a catalogue may not be the one who can say yes.** The artists
+own those songs. Whether the submitter has authority to make them licensable is a different
+question from whether the songs are good, and it sits directly on Funūn's stated position: the
+artist owns the song, Funūn represents it. If a buyer licenses one and money moves, who was
+entitled to make that deal?
+
+### Decided
+
+1. **Take the song, flag the catalogue for a person.** The attached song goes through review as
+   normal. The existence of a catalogue behind it becomes a flag a Funūn Team Member sees and
+   acts on — a conversation, not an upload queue. Nothing bulk is built now, and a human
+   establishes what the relationship actually is before any volume arrives.
+2. **A bulk intake path is roadmapped for later**, explicitly deferred — see the new todo.
+3. **Ask ownership outright, early:** *are these your songs, or do you represent them?* It changes
+   who signs, who is paid, and whether Funūn can license at all. Asking plainly beats discovering
+   it after a deal. Rejected: leaving it to a conversation (nothing gets recorded until someone
+   thinks to ask) and deferring it (a song could reach a buyer on an agreement signed by someone
+   who was not entitled to sign it).
+
+### Note: this is where the two tracks meet
+
+Someone with a large catalogue and people working alongside them is plausibly also the
+**Entourage** customer. Same person, two conversations — the Crate submission and the tier
+qualification. Neither flow currently knows about the other; worth remembering before either is
+extended.
