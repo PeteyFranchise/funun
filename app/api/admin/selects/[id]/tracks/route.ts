@@ -55,7 +55,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 // ─── POST /api/admin/selects/[id]/tracks ───────────────────────────────────
 // Adds a Crate track. IDEMPOTENT (R11 AC) — re-adding a track already
 // present (non-removed) returns the SAME row, never a duplicate; a
-// previously soft-removed row is un-removed instead of re-inserted. See
+// previously soft-removed row is un-removed instead of re-inserted. Any
+// NEW addition (fresh insert or un-remove) requires the track to have its
+// own ADMITTED sync_listings row — addSelectsTrack returns
+// { ok: false, reason: 'not_admitted' } otherwise, rendered here as 409. See
 // lib/selects/persistence.ts's addSelectsTrack for the full contract.
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -76,14 +79,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   try {
-    const track = await addSelectsTrack(service, {
+    const result = await addSelectsTrack(service, {
       selectsId: id,
       trackId: parsed.data.trackId,
       note: parsed.data.note ?? null,
       source: parsed.data.source ?? 'crate',
       addedBy: auth.user.id,
     })
-    return NextResponse.json({ data: track }, { status: 201 })
+    if (!result.ok) {
+      return NextResponse.json(
+        { error: 'This track has not been admitted to the Crate and cannot be added to a Selects.' },
+        { status: 409 }
+      )
+    }
+    return NextResponse.json({ data: result.track }, { status: 201 })
   } catch (err) {
     return NextResponse.json(
       { error: 'Failed to add track' },
