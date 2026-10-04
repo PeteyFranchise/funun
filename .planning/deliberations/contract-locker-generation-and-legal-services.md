@@ -6,17 +6,6 @@
 **Final destination:** independent law-firm services for bespoke matters at firm-set a la carte pricing
 **Foundation TODO:** `.planning/todos/pending/2026-09-01-lawyer-reviewed-contract-product-foundation.md`
 
-## Owner-approved counsel model — 2026-10-04
-
-- Every contract template may enter the research library first, but the exact publishable version must be reviewed by Funūn's designated attorney before it becomes available for generation or e-signature.
-- Funūn's Terms of Service and contract workflow will state, in counsel-approved language, that Funūn is not acting as the user's attorney and that parties should retain their own qualified counsel before sending or signing agreements.
-- Artists, Funūn staff, and other authorized users may invite their independently retained lawyers to create Funūn accounts and collaborate on relevant documents or matters.
-- The product must distinguish template-review counsel from a user's counsel, counterparty counsel, and other reviewers. Reviewing a standard form does not establish representation of every platform user.
-- Lawyer access is client-authorized and scoped to the relevant workspace, project, document, or matter, with role-based permissions, audit history, and revocation.
-- Final language and behavior concerning attorney identity verification, licensure, conflicts, engagement, privilege, confidentiality, retention, jurisdiction, and professional-responsibility rules remain counsel-gated.
-
-Research-library governance is recorded in `research/contracts/GOVERNANCE.md`.
-
 ## Permanent boundary
 
 Funūn provides lawyer-reviewed music-industry templates and guided document workflows,
