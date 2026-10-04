@@ -187,4 +187,40 @@ describe('WorkRoster', () => {
     // Ben Cooke has no avatarUrl in the fixture -> two-letter monogram.
     expect(markup).toContain('>BC<')
   })
+
+  // ─── Restyle guards ────────────────────────────────────────────────
+
+  it('renders the pending chip on project money tokens, with no raw amber class', () => {
+    const markup = renderToStaticMarkup(
+      <WorkRoster workId="work-1" members={members} viewerTier="administer" viewerIsOwner />
+    )
+    expect(markup).toContain('text-money2')
+    expect(markup).not.toMatch(/amber-/)
+  })
+
+  it('dims a pending member’s avatar', () => {
+    const markup = renderToStaticMarkup(
+      <WorkRoster workId="work-1" members={members} viewerTier="administer" viewerIsOwner />
+    )
+    // Dana Whitfield is isPending in the fixture.
+    expect(markup).toContain('opacity-55')
+  })
+
+  it('contains no retired-lavender literal', () => {
+    const markup = renderToStaticMarkup(
+      <WorkRoster workId="work-1" members={members} viewerTier="administer" viewerIsOwner />
+    )
+    expect(markup).not.toMatch(/rgba\(199,\s*203,\s*247/)
+  })
+
+  it('NON-VACUITY: still renders the promote affordance for a manageable non-owner, non-writer member — a restyle must never delete this', () => {
+    const markup = renderToStaticMarkup(
+      <WorkRoster workId="work-1" members={members} viewerTier="administer" viewerIsOwner />
+    )
+    // Ben Cooke: not the owner, not on the sheet (so not yet a writer),
+    // and the viewer is an administer-tier owner (can manage). If a
+    // future simplification quietly converted this list into a toggle
+    // selector with no promote button, this assertion is what catches it.
+    expect(markup).toContain('Mark as writer')
+  })
 })

@@ -391,11 +391,11 @@ export function WorkRoster({
           {list.map(member => (
             <li
               key={member.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-[9px] border border-hair bg-card2 px-3 py-2"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-[9px] border border-hair bg-card2 px-3 py-2 transition-colors hover:bg-lav/[.06]"
             >
             <div className="flex min-w-0 items-center gap-2">
               <span
-                className="grid h-7 w-7 flex-none place-items-center overflow-hidden rounded-full bg-lav/[.14] bg-cover bg-center text-[10px] font-bold text-lav"
+                className={`grid h-[34px] w-[34px] flex-none place-items-center overflow-hidden rounded-full bg-lav/10 bg-cover bg-center text-[11px] font-bold text-lav${member.isPending ? ' opacity-55 grayscale' : ''}`}
                 style={member.avatarUrl ? { backgroundImage: `url('${member.avatarUrl}')` } : undefined}
                 aria-hidden="true"
               >
@@ -425,7 +425,7 @@ export function WorkRoster({
                 // they sign up — this state resolves itself with no
                 // manual reconciliation, so it is shown plainly rather
                 // than as an error or a stuck-looking spinner.
-                <span className="rounded-full bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
+                <span className="rounded-full border border-money/30 bg-money/10 px-2 py-0.5 text-[10px] font-bold text-money2">
                   Pending — hasn&apos;t signed up yet
                 </span>
               )}
@@ -472,7 +472,7 @@ export function WorkRoster({
             writersOnSheet.map(w => (
               <span
                 key={w.id}
-                className="inline-flex items-center gap-1.5 rounded-full bg-lav/[.08] px-2.5 py-1 text-[11px] font-semibold text-lav"
+                className="inline-flex items-center gap-1.5 rounded-full border border-hair bg-lav/[.08] px-[9px] py-1 text-[10px] font-bold text-lav"
               >
                 {w.name}
                 {w.writerDesignation && (

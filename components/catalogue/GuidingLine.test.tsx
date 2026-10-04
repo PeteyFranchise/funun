@@ -34,11 +34,26 @@ describe('GuidingLine', () => {
     expect(markup).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
   })
 
-  it('never spends the full bg-grad gradient — only a border/wash tint', () => {
+  it('never spends the full two-stop brand gradient — only a border/wash tint', () => {
     const markup = renderToStaticMarkup(<GuidingLine step={mockStep} onDoIt={noop} onDismiss={noop} />)
     // Word-boundary match: "bg-gradient-to-r" (the faint wash) must not be
     // mistaken for "bg-grad" (the primary action's single spent gradient).
     expect(markup).not.toMatch(/\bbg-grad\b(?!ient)/)
+    // The opaque two-stop pair (no opacity modifier) is the same gradient
+    // this test's name has always claimed to reject — the negative
+    // lookahead on the slash keeps the container's `from-brandindigo/10`
+    // wash passing while still catching the full-saturation spend.
+    expect(markup).not.toMatch(/from-brandindigo(?!\/)/)
+  })
+
+  it('still carries the tinted wash on the container', () => {
+    const markup = renderToStaticMarkup(<GuidingLine step={mockStep} onDoIt={noop} onDismiss={noop} />)
+    expect(markup).toMatch(/from-brandindigo\/10/)
+  })
+
+  it('contains no retired-lavender literal', () => {
+    const markup = renderToStaticMarkup(<GuidingLine step={mockStep} onDoIt={noop} onDismiss={noop} />)
+    expect(markup).not.toMatch(/rgba\(199,\s*203,\s*247/)
   })
 
   // Type-level assertion: GuidingLineProps['step'] is GuidingLineStep | null,

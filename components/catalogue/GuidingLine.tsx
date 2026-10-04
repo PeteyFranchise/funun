@@ -55,7 +55,7 @@ export function GuidingLine({ step, onDoIt, onDismiss }: GuidingLineProps) {
       <button
         type="button"
         onClick={() => onDoIt(step)}
-        className="self-start rounded-[9px] bg-gradient-to-r from-brandindigo to-brandfuchsia px-[14px] py-[7px] text-[11.5px] font-bold text-white hover:opacity-90"
+        className="self-start rounded-[8px] border border-brandindigo/45 bg-brandindigo/[.12] px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-brandindigo/[.22]"
       >
         {step.actionLabel} →
       </button>
