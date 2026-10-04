@@ -26,9 +26,9 @@ const VOCAL_STATE_OPTIONS: { value: WorkVocalState; glyph: string; label: string
 ]
 
 const CHIP_CLASS =
-  'inline-flex items-center gap-1 rounded-full bg-lav/[.08] px-2.5 py-1 text-[11px] font-semibold text-lav'
+  'inline-flex items-center gap-1 rounded-full border border-hair bg-lav/[.08] px-[9px] py-1 text-[10px] font-bold text-lav'
 const CHIP_SPLITS_CLASS =
-  'inline-flex items-center gap-1 rounded-full bg-amber-400/10 px-2.5 py-1 text-[11px] font-semibold text-amber-300'
+  'inline-flex items-center gap-1 rounded-full border border-money/30 bg-money/10 px-[9px] py-1 text-[10px] font-bold text-money2'
 
 export type WorkHeaderProps = {
   workId: string
@@ -169,16 +169,19 @@ export function WorkHeader({
   return (
     <div className="flex items-start justify-between gap-4 rounded-[12px] border border-hair bg-card px-5 py-[18px]">
       <div className="min-w-0 flex-1">
-        <p className="text-[10px] uppercase tracking-[0.16em] text-lavdim">Unreleased work</p>
-
-        <input
-          type="text"
-          aria-label="Song title"
-          value={localTitle}
-          disabled={!canEdit}
-          onChange={handleTitleInput}
-          className="mt-0.5 w-full border-b border-transparent bg-transparent text-[22px] font-extrabold leading-tight text-white outline-none transition focus:border-hairstrong disabled:cursor-default"
-        />
+        <div className="mt-0.5 flex flex-wrap items-center gap-[11px]">
+          <input
+            type="text"
+            aria-label="Song title"
+            value={localTitle}
+            disabled={!canEdit}
+            onChange={handleTitleInput}
+            className="min-w-0 flex-1 border-b border-transparent bg-transparent text-[21px] font-bold leading-tight tracking-[-0.015em] text-white outline-none transition focus:border-hairstrong disabled:cursor-default"
+          />
+          <span className="inline-flex shrink-0 whitespace-nowrap rounded-full border border-brandindigo/30 bg-brandindigo/[.08] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-brandindigo">
+            Unreleased work
+          </span>
+        </div>
 
         {/* Identity line — owner handle, contributor names, splits status.
             Matches sketch 001's header row. No percentage sits beside any

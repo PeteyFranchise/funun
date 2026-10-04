@@ -106,4 +106,35 @@ describe('WorkHeader', () => {
     )
     expect(markup).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
   })
+
+  it('renders the "Unreleased work" label as an inline indigo pill, not a stacked eyebrow', () => {
+    const markup = renderToStaticMarkup(
+      <WorkHeader {...baseProps} vocalState="primary" primaryPerformerLabel="peterzora" />
+    )
+    expect(markup).toContain('Unreleased work')
+    expect(markup).toMatch(/text-brandindigo/)
+  })
+
+  it('renders the splits chip on project money tokens, with no raw amber class', () => {
+    const markup = renderToStaticMarkup(
+      <WorkHeader {...baseProps} vocalState="primary" primaryPerformerLabel="peterzora" />
+    )
+    expect(markup).toContain('text-money2')
+    expect(markup).not.toMatch(/amber-/)
+  })
+
+  it('contains no retired-lavender literal', () => {
+    const markup = renderToStaticMarkup(
+      <WorkHeader {...baseProps} vocalState="primary" primaryPerformerLabel="peterzora" />
+    )
+    expect(markup).not.toMatch(/rgba\(199,\s*203,\s*247/)
+  })
+
+  it('keeps the right-hand slot reserved and empty', () => {
+    const markup = renderToStaticMarkup(
+      <WorkHeader {...baseProps} vocalState="primary" primaryPerformerLabel="peterzora" />
+    )
+    expect(markup).toContain('aria-hidden="true"')
+    expect(markup).not.toContain('Lead vocal set')
+  })
 })
