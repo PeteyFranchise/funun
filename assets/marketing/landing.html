@@ -453,15 +453,18 @@ footer::before{content:'';position:absolute;top:0;left:50%;transform:translate(-
 .sphere-wrap{position:relative;z-index:0;display:flex;flex-direction:column;align-items:center;
   margin-top:40px}
 
-.sphere{position:relative;width:min(560px,86vw);aspect-ratio:1;cursor:grab;touch-action:none}
+.sphere{position:relative;width:min(560px,86vw);aspect-ratio:1;cursor:grab;touch-action:none;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .sphere:active{cursor:grabbing}
 .sphere .node{position:absolute;display:grid;place-items:center;border-radius:999px;
-  font-weight:700;letter-spacing:.01em;color:#fff;user-select:none;
+  border:0;padding:0;font:inherit;font-weight:700;letter-spacing:.01em;color:#fff;cursor:pointer;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
   background:linear-gradient(145deg,#2a2550,#171334);
   box-shadow:inset 0 0 0 1px rgba(199,203,247,.22), 0 10px 24px -12px rgba(0,0,0,.9);
   transition:box-shadow .16s}
 .sphere .node img{width:100%;height:100%;object-fit:cover;border-radius:999px;display:block;
-  pointer-events:none}
+  pointer-events:none;-webkit-user-drag:none;-webkit-user-select:none;user-select:none;
+  -webkit-touch-callout:none}
 .sphere .node{overflow:hidden}
 .sphere .node[data-hot="1"]{box-shadow:inset 0 0 0 1.5px rgba(217,70,239,.9),
   0 0 26px -4px rgba(217,70,239,.55), 0 10px 24px -12px rgba(0,0,0,.9)}
@@ -492,7 +495,6 @@ footer::before{content:'';position:absolute;top:0;left:50%;transform:translate(-
 .navmark .glyph i{width:3px;border-radius:999px;background:var(--grad);display:block}
 .navmark em{font-style:normal;font-size:10.5px;font-weight:500;color:var(--lav-dim);
   letter-spacing:.01em;margin-left:1px}
-@media(max-width:560px){.navmark em{display:none}}
 .navlinks{grid-column:2;position:relative;display:flex;gap:2px;justify-self:center}
 @media(max-width:780px){.navlinks{display:none}}
 .navlinks a{position:relative;z-index:1;text-decoration:none;color:var(--lav-dim);
@@ -857,13 +859,13 @@ body[data-signfont="Lobster"] .neon{font-size:clamp(42px,10vw,116px)}
       <div class="eyebrow"><span class="n">01</span><span class="r"></span><span class="t">Collaborators</span></div>
       <h2 class="sec">Add them once. Stop chasing the details.</h2>
       <p class="sub">Every writer, producer and featured artist you work with, already on file.
-        Hover anyone to see what Fun&#363;n already knows.</p>
+        Tap or hover anyone to see what Fun&#363;n already knows.</p>
     </div>
     <div class="sphere-wrap reveal">
-      <div class="sphere" id="sphere" role="img"
-           aria-label="A rotating sphere of collaborator avatars. Details are listed below."></div>
+      <div class="sphere" id="sphere" role="group"
+           aria-label="A rotating sphere of collaborator avatars. Tap or hover a face for details."></div>
       <div class="sphere-card" id="sphereCard" hidden></div>
-      <p class="sphere-hint">Drag to spin &middot; hover a face for their details</p>
+      <p class="sphere-hint">Drag to spin &middot; tap or hover a face for details</p>
     </div>  </div></section>
 
   
@@ -1564,8 +1566,10 @@ function sphereInitials(name){
   });
 
   const nodes=pts.map((pt,i)=>{
-    const d=document.createElement('div');
-    d.className='node'; d.dataset.i=i; d.setAttribute('aria-hidden','true');
+    const d=document.createElement('button');
+    d.type='button'; d.className='node'; d.dataset.i=i;
+    d.setAttribute('aria-label','View details for '+pt.p.n);
+    d.setAttribute('aria-pressed','false');
     if(pt.p.img){
       const im=document.createElement('img');
       im.src=pt.p.img+'?v='+ASSET_V; im.alt=''; im.draggable=false;
@@ -1575,9 +1579,40 @@ function sphereInitials(name){
     el.appendChild(d); return d;
   });
 
-  let rx=14, ry=0, vx=0, vy=0, dragging=false, hot=null, last={x:0,y:0};
+  let rx=14, ry=0, vx=0, vy=0, dragging=false, hot=null, pinned=null;
+  let last={x:0,y:0}, pressStart={x:0,y:0}, pressedNode=null, tapMoved=false;
   let cardH=120;   
                    
+
+  function showDetails(i){
+    if(hot!==null && hot!==i) nodes[hot].removeAttribute('data-hot');
+    hot=i; nodes[i].dataset.hot='1';
+    const p=PEOPLE[i];
+    card.innerHTML='<b>'+p.n+'</b><span class="role">'+p.r+'</span>'
+      +'<dl><dt>PRO</dt><dd>'+p.pro+'</dd>'
+      +'<dt>IPI</dt><dd>'+p.ipi+'</dd>'
+      +'<dt>Publisher</dt><dd>'+p.pub+'</dd>'
+      +(p.handle?'<dt>Fun\u016bn</dt><dd>'+p.handle+'</dd>':'')+'</dl>';
+    card.hidden=false;
+    cardH=card.offsetHeight;
+  }
+
+  function hideDetails(){
+    if(hot!==null) nodes[hot].removeAttribute('data-hot');
+    hot=null; card.hidden=true;
+  }
+
+  function pinDetails(i){
+    pinned=i;
+    nodes.forEach((node,index)=>node.setAttribute('aria-pressed',String(index===i)));
+    showDetails(i);
+  }
+
+  function clearPinnedDetails(){
+    pinned=null;
+    nodes.forEach(node=>node.setAttribute('aria-pressed','false'));
+    hideDetails();
+  }
 
   function paint(){
     const r=R(), sz=SIZE(), cx=el.clientWidth/2, cy=el.clientHeight/2;
@@ -1622,34 +1657,60 @@ function sphereInitials(name){
 
   el.addEventListener('pointerdown',e=>{
     dragging=true; vx=vy=0; last={x:e.clientX,y:e.clientY};
+    pressStart={x:e.clientX,y:e.clientY}; tapMoved=false;
+    pressedNode=e.target instanceof Element ? e.target.closest('.node') : null;
+    if(e.pointerType==='touch') e.preventDefault();
     el.setPointerCapture(e.pointerId);
   });
   el.addEventListener('pointermove',e=>{
     if(!dragging) return;
+    if(Math.hypot(e.clientX-pressStart.x,e.clientY-pressStart.y)>8) tapMoved=true;
     const dx=e.clientX-last.x, dy=e.clientY-last.y;
     ry+=dx*0.35; rx-=dy*0.35;
     vy=Math.max(-5,Math.min(5,dx*0.35)); vx=Math.max(-5,Math.min(5,-dy*0.35));
     last={x:e.clientX,y:e.clientY};
   });
-  const stop=()=>{dragging=false;};
-  el.addEventListener('pointerup',stop); el.addEventListener('pointercancel',stop);
+  el.addEventListener('pointerup',()=>{
+    dragging=false;
+    const tapped=pressedNode;
+    if(!tapMoved && tapped){
+      pinDetails(Number(tapped.dataset.i));
+    } else if(!tapMoved && pinned!==null){
+      clearPinnedDetails();
+    } else if(pinned!==null){
+      showDetails(pinned);
+    } else {
+      hideDetails();
+    }
+    pressedNode=null;
+  });
+  el.addEventListener('pointercancel',()=>{
+    dragging=false; pressedNode=null;
+    if(pinned!==null) showDetails(pinned); else hideDetails();
+  });
+  el.addEventListener('contextmenu',e=>e.preventDefault());
+  el.addEventListener('selectstart',e=>e.preventDefault());
+  el.addEventListener('dragstart',e=>e.preventDefault());
 
   nodes.forEach((n,i)=>{
-    n.addEventListener('pointerenter',()=>{
-      if(dragging) return;
-      hot=i; n.dataset.hot='1';
-      const p=PEOPLE[i];
-      card.innerHTML='<b>'+p.n+'</b><span class="role">'+p.r+'</span>'
-        +'<dl><dt>PRO</dt><dd>'+p.pro+'</dd>'
-        +'<dt>IPI</dt><dd>'+p.ipi+'</dd>'
-        +'<dt>Publisher</dt><dd>'+p.pub+'</dd>'
-        +(p.handle?'<dt>Fun\u016bn</dt><dd>'+p.handle+'</dd>':'')+'</dl>';
-      card.hidden=false;
-      cardH=card.offsetHeight;
+    n.addEventListener('pointerenter',e=>{
+      if(dragging || e.pointerType==='touch') return;
+      showDetails(i);
     });
     n.addEventListener('pointerleave',()=>{
-      if(hot===i){ hot=null; card.hidden=true; }
-      n.removeAttribute('data-hot');
+      if(pinned===i) return;
+      if(pinned!==null) showDetails(pinned);
+      else if(hot===i) hideDetails();
+    });
+    n.addEventListener('focus',()=>showDetails(i));
+    n.addEventListener('blur',()=>{
+      if(pinned===i) return;
+      if(pinned!==null) showDetails(pinned);
+      else if(hot===i) hideDetails();
+    });
+    n.addEventListener('keydown',e=>{
+      if(e.key!=='Enter' && e.key!==' ') return;
+      e.preventDefault(); pinDetails(i);
     });
   });
 
