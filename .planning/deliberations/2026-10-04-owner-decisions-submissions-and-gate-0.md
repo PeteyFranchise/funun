@@ -683,3 +683,45 @@ music; the Selects catalogue shows only tracks already **admitted** to the Crate
 - **Invite non-expiry is intentional for now**, owner-confirmed. The existing sync-library
   capability grant has no TTL in schema or code. Recorded as a deliberate choice rather than an
   oversight, so a later reader does not "fix" it.
+
+---
+
+## 14. A&R permissions on the submissions surface (DECIDED, owner 2026-10-04)
+
+Settled in three steps over one session, recorded together so the full picture is in one place.
+
+| Action | Route | Before | After |
+|---|---|---|---|
+| See the queue | `app/(admin)/admin/sync-library/page.tsx` | leadership, ae | **+ anr** |
+| Admit / reject | `.../admin/[listingId]/route.ts` | leadership | **+ anr** |
+| Quality review | `.../admin/[listingId]/quality/route.ts` | leadership | **+ anr** |
+| Invite an artist | `.../invite/route.ts` | leadership, ae | **+ anr** |
+| Remove a live song | `.../remove/route.ts` | leadership | **unchanged** |
+| Propose / approve tags | `.../tag-propose`, `.../tag-approve` | already included anr | unchanged |
+
+**Owner, 2026-10-04:** admitting is *"part of their job"*; quality review likewise; and **"A&R gets
+artist invite capabilities from here on out."**
+
+**Removal stays leadership-only** — it is a takedown of a song already live in the catalogue, a
+different action from deciding on a new submission, and it was not asked for.
+
+### The gap this widens, stated plainly
+
+Admitting advances a song into a **licensable** catalogue. §5 and §7 decided the advance must
+**enforce** Crate eligibility, splits state and sample clearance at that moment rather than trust
+the reviewer to have checked.
+
+**That enforcement does not exist.** `/admin/sync-library` never queries `ai_entries` at all, and
+the work→track link needed to resolve eligibility per song is **migration 230 — planned, unbuilt**.
+
+Widening who can admit does not create the hole; it puts more people next to it. The fix is to
+build the enforcement, not to withhold the button from the people whose job it is — but the order
+now matters more than it did this morning.
+
+### UI must mirror the routes, not approximate them
+
+The first commit on this branch found the "+ Invite artist" button rendering for a viewer the
+invite route would have refused — a control asserting a capability the server denies. Each gate
+flag must mirror its route's allowlist exactly, and a flag named `isLeadership` must not survive
+as the gate for something A&R can now do. A name that outlives its meaning is the same defect in
+miniature.
