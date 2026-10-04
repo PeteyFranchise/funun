@@ -18,13 +18,19 @@ import type { SyncListingEntrySource, SyncListingStatus, VaultProjectType } from
 
 // ─── /admin/sync-library ────────────────────────────────────────────────
 // Staff curation surface (26-10-PLAN.md), extended (30-09-PLAN.md) with the
-// Sync Readiness worklist. Gated to leadership + ae — the exact role set
-// the backing routes allow (requireStaff(['leadership','ae']) in
-// app/api/sync-library/invite; admit/reject and quality-review are now
-// leadership-only per 30-CONTEXT.md's access decision — see
-// app/api/sync-library/admin/[listingId]/route.ts and .../quality/route.ts;
-// the remove route stays leadership-only, unchanged). bd is not part of the
-// "broader permissioned-staff curation role" per 26-CONTEXT.md.
+// Sync Readiness worklist. Page view is gated to leadership + ae + anr
+// (OWNER DECISION 2026-10-04: let A&R see the submissions queue). This is
+// READ access only — it does not widen any write route. The backing
+// routes keep their own, narrower allowlists: admit/reject and
+// quality-review are leadership-only (30-CONTEXT.md's access decision —
+// see app/api/sync-library/admin/[listingId]/route.ts and
+// .../quality/route.ts), the remove route stays leadership-only
+// (unchanged), and invite stays leadership + ae
+// (requireStaff(['leadership','ae']) in app/api/sync-library/invite) — anr
+// is deliberately NOT in that set, so `canInvite` below hides the invite
+// control for an anr viewer rather than rendering a button that 403s. bd
+// is not part of the "broader permissioned-staff curation role" per
+// 26-CONTEXT.md.
 //
 // The worklist section below is built server-side via buildWorklist() over
 // data this page already batch-loads (listings/tracks/projects/artists),
@@ -63,8 +69,11 @@ export default async function AdminSyncLibraryPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect('/signin')
   const role = getStaffRole(user)
-  if (role !== 'leadership' && role !== 'ae') redirect('/')
+  if (role !== 'leadership' && role !== 'ae' && role !== 'anr') redirect('/')
   const isLeadership = role === 'leadership'
+  // Mirrors the invite route's own allowlist (requireStaff(['leadership','ae']))
+  // — an anr viewer can see the page but must not see a control that 403s.
+  const canInvite = role === 'leadership' || role === 'ae'
 
   const service = createServiceClient()
 
@@ -259,7 +268,12 @@ export default async function AdminSyncLibraryPage() {
         Invite artists and curate every submitted song — one consistent admit/reject gate for
         invited and self-applied songs alike, oldest first.
       </p>
-      <SyncLibraryAdmin initialRows={rows} artistPool={artistPool} isLeadership={isLeadership} />
+      <SyncLibraryAdmin
+        initialRows={rows}
+        artistPool={artistPool}
+        isLeadership={isLeadership}
+        canInvite={canInvite}
+      />
 
       <h2 className="mt-10 text-xl font-semibold text-[color:var(--ink)]">Sync Readiness</h2>
       <p className="mt-2 max-w-2xl text-[13px] text-[color:var(--ink-3)]">

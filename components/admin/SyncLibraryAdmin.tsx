@@ -21,12 +21,19 @@ import type { SyncListingEntrySource, SyncListingStatus } from '@/types'
 //
 // LEADERSHIP-ONLY CURATION (30-CONTEXT.md access decision, 30-09-PLAN.md):
 // Admit/Reject and the leadership-only Remove action are all rendered ONLY
-// when `isLeadership` is true — an AE browses the queue (sees status,
-// entry source, age) but never sees a curation control. This is a UX
-// mirror, NOT the security boundary: both the admit/reject route
+// when `isLeadership` is true — an AE or anr viewer browses the queue
+// (sees status, entry source, age) but never sees a curation control. This
+// is a UX mirror, NOT the security boundary: both the admit/reject route
 // (requireStaff(['leadership'])) and the remove route independently
 // enforce leadership-only access regardless (T-26-35 / T-30-06), so
 // hiding these buttons here is defense-in-depth, never the sole gate.
+//
+// INVITE is a separate, wider allowlist (leadership + ae — the invite
+// route's own requireStaff(['leadership','ae'])) that does NOT include
+// anr (OWNER DECISION 2026-10-04 widened the PAGE view to anr, not this
+// write). `canInvite` gates the invite button/panel so an anr viewer never
+// sees a control that would 403 on click — same defense-in-depth pattern
+// as `isLeadership` above, mirroring, not replacing, the route's own gate.
 //
 // Admitting is additionally gated server-side by the inclusion gate
 // (evaluateInclusionGate, 30-04) — an admit attempt on a track that hasn't
@@ -146,10 +153,12 @@ export function SyncLibraryAdmin({
   initialRows,
   artistPool,
   isLeadership,
+  canInvite,
 }: {
   initialRows: SyncLibraryQueueRow[]
   artistPool: ArtistPickOption[]
   isLeadership: boolean
+  canInvite: boolean
 }) {
   const [rows, setRows] = useState<SyncLibraryQueueRow[]>(initialRows)
   const [stageFilter, setStageFilter] = useState<StageFilter>('needs_review')
@@ -313,8 +322,11 @@ export function SyncLibraryAdmin({
       )}
 
       {/* Invite panel — collapsed toggle-form idiom (BuyerOrgsAdmin.tsx:285 /
-          StaffAdmin.tsx's fncon-cta equivalent). */}
-      {!showInviteForm && (
+          StaffAdmin.tsx's fncon-cta equivalent). Gated on `canInvite`
+          (leadership + ae — the invite route's own allowlist), NOT
+          `isLeadership` — an anr viewer sees the queue but never this
+          control, so it never renders a button that 403s on click. */}
+      {canInvite && !showInviteForm && (
         <button
           onClick={() => {
             setShowInviteForm(true)
@@ -326,7 +338,7 @@ export function SyncLibraryAdmin({
         </button>
       )}
 
-      {showInviteForm && (
+      {canInvite && showInviteForm && (
         <div className="mt-1 mb-4 rounded-[10px] border border-[color:var(--indigo)]/30 bg-[color:var(--panel)] p-4">
           <h3 className="mb-3 text-[13px] font-bold text-[color:var(--ink-2)]">
             Invite an artist to the Sync Library
