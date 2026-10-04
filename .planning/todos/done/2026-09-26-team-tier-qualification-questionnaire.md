@@ -1,9 +1,34 @@
 # Team tier "Talk to us" → a short questionnaire that routes
 
-**Captured:** 2026-09-26 · **Status:** approach owner-set, question set in review
+**Captured:** 2026-09-26 · **Status:** BUILT 2026-10-04 (quick task 261004-ttq) — closed out
 **Answers:** marketing CTA #5, the Team tier's "Talk to us"
 **Scope:** Member accounts only — a Team or Entourage customer is a **Member** buying a larger
 Member workspace. Nothing here creates a Client Partner.
+
+## Closed out 2026-10-04 — see `.planning/quick/261004-ttq-team-tier-questionnaire/`
+
+Built: a new `team_tier_leads` migration (authored, human-gated — never pushed by the
+executor), pure routing/copy/sanitizing logic (`lib/team-tier/qualification.ts`), a fan-out
+staff notification to every `bd`+`leadership` staff member (`lib/team-tier/notify-staff.ts`,
+never a single arbitrary pick), the public three-question flow at `/team-fit`
+(`app/team-fit/page.tsx` + `components/team-tier/TeamFitQuestionnaire.tsx`), and a minimal
+staff-only list at `/admin/team-tier-leads`. Full detail, verified facts, and the threat
+model live in `261004-ttq-PLAN.md` and `261004-ttq-SUMMARY.md` in that directory.
+
+**Correction to this todo's own "RESOLVED 2026-09-26" section below: it is false as of
+2026-10-04.** The commit that claimed the Team-tier CTA shipped as "See if Team fits" and was
+"verified in the rendered DOM" (`c2b1ec23`) touched only this todo file — zero lines of any
+marketing source. The actual production artifact (`assets/marketing/landing.html`) reads
+`cta:'Request an invite'` for the Team tier, identical to Writer and Studio. A later owner
+decision (2026-09-29, reconstructed via `git log -S` across `assets/marketing/landing.html`'s
+tracked history — the authoring comment was later stripped as internal-decision cruft)
+explicitly supersedes the "See if Team fits" wording: during invite-only beta nobody can open
+an account, so all three Member-tier pricing CTAs read "Request an invite"; Entourage alone
+keeps "Talk to us," because there a person genuinely replies. The section below is left as
+written for the historical record, but its claim did not and does not hold — do not treat it
+as true. Consequently, 261004-ttq does **not** wire any marketing-site CTA to `/team-fit`;
+`/team-fit` ships as a complete, directly-linkable surface, and wiring a real CTA to it is a
+separate follow-up requiring the gitignored `private/bench/marketing.html` re-freeze pipeline.
 
 ## The owner's shape of it
 
