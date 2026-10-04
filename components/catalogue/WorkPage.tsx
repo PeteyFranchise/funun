@@ -817,21 +817,24 @@ export function WorkPage({
 
   // 261004-wr2 slice 2: Takes/Diary/Notes are tabs now, not scroll targets.
   // Every deep link into one of them sets the active tab (WriterRoomTabs'
-  // own `activeKey`, which — per that component's own contract — takes
-  // priority over whatever tab was last clicked) and brings the shared tab
-  // section into view, instead of scrolling to a ref CSS now hides.
+  // own `activeKey`) and brings the shared tab section into view, instead
+  // of scrolling to a ref CSS now hides.
   //
-  // Known limit, inherited from WriterRoomTabs' Slice-1 contract and not
-  // fixable from this file alone: once a deep link sets
-  // `writerRoomActiveTab`, it stays pinned — clicking a different tab
-  // button updates WriterRoomTabs' own internal state but does not notify
-  // this component, so it can't un-pin the override — until something
-  // here clears it again. Composer close clears it (see
-  // onComposerOpenChange below, in the Notes tab item); a fresh
-  // notification or another "View ↓" re-targets it. This needs a browser
+  // `activeKey` is a REQUEST, not a permanent override (fixed in Slice 3 —
+  // see WriterRoomTabs.tsx's own `syncedActiveKey` comment for the
+  // mechanism): the first time `writerRoomActiveTab` changes to a new
+  // value, WriterRoomTabs moves its internal tab (and, on mobile, opens its
+  // door) to match; any tab the user clicks after that wins, even while
+  // this value sits unchanged below. Composer close additionally clears the
+  // value back to `null` for the one deep link with a natural "I'm done"
+  // signal (see `onComposerOpenChange` below, in the Notes tab item) — not
+  // because leaving it set would re-pin anything (it no longer can), but so
+  // a later read of `writerRoomActiveTab` here (e.g. the scroll-into-view
+  // effect below) doesn't act on a stale target. This still needs a browser
   // pass before merge (see the plan's own checkpoint:human-verify note for
   // this slice): confirm the Takes/Diary tabs stay clickable after one of
-  // these deep links fires.
+  // these deep links fires, and that a deep link while the mobile door is
+  // closed actually opens it.
   function openDiaryTab() {
     setWriterRoomActiveTab('diary')
   }
@@ -1558,10 +1561,14 @@ export function WorkPage({
           composerOpen={studioNoteComposerOpen}
           onComposerOpenChange={open => {
             setStudioNoteComposerOpen(open)
-            // Release the tab pin on an explicit close — the one deep-link
-            // trigger here with a natural "I'm done" signal to hook. See
-            // the openDiaryTab/openStudioNotes comment above for the
-            // others, which have no such signal and stay pinned.
+            // Clear this value back to null on an explicit close — the one
+            // deep-link trigger here with a natural "I'm done" signal to
+            // hook. See the openDiaryTab/openStudioNotes comment above:
+            // WriterRoomTabs no longer treats a value staying set as a
+            // reason to keep fighting the user, but clearing it here still
+            // keeps this component's own `writerRoomActiveTab` honest for
+            // its scroll-into-view effect, instead of describing a target
+            // that's no longer the point.
             if (!open) setWriterRoomActiveTab(current => (current === 'notes' ? null : current))
           }}
           highlightedNoteId={highlightedStudioNoteId}

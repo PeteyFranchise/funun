@@ -634,6 +634,25 @@ describe('WorkPage', () => {
     expect(hiddenIndices[0]).toBeLessThan(activeIndex)
   })
 
+  // Done criterion for 261004-wr2 slice 3: selecting the right tab isn't
+  // enough on a phone — the shared panel container also sits behind a
+  // closed door (WriterRoomTabs' own `doorOpen` state) until something
+  // opens it. A page-load deep link must not land invisible behind a door
+  // nobody tapped.
+  it('opens the mobile door on first render when highlightedStudioNoteId targets a song thread', () => {
+    const markup = renderToStaticMarkup(
+      <WorkPage {...makeProps({ studioNotes: [songThread], highlightedStudioNoteId: songThread.id })} />
+    )
+    expect(markup).toMatch(/<div class="fixed inset-0[^"]*lg:static/)
+    expect(markup).not.toMatch(/<div class="hidden lg:static/)
+  })
+
+  it('leaves the mobile door closed on the default render, with no deep link', () => {
+    const markup = renderToStaticMarkup(<WorkPage {...makeProps()} />)
+    expect(markup).toMatch(/<div class="hidden lg:static/)
+    expect(markup).not.toMatch(/<div class="fixed inset-0/)
+  })
+
   it('spends exactly one gradient on the default render', () => {
     // administerRoster puts a canManage viewer on the page, whose
     // WorkRoster "Send invite" button is this render's one legitimate
