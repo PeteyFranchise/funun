@@ -368,3 +368,41 @@ stands and is still needed; it is the only dishonest CTA left on the page.
 
 Note the mechanism: changing it requires the gitignored `private/bench/marketing.html` re-freeze
 pipeline, not an edit to the committed artifact.
+
+---
+
+## 9. Marketing-path upload: one song at a time (DECIDED, owner 2026-10-04)
+
+**Songs arrive individually, not as a release.** Someone coming from the marketing page attaches
+songs **one by one**, up to **three per submission**, with simple questions alongside: the song
+title, and the person's name and contact details.
+
+Contact details are collected **once for the person**, not per song. They exist because the flow
+now promises a human may reach out — see §5's contact requirement.
+
+### Decided
+
+- **Three songs become three separate review items.** Each is accepted, declined and advanced on
+  its own. This matches the fact that entering The Crate is **per song and rights-bearing per
+  song**: one strong track alongside two weak ones is an ordinary outcome, and the team should be
+  able to take the one. Rejected: a single all-or-nothing decision over the set, and a
+  parent-child grouping (real extra structure to keep in sync, for a grouping nobody needs yet).
+- **Three is a per-submission cap, not a lifetime one.** Nothing stops someone submitting again
+  later. Keeps any one submission digestible without turning away a prolific writer. Rejected: a
+  hard lifetime cap, and a "no more until these are reviewed" slot system — the latter makes a slow
+  review directly block someone from sending their next song, which punishes the artist for the
+  team's backlog.
+
+### This materially shrinks the work→track problem
+
+§7's ambiguity exists **only because several songs can arrive in one release**. On this path they
+cannot: one song, one submission, one set of answers, no ambiguity about which disclosure belongs
+to which song.
+
+It does **not** remove the problem — an existing Member can still submit a whole EP through the
+in-app path — but it takes the messiest case out of the newcomer flow, which is exactly where a
+Funūn Team Member would otherwise be guessing with the least context.
+
+**Worth re-weighing §7's scope once the in-flight deliberation reports.** The migration may be
+smaller than it looked, and the "say I cannot determine" fallback may cover a much narrower set of
+cases than first assumed.
