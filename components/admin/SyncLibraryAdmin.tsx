@@ -19,21 +19,30 @@ import type { SyncListingEntrySource, SyncListingStatus } from '@/types'
 // is the sole legal authority; this UI mirrors that edge set for display
 // only.
 //
-// LEADERSHIP-ONLY CURATION (30-CONTEXT.md access decision, 30-09-PLAN.md):
-// Admit/Reject and the leadership-only Remove action are all rendered ONLY
-// when `isLeadership` is true — an AE or anr viewer browses the queue
-// (sees status, entry source, age) but never sees a curation control. This
-// is a UX mirror, NOT the security boundary: both the admit/reject route
-// (requireStaff(['leadership'])) and the remove route independently
-// enforce leadership-only access regardless (T-26-35 / T-30-06), so
-// hiding these buttons here is defense-in-depth, never the sole gate.
+// CURATION ACCESS (30-CONTEXT.md access decision, 30-09-PLAN.md; widened
+// 2026-10-04): three independent allowlists, one flag each, each mirroring
+// its own backing route's own requireStaff(...) call exactly — none of
+// these flags IS the security boundary, each route enforces its own
+// allowlist regardless of what renders here (defense-in-depth only):
 //
-// INVITE is a separate, wider allowlist (leadership + ae — the invite
-// route's own requireStaff(['leadership','ae'])) that does NOT include
-// anr (OWNER DECISION 2026-10-04 widened the PAGE view to anr, not this
-// write). `canInvite` gates the invite button/panel so an anr viewer never
-// sees a control that would 403 on click — same defense-in-depth pattern
-// as `isLeadership` above, mirroring, not replacing, the route's own gate.
+// - `canAdmit` (leadership + anr) gates Admit/Reject. OWNER DECISION
+//   2026-10-04 ("They should be able to admit, that is part of their
+//   job.") widened this from leadership-only to match the admit/reject
+//   route's own requireStaff(['leadership','anr']) (T-30-06). An AE
+//   viewer browses the queue (sees status, entry source, age) but never
+//   sees this control.
+// - `isLeadership` (leadership only) gates the Remove action — the
+//   takedown of an already-admitted, already-licensable catalogue song.
+//   Deliberately NOT widened alongside `canAdmit`: admitting a new
+//   submission and removing a live one are different-weight actions, and
+//   the remove route (T-26-35) stays leadership-only. This is the ONE
+//   remaining use of `isLeadership` in this component — it no longer also
+//   gates Admit/Reject.
+// - `canInvite` (leadership + ae) gates the invite button/panel, mirroring
+//   the invite route's own requireStaff(['leadership','ae']). Deliberately
+//   does NOT include anr (OWNER DECISION 2026-10-04 widened the PAGE view
+//   to anr, not this write) — an anr viewer sees the queue but never a
+//   control that would 403 on click.
 //
 // Admitting is additionally gated server-side by the inclusion gate
 // (evaluateInclusionGate, 30-04) — an admit attempt on a track that hasn't
@@ -153,11 +162,13 @@ export function SyncLibraryAdmin({
   initialRows,
   artistPool,
   isLeadership,
+  canAdmit,
   canInvite,
 }: {
   initialRows: SyncLibraryQueueRow[]
   artistPool: ArtistPickOption[]
   isLeadership: boolean
+  canAdmit: boolean
   canInvite: boolean
 }) {
   const [rows, setRows] = useState<SyncLibraryQueueRow[]>(initialRows)
@@ -463,10 +474,13 @@ export function SyncLibraryAdmin({
                       </p>
                     )}
 
-                    {/* Admit/Reject — LEADERSHIP-ONLY, mirroring the Remove
-                        action below; the route independently enforces this
-                        (T-30-06) regardless of what renders here. */}
-                    {row.status === 'pending_admit' && isLeadership && (
+                    {/* Admit/Reject — leadership + anr (OWNER DECISION
+                        2026-10-04), mirroring the admit/reject route's own
+                        requireStaff(['leadership','anr']); the route
+                        independently enforces this (T-30-06) regardless of
+                        what renders here. NOT the same flag as the
+                        leadership-only Remove action below. */}
+                    {row.status === 'pending_admit' && canAdmit && (
                       <div className="mt-3">
                         <input
                           value={reasonByListing[row.listingId] ?? ''}
@@ -496,15 +510,17 @@ export function SyncLibraryAdmin({
                         </div>
                       </div>
                     )}
-                    {row.status === 'pending_admit' && !isLeadership && (
+                    {row.status === 'pending_admit' && !canAdmit && (
                       <p className="mt-3 text-[11px] text-[color:var(--ink-3)]">
-                        Awaiting a leadership admit/reject decision.
+                        Awaiting an admit/reject decision.
                       </p>
                     )}
 
-                    {/* Leadership-only takedown — rendered ONLY when isLeadership;
-                        the remove route independently enforces
-                        requireStaff(['leadership']) regardless (T-26-35). */}
+                    {/* Leadership-only takedown — rendered ONLY when isLeadership,
+                        deliberately NOT widened alongside canAdmit above (removing
+                        a live catalogue song is a different-weight action from
+                        admitting a new submission); the remove route independently
+                        enforces requireStaff(['leadership']) regardless (T-26-35). */}
                     {row.status === 'admitted' && isLeadership && (
                       <div className="mt-3">
                         {confirmingRemoveId === row.listingId ? (

@@ -20,17 +20,31 @@ import type { SyncListingEntrySource, SyncListingStatus, VaultProjectType } from
 // Staff curation surface (26-10-PLAN.md), extended (30-09-PLAN.md) with the
 // Sync Readiness worklist. Page view is gated to leadership + ae + anr
 // (OWNER DECISION 2026-10-04: let A&R see the submissions queue). This is
-// READ access only — it does not widen any write route. The backing
-// routes keep their own, narrower allowlists: admit/reject and
-// quality-review are leadership-only (30-CONTEXT.md's access decision —
-// see app/api/sync-library/admin/[listingId]/route.ts and
-// .../quality/route.ts), the remove route stays leadership-only
-// (unchanged), and invite stays leadership + ae
-// (requireStaff(['leadership','ae']) in app/api/sync-library/invite) — anr
-// is deliberately NOT in that set, so `canInvite` below hides the invite
-// control for an anr viewer rather than rendering a button that 403s. bd
-// is not part of the "broader permissioned-staff curation role" per
-// 26-CONTEXT.md.
+// READ access only on its own — the backing routes each keep their own
+// allowlist, and the three widened/narrower below each mirror one route
+// exactly:
+//
+// - admit/reject: leadership + anr (OWNER DECISION 2026-10-04: "They
+//   should be able to admit, that is part of their job." — see
+//   app/api/sync-library/admin/[listingId]/route.ts). `canAdmit` below
+//   mirrors that allowlist.
+// - quality-review: still leadership-only (30-CONTEXT.md's access
+//   decision — see .../quality/route.ts). OPEN QUESTION for the owner:
+//   quality review is arguably also "part of A&R's job," but the 2026-10-04
+//   decision said "admit," not quality review — not widened here on a
+//   guess.
+// - remove: still leadership-only (unchanged) — takedown of an
+//   already-live catalogue song is a different-weight action from
+//   admitting a new submission, not touched by this decision.
+// - invite: still leadership + ae (requireStaff(['leadership','ae']) in
+//   app/api/sync-library/invite) — anr is deliberately NOT in that set, so
+//   `canInvite` below hides the invite control for an anr viewer rather
+//   than rendering a button that 403s. OPEN QUESTION for the owner: A&R
+//   inviting artists to submit has been discussed, but that would be a
+//   new Crate-submission invite that does not exist yet — this route
+//   grants a different capability (sync_library access for an existing
+//   member) and is not widened here. bd is not part of the "broader
+//   permissioned-staff curation role" per 26-CONTEXT.md.
 //
 // The worklist section below is built server-side via buildWorklist() over
 // data this page already batch-loads (listings/tracks/projects/artists),
@@ -71,6 +85,9 @@ export default async function AdminSyncLibraryPage() {
   const role = getStaffRole(user)
   if (role !== 'leadership' && role !== 'ae' && role !== 'anr') redirect('/')
   const isLeadership = role === 'leadership'
+  // Mirrors the admit/reject route's own allowlist
+  // (requireStaff(['leadership','anr'])) — OWNER DECISION 2026-10-04.
+  const canAdmit = role === 'leadership' || role === 'anr'
   // Mirrors the invite route's own allowlist (requireStaff(['leadership','ae']))
   // — an anr viewer can see the page but must not see a control that 403s.
   const canInvite = role === 'leadership' || role === 'ae'
@@ -272,6 +289,7 @@ export default async function AdminSyncLibraryPage() {
         initialRows={rows}
         artistPool={artistPool}
         isLeadership={isLeadership}
+        canAdmit={canAdmit}
         canInvite={canInvite}
       />
 
