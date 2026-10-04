@@ -77,7 +77,14 @@ export function WriterRoomTabs({
       >
         <span>{item.label}</span>
         <span className="text-[11px] text-lavdim">{item.description}</span>
-        {on && <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-grad" />}
+        {/* bg-white, not bg-grad — ProjectTabs' own precedent
+            (components/vault/ProjectTabs.tsx:46) for a tab-row active
+            indicator. This screen already spends its one bg-grad on
+            ComposerCard's "add" button (ComposerCard.tsx:120); a second
+            spend here would double the per-screen gradient budget the
+            moment this component is actually wired into a page (261004-wr2
+            slice 2) — latent since Slice 1 shipped this file unreferenced. */}
+        {on && <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-white" />}
       </button>
     )
   })

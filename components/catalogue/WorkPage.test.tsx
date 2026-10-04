@@ -580,14 +580,58 @@ describe('WorkPage', () => {
     expect(markup).toContain('Alternates (2)')
   })
 
-  it('renders Versions, Diary, and lyrics in one responsive hybrid grid', () => {
+  // 261004-wr2 slice 2: Takes/Diary/Notes left the canvas and became real
+  // tabs (WriterRoomTabs) — this replaces the retired hybrid-grid
+  // assertion above. The hybrid grid itself (data-writer-room-grid,
+  // per-module drag handles, "Snap lyrics together") only ever renders
+  // from LyricsPad's `hybridEnabled` branch (`roomModules.length > 0`),
+  // which WorkPage now permanently keeps off by passing it no roomModules
+  // — dead code until Slice 4 retires it, unreachable from here either way.
+  it('moves Takes, Diary, and Notes above the canvas as tabs, leaving the lyric canvas blocks-only', () => {
     const markup = renderToStaticMarkup(<WorkPage {...makeProps()} />)
-    expect(markup).toContain('data-writer-room-grid="true"')
-    expect(markup).toContain('lg:grid-cols-2')
-    expect(markup).toContain('aria-label="Drag to move Versions"')
-    expect(markup).toContain('aria-label="Drag to move Diary"')
-    expect(markup).toContain('Snap lyrics together')
-    expect(markup).not.toContain('aria-label="Diary or versions"')
+    expect(markup).toMatch(/role="tablist"/)
+    expect(markup).toContain('>Takes<')
+    expect(markup).toContain('>Diary<')
+    expect(markup).toContain('>Notes<')
+    expect(markup).not.toContain('data-writer-room-grid')
+    expect(markup).not.toContain('Snap lyrics together')
+    expect(markup).not.toContain('aria-label="Drag to move Versions"')
+    expect(markup).not.toContain('aria-label="Drag to move Diary"')
+  })
+
+  // The three panel-wrapper divs WriterRoomTabs renders for Takes/Diary/
+  // Notes carry EXACTLY `class=""` (active) or `class="hidden"` (inactive)
+  // — no other class is ever mixed in (confirmed against the real render;
+  // WriterRoomTabs' own door-chrome wrapper always carries additional
+  // breakpoint classes, so this literal string never matches it). Default:
+  // Takes active, Diary and Notes hidden.
+  it('shows the Takes tab panel by default and keeps Diary/Notes hidden', () => {
+    const markup = renderToStaticMarkup(<WorkPage {...makeProps()} />)
+    const activeIndex = markup.indexOf('<div class="">')
+    const hiddenIndices = [...markup.matchAll(/<div class="hidden">/g)].map(m => m.index!)
+    expect(activeIndex).toBeGreaterThan(-1)
+    expect(hiddenIndices.length).toBeGreaterThanOrEqual(2)
+    // Takes' panel (the active one) renders before Diary's and Notes'
+    // (both hidden) — document order matches the Takes/Diary/Notes item
+    // order passed to WriterRoomTabs.
+    expect(activeIndex).toBeLessThan(hiddenIndices[0]!)
+  })
+
+  // Done criterion for 261004-wr2 slice 2: a notification's
+  // highlightedStudioNoteId deep link must render the Notes tab's panel
+  // active (no hidden class), not merely scroll to a ref CSS now hides.
+  it('renders the Notes tab panel active (not hidden) when highlightedStudioNoteId targets a song thread', () => {
+    const markup = renderToStaticMarkup(
+      <WorkPage {...makeProps({ studioNotes: [songThread], highlightedStudioNoteId: songThread.id })} />
+    )
+    const activeIndex = markup.indexOf('<div class="">')
+    const noteBodyIndex = markup.indexOf('SONG_NOTE_BODY_UNIQUE')
+    expect(activeIndex).toBeGreaterThan(-1)
+    expect(noteBodyIndex).toBeGreaterThan(activeIndex)
+    // And the two OTHER panels (Takes, Diary) are the ones now hidden.
+    const hiddenIndices = [...markup.matchAll(/<div class="hidden">/g)].map(m => m.index!)
+    expect(hiddenIndices.length).toBeGreaterThanOrEqual(2)
+    expect(hiddenIndices[0]).toBeLessThan(activeIndex)
   })
 
   it('spends exactly one gradient on the default render', () => {
