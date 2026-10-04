@@ -68,6 +68,28 @@ describe('WriterRoomTabs', () => {
     expect(occurrences).toBe(1)
   })
 
+  // Slice 3: a deep link's whole point is that its target becomes VISIBLE,
+  // not just internally selected — on mobile the shared panel container
+  // sits behind a closed door until `doorOpen` is true. This is observable
+  // on the FIRST render alone (no click simulation needed): the shared
+  // panel container's own wrapper class differs by whether `activeKey` was
+  // already set when the component first mounted.
+  it('closes the mobile door by default when no activeKey is given', () => {
+    const markup = renderToStaticMarkup(<WriterRoomTabs items={items()} />)
+    // The shared panel container is the first <div> whose class starts with
+    // "hidden" (door closed) rather than "fixed inset-0" (door open) —
+    // distinct from the per-item panels' own bare "hidden" class checked
+    // above, which this regex's `lg:static` tail disambiguates.
+    expect(markup).toMatch(/<div class="hidden lg:static/)
+    expect(markup).not.toMatch(/<div class="fixed inset-0/)
+  })
+
+  it('opens the mobile door on first render when activeKey already targets an item — a page-load deep link must not land behind a closed door', () => {
+    const markup = renderToStaticMarkup(<WriterRoomTabs items={items()} activeKey="notes" />)
+    expect(markup).toMatch(/<div class="fixed inset-0[^"]*lg:static/)
+    expect(markup).not.toMatch(/<div class="hidden lg:static/)
+  })
+
   it('renders both the inline desktop tab row and the mobile door trigger — static markup cannot tell us which one a real browser shows at a given width, only that both exist', () => {
     const markup = renderToStaticMarkup(<WriterRoomTabs items={items()} />)
     expect(markup).toMatch(/role="tablist"/)

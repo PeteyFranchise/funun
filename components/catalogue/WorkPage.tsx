@@ -7,7 +7,8 @@ import { GuidingLine } from './GuidingLine'
 import { DiaryFeed, type DiaryFeedEntry } from './DiaryFeed'
 import { WorkHeader } from './WorkHeader'
 import { WorkRoster, type WorkRosterMember } from './WorkRoster'
-import { LyricsPad, type LyricsPadBlock, type WriterRoomModule } from './LyricsPad'
+import { LyricsPad, type LyricsPadBlock } from './LyricsPad'
+import { WriterRoomTabs, type WriterRoomTabItem } from './WriterRoomTabs'
 import { LyricCommentsPanel } from './LyricCommentsPanel'
 import { LyricSuggestionPanel } from './LyricSuggestionPanel'
 import { LyricHistoryPanel } from './LyricHistoryPanel'
@@ -77,16 +78,24 @@ import type { WriterRoomLayout } from '@/lib/catalogue/writer-room-layout'
 // already established in plan 11, not a violation of the page/component
 // fetch boundary, which is about READS.
 //
-// LAYOUT (approved 2026-09-04): the writing surface is a private hybrid
-// grid. Lyric blocks, Versions, and Diary may be reordered and may take a
-// full or half desktop row; phones always stack one column. That layout is
-// presentation only. Canonical lyric positions still use the reorder RPC,
-// version numbering remains chronological, and Diary events never reorder.
+// LAYOUT (261004-wr2 slice 2 — supersedes the 2026-09-04 hybrid-grid note
+// this replaced): Takes, Diary, and Notes are whole-song surfaces with no
+// lyric-block anchor (see `.planning/deliberations/
+// writers-room-canvas-vs-tabs.md`) and now render through WriterRoomTabs,
+// above the lyric canvas. The canvas itself holds lyric blocks ONLY — no
+// module is interleaved between them anymore. LyricsPad's own
+// roomModules/roomLayout/onRoomLayoutChange/expandedRoomModuleKey props are
+// deliberately NOT passed from here, which keeps its hybridEnabled branch
+// (`roomModules.length > 0`) permanently off and falls it back to its own
+// already-tested plain sortable list. That branch, and the private
+// per-viewer `work_room_layouts` persistence behind it, are untouched dead
+// code until slice 4 retires them — not this component's job to remove.
 //
 // ORDER (005-C's rule, structural): WorkHeader, presence + compact people
-// controls, then the composer, then AT MOST one GuidingLine, then the hybrid
-// writing surface. Creation still leads; reference modules move only inside
-// that surface and never become gates in front of writing.
+// controls, then the composer, then AT MOST one GuidingLine, then the
+// Takes/Diary/Notes tabs, then the lyric canvas. Creation still leads;
+// reference surfaces move only inside their own tabs and never become
+// gates in front of writing.
 //
 // HYGIENE MOMENTS fire INSIDE the add flows (005-C), never beside them —
 // the small state machine below (`Flow`) is what makes that true: there
@@ -167,7 +176,12 @@ export type WorkPageProps = {
   songPassport?: SongPassportView | null
   /** Latest queued, review-ready, or failed transcription draft for this room. */
   lyricLift?: LyricLiftView | null
-  /** Private per-viewer presentation state; never authoritative song data. */
+  /** Private per-viewer presentation state for LyricsPad's hybrid grid —
+   * permanently disabled as of 261004-wr2 slice 2 (see the LAYOUT comment
+   * above). Accepted here only so the server page's existing prop keeps
+   * type-checking; WorkPage no longer reads or forwards it. Slice 4 is
+   * where this prop, and the work_room_layouts persistence behind it,
+   * actually gets removed. */
   roomLayout?: WriterRoomLayout | null
 }
 
@@ -485,7 +499,6 @@ export function WorkPage({
   hasHumFirstFired,
   songPassport,
   lyricLift = null,
-  roomLayout = null,
 }: WorkPageProps) {
   const router = useRouter()
 
@@ -507,35 +520,19 @@ export function WorkPage({
   const [liveSuggestionCounts, setLiveSuggestionCounts] = useState<Record<string, number>>(suggestionCounts)
   const [trackCommentRefreshes, setTrackCommentRefreshes] = useState<Record<string, number>>({})
   const [studioNoteComposerOpen, setStudioNoteComposerOpen] = useState(false)
-  const [studioNoteDeepLinkOpen, setStudioNoteDeepLinkOpen] = useState(Boolean(highlightedStudioNoteId))
+  // 261004-wr2 slice 2: which whole-song tab a deep link should force open.
+  // Computed here (not only in an effect) so the INITIAL render — including
+  // Jest's effect-less renderToStaticMarkup — already shows the right tab
+  // for a notification link landing on this page for the first time.
+  const [writerRoomActiveTab, setWriterRoomActiveTab] = useState<string | null>(
+    () => (highlightedStudioNoteId ? 'notes' : null)
+  )
   const [activeLyricLift, setActiveLyricLift] = useState<LyricLiftView | null>(lyricLift)
   const [lyricLiftStartError, setLyricLiftStartError] = useState<string | null>(null)
   const [lyricLiftStartingVersionId, setLyricLiftStartingVersionId] = useState<string | null>(null)
-  const roomLayoutSaveQueueRef = useRef<Promise<void>>(Promise.resolve())
-
   const handleLyricLiftChange = useCallback((next: LyricLiftView) => {
     setActiveLyricLift(next)
   }, [])
-
-  const handleRoomLayoutChange = useCallback((next: WriterRoomLayout): Promise<void> => {
-    const save = async () => {
-      const response = await fetch(`/api/works/${workId}/layout`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(next),
-      })
-      if (response.ok) return
-      const body = (await response.json().catch(() => ({}))) as { error?: string }
-      throw new Error(body.error ?? "Couldn't save your room layout — try again.")
-    }
-
-    // A quick drag followed by a width change must land in the same order the
-    // viewer made them. Serializing these tiny JSON writes prevents a slower
-    // older response from overwriting the newest layout.
-    const queued = roomLayoutSaveQueueRef.current.catch(() => undefined).then(save)
-    roomLayoutSaveQueueRef.current = queued
-    return queued
-  }, [workId])
 
   useEffect(() => {
     setLiveLyricsBlocks(lyricsBlocks)
@@ -769,8 +766,7 @@ export function WorkPage({
   const lyricsRef = useRef<HTMLDivElement | null>(null)
   const lyricLiftRef = useRef<HTMLDivElement | null>(null)
   const rosterRef = useRef<HTMLDivElement | null>(null)
-  const diaryRef = useRef<HTMLDivElement | null>(null)
-  const studioNotesRef = useRef<HTMLDivElement | null>(null)
+  const writerRoomTabsRef = useRef<HTMLDivElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [audioUploadPhase, setAudioUploadPhase] = useState<'preparing' | 'uploading' | 'finalizing' | null>(null)
   const [audioUploadError, setAudioUploadError] = useState<string | null>(null)
@@ -819,26 +815,47 @@ export function WorkPage({
     rosterRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  function scrollToDiary() {
-    diaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  // 261004-wr2 slice 2: Takes/Diary/Notes are tabs now, not scroll targets.
+  // Every deep link into one of them sets the active tab (WriterRoomTabs'
+  // own `activeKey`) and brings the shared tab section into view, instead
+  // of scrolling to a ref CSS now hides.
+  //
+  // `activeKey` is a REQUEST, not a permanent override (fixed in Slice 3 —
+  // see WriterRoomTabs.tsx's own `syncedActiveKey` comment for the
+  // mechanism): the first time `writerRoomActiveTab` changes to a new
+  // value, WriterRoomTabs moves its internal tab (and, on mobile, opens its
+  // door) to match; any tab the user clicks after that wins, even while
+  // this value sits unchanged below. Composer close additionally clears the
+  // value back to `null` for the one deep link with a natural "I'm done"
+  // signal (see `onComposerOpenChange` below, in the Notes tab item) — not
+  // because leaving it set would re-pin anything (it no longer can), but so
+  // a later read of `writerRoomActiveTab` here (e.g. the scroll-into-view
+  // effect below) doesn't act on a stale target. This still needs a browser
+  // pass before merge (see the plan's own checkpoint:human-verify note for
+  // this slice): confirm the Takes/Diary tabs stay clickable after one of
+  // these deep links fires, and that a deep link while the mobile door is
+  // closed actually opens it.
+  function openDiaryTab() {
+    setWriterRoomActiveTab('diary')
   }
 
   function openStudioNotes() {
     setStudioNoteComposerOpen(true)
+    setWriterRoomActiveTab('notes')
   }
 
   useEffect(() => {
-    if (!studioNoteComposerOpen && !studioNoteDeepLinkOpen) return
+    if (!writerRoomActiveTab) return
     const frame = window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
-        studioNotesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        writerRoomTabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       })
     })
     return () => window.cancelAnimationFrame(frame)
-  }, [studioNoteComposerOpen, studioNoteDeepLinkOpen])
+  }, [writerRoomActiveTab])
 
   useEffect(() => {
-    if (highlightedStudioNoteId) setStudioNoteDeepLinkOpen(true)
+    if (highlightedStudioNoteId) setWriterRoomActiveTab('notes')
   }, [highlightedStudioNoteId])
 
   // ─── The AI question, inline (005-C) — fires after an add, never as a
@@ -1489,10 +1506,16 @@ export function WorkPage({
   const unresolvedLyricByBlock = useMemo(() => countUnresolvedLyricNotesByBlock(studioNotes), [studioNotes])
   const versionsDescription = `${activeVersionCount} active ${activeVersionCount === 1 ? 'take' : 'takes'}`
     + (unresolvedAudioTotal > 0 ? ` · ${unresolvedAudioTotal} unresolved ${unresolvedAudioTotal === 1 ? 'comment' : 'comments'}` : '')
-  const roomModules: WriterRoomModule[] = [
+  // 261004-wr2 slice 2: these three are whole-song surfaces with no lyric-
+  // block anchor (see the deliberation cited in the LAYOUT comment above) —
+  // moved verbatim out of the old roomModules array into WriterRoomTabs'
+  // own item shape. Same JSX, same derived descriptions/counts, reused
+  // unmodified (label-integrity-funun: a tab badge must never recompute a
+  // count a surface elsewhere already owns).
+  const writerRoomTabItems: WriterRoomTabItem[] = [
     {
-      key: 'module:versions',
-      label: 'Versions',
+      key: 'takes',
+      label: 'Takes',
       description: versionsDescription,
       content: (
         <VersionsList
@@ -1513,40 +1536,47 @@ export function WorkPage({
       ),
     },
     {
-      key: 'module:diary',
+      key: 'diary',
       label: 'Diary',
       description: 'Chronological song history',
       content: (
-        <div ref={diaryRef}>
-          <DiaryFeed
-            entries={diaryEntries}
-            layout="compact"
-            collapseAfter={6}
-            onRemoveNote={eventId => void handleRemoveNote(eventId)}
-          />
-        </div>
+        <DiaryFeed
+          entries={diaryEntries}
+          layout="compact"
+          collapseAfter={6}
+          onRemoveNote={eventId => void handleRemoveNote(eventId)}
+        />
       ),
     },
     {
-      key: 'module:notes',
-      label: 'Studio Notes',
+      key: 'notes',
+      label: 'Notes',
       description: `${openStudioNoteCount} open ${openStudioNoteCount === 1 ? 'thread' : 'threads'}`,
       content: (
-        <div ref={studioNotesRef}>
-          <StudioNotes
-            workId={workId}
-            viewerUserId={presence.viewer.userId}
-            notes={songStudioNotes}
-            participants={studioNoteParticipants}
-            composerOpen={studioNoteComposerOpen}
-            onComposerOpenChange={setStudioNoteComposerOpen}
-            highlightedNoteId={highlightedStudioNoteId}
-            onChanged={() => {
-              announceRoomActivity('recently_active')
-              router.refresh()
-            }}
-          />
-        </div>
+        <StudioNotes
+          workId={workId}
+          viewerUserId={presence.viewer.userId}
+          notes={songStudioNotes}
+          participants={studioNoteParticipants}
+          composerOpen={studioNoteComposerOpen}
+          onComposerOpenChange={open => {
+            setStudioNoteComposerOpen(open)
+            // Clear this value back to null on an explicit close — the one
+            // deep-link trigger here with a natural "I'm done" signal to
+            // hook. See the openDiaryTab/openStudioNotes comment above:
+            // WriterRoomTabs no longer treats a value staying set as a
+            // reason to keep fighting the user, but clearing it here still
+            // keeps this component's own `writerRoomActiveTab` honest for
+            // its scroll-into-view effect, instead of describing a target
+            // that's no longer the point.
+            if (!open) setWriterRoomActiveTab(current => (current === 'notes' ? null : current))
+          }}
+          highlightedNoteId={highlightedStudioNoteId}
+          onChanged={() => {
+            announceRoomActivity('recently_active')
+            router.refresh()
+          }}
+        />
       ),
     },
   ]
@@ -1688,10 +1718,17 @@ export function WorkPage({
         </div>
       )}
 
-      {/* Approved hybrid room: lyric blocks and the two reference modules
-          share one personal grid. Their arrangement is presentation only;
-          lyric reorder, take order, and Diary chronology keep their own
-          authoritative persistence paths. */}
+      {/* 261004-wr2 slice 2: Takes, Diary, and Notes — whole-song surfaces
+          with no lyric-block anchor — get their own tab strip here, above
+          the canvas, instead of being interleaved between lyric blocks. */}
+      <div ref={writerRoomTabsRef} className="mt-6">
+        <WriterRoomTabs items={writerRoomTabItems} activeKey={writerRoomActiveTab} />
+      </div>
+
+      {/* The lyric canvas: blocks only, no interleaved modules. Lyric
+          reorder keeps its own authoritative persistence path (plan 07's
+          reorder RPC); Diary chronology and Takes order are unaffected by
+          anything presentation-only here. */}
       <div ref={lyricsRef} className="mt-6">
         <p className="mb-2 text-[13px] font-semibold text-white">Writing surface</p>
         <LyricsPad
@@ -1715,10 +1752,6 @@ export function WorkPage({
           onInsertRepeat={handleInsertRepeat}
           onReorder={handleReorder}
           onPasteImport={handlePasteImport}
-          roomModules={roomModules}
-          roomLayout={roomLayout}
-          onRoomLayoutChange={handleRoomLayoutChange}
-          expandedRoomModuleKey={studioNoteComposerOpen || studioNoteDeepLinkOpen ? 'module:notes' : null}
         />
       </div>
 
@@ -1992,7 +2025,7 @@ export function WorkPage({
         <Toast
           message={toast}
           onView={() => {
-            scrollToDiary()
+            openDiaryTab()
             setToast(null)
           }}
           onDismiss={() => setToast(null)}

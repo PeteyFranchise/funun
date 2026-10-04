@@ -26,6 +26,7 @@ function buildService(responses: {
   buyerOrgs?: Record<string, unknown> | null
   selectsTracks?: Record<string, unknown> | null
   selectsTracksCount?: number
+  syncListing?: Record<string, unknown> | null
   updateResult?: Record<string, unknown> | null
   insertResult?: Record<string, unknown> | null
 }) {
@@ -35,6 +36,7 @@ function buildService(responses: {
     if (table === 'selects') return responses.selects ?? null
     if (table === 'buyer_orgs') return responses.buyerOrgs ?? null
     if (table === 'selects_tracks') return responses.selectsTracks ?? null
+    if (table === 'sync_listings') return responses.syncListing ?? null
     return null
   }
 
@@ -46,6 +48,10 @@ function buildService(responses: {
     // table never collide (both call .from(table) fresh, but each chain is
     // independent).
     let mode: 'select' | 'insert' | 'update' | 'delete' = 'select'
+    // sync_listings-only: records .eq('status', v) filters on THIS chain so
+    // maybeSingle can honor a status mismatch — needed to test that the
+    // admission gate actually reads status, not just row existence.
+    const eqFilters: Record<string, unknown> = {}
     const builder: Record<string, unknown> = {}
     const record = (method: string, args: unknown[]) => calls.push({ table, method, args })
 
@@ -55,6 +61,9 @@ function buildService(responses: {
     }
     builder.eq = (...args: unknown[]) => {
       record('eq', args)
+      if (table === 'sync_listings' && typeof args[0] === 'string') {
+        eqFilters[args[0]] = args[1]
+      }
       return builder
     }
     builder.is = (...args: unknown[]) => {
@@ -92,7 +101,12 @@ function buildService(responses: {
       record('maybeSingle', [])
       if (mode === 'update') return { data: responses.updateResult ?? null, error: null }
       if (mode === 'insert') return { data: responses.insertResult ?? null, error: null }
-      return { data: defaultRowFor(table), error: null }
+      const row = defaultRowFor(table)
+      if (table === 'sync_listings' && row && 'status' in eqFilters) {
+        const rowStatus = (row as { status?: unknown }).status
+        if (rowStatus !== eqFilters.status) return { data: null, error: null }
+      }
+      return { data: row, error: null }
     }
     builder.single = async () => {
       record('single', [])
@@ -236,7 +250,7 @@ describe('softDeleteSelects', () => {
 })
 
 describe('addSelectsTrack (idempotency)', () => {
-  it('returns the existing non-removed row unchanged (no duplicate insert)', async () => {
+  it('returns the existing non-removed row unchanged (no duplicate insert, no admission check)', async () => {
     const existingRow = {
       id: 'ffffffff-ffff-ffff-ffff-ffffffffffff',
       selects_id: SELECTS_ID,
@@ -249,17 +263,114 @@ describe('addSelectsTrack (idempotency)', () => {
       removed_by: null,
       created_at: '2026-01-01T00:00:00Z',
     }
+    // No syncListing response provided — if the already-present-unchanged
+    // path incorrectly ran the admission check, it would read "not
+    // admitted" and this would fail, proving this branch never queries it.
     const service = buildService({ selectsTracks: existingRow })
     const result = await addSelectsTrack(service, {
       selectsId: SELECTS_ID,
       trackId: 'track-1',
       addedBy: AE_ID,
     })
-    expect(result).toEqual(existingRow)
+    expect(result).toEqual({ ok: true, track: existingRow })
 
     const insertCall = (service as unknown as { calls: { table: string; method: string }[] }).calls.find(
       c => c.table === 'selects_tracks' && c.method === 'insert'
     )
     expect(insertCall).toBeUndefined()
+  })
+})
+
+describe('addSelectsTrack (admission gate — closes the live Selects exposure)', () => {
+  // Reproduces the exposure reported 2026-10-04: lib/selects/persistence.ts
+  // previously inserted a brand-new selects_tracks row for ANY trackId with
+  // no sync_listings check at all, so a track never admitted to the Crate
+  // (sync_listings.status != 'admitted', or no row at all) could be added to
+  // a Selects and reach a buyer through the public /selects/[token] player.
+  it('FAILS WITHOUT THE FIX: refuses to insert a brand-new row for a track with no admitted sync_listings row', async () => {
+    const service = buildService({ selectsTracks: null, syncListing: null, insertResult: null })
+    const result = await addSelectsTrack(service, {
+      selectsId: SELECTS_ID,
+      trackId: 'unadmitted-track',
+      addedBy: AE_ID,
+    })
+    expect(result).toEqual({ ok: false, reason: 'not_admitted' })
+
+    const insertCall = (service as unknown as { calls: { table: string; method: string }[] }).calls.find(
+      c => c.table === 'selects_tracks' && c.method === 'insert'
+    )
+    expect(insertCall).toBeUndefined()
+  })
+
+  it('refuses the SAME way when the track has a sync_listings row that is NOT status=admitted', async () => {
+    const service = buildService({
+      selectsTracks: null,
+      syncListing: { id: 'listing-1', status: 'applied' },
+      insertResult: null,
+    })
+    const result = await addSelectsTrack(service, {
+      selectsId: SELECTS_ID,
+      trackId: 'pending-track',
+      addedBy: AE_ID,
+    })
+    expect(result).toEqual({ ok: false, reason: 'not_admitted' })
+
+    const insertCall = (service as unknown as { calls: { table: string; method: string }[] }).calls.find(
+      c => c.table === 'selects_tracks' && c.method === 'insert'
+    )
+    expect(insertCall).toBeUndefined()
+  })
+
+  it('allows a brand-new insert when the track has its own admitted sync_listings row', async () => {
+    const insertedRow = {
+      id: 'aaaaaaaa-1111-1111-1111-111111111111',
+      selects_id: SELECTS_ID,
+      track_id: 'admitted-track',
+      note: null,
+      position: 0,
+      added_by: AE_ID,
+      source: 'crate',
+      removed_at: null,
+      removed_by: null,
+      created_at: '2026-01-01T00:00:00Z',
+    }
+    const service = buildService({
+      selectsTracks: null,
+      syncListing: { id: 'listing-2', status: 'admitted' },
+      insertResult: insertedRow,
+    })
+    const result = await addSelectsTrack(service, {
+      selectsId: SELECTS_ID,
+      trackId: 'admitted-track',
+      addedBy: AE_ID,
+    })
+    expect(result).toEqual({ ok: true, track: insertedRow })
+  })
+
+  it('refuses to un-remove a previously soft-removed row when the track is no longer admitted', async () => {
+    const removedRow = {
+      id: 'bbbbbbbb-2222-2222-2222-222222222222',
+      selects_id: SELECTS_ID,
+      track_id: 'withdrawn-track',
+      note: null,
+      position: 0,
+      added_by: AE_ID,
+      source: 'crate',
+      removed_at: '2026-02-01T00:00:00Z',
+      removed_by: AE_ID,
+      created_at: '2026-01-01T00:00:00Z',
+    }
+    const service = buildService({ selectsTracks: removedRow, syncListing: null, updateResult: null })
+    const result = await addSelectsTrack(service, {
+      selectsId: SELECTS_ID,
+      trackId: 'withdrawn-track',
+      addedBy: AE_ID,
+    })
+    expect(result).toEqual({ ok: false, reason: 'not_admitted' })
+
+    const updateCall = (service as unknown as { calls: { table: string; method: string }[] }).calls.find(
+      c => c.table === 'selects_tracks' && c.method === 'update'
+    )
+    expect(updateCall).toBeUndefined()
   })
 })

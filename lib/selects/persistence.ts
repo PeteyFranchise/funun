@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { isAssignedToOrg } from '@/lib/staff/scope'
+import { isAdmittedToSyncLibrary } from '@/lib/deals/catalog'
 import type { StaffRole } from '@/lib/admin/staff-role'
 import type { Selects, SelectsTrack, SelectsTrackSource } from './types'
 
@@ -186,14 +187,53 @@ export type AddSelectsTrackInput = {
   addedBy: string
 }
 
+export type AddSelectsTrackResult =
+  | { ok: true; track: SelectsTrack }
+  | { ok: false; reason: 'not_admitted' }
+
+/**
+ * True only when `trackId` has its OWN sync_listings row with
+ * status = 'admitted' — admission is SONG-level (lib/deals/catalog-query.ts's
+ * loadCatalogPage header comment), so this is a per-track existence check,
+ * not the per-project has_admitted_sync_listing signal that gate computes.
+ * Delegates the actual boolean test to isAdmittedToSyncLibrary
+ * (lib/deals/catalog.ts) — the SAME single admission-authority predicate
+ * loadCatalogPage and authorizeRequestTarget already call — so "admitted"
+ * never grows a second, drifted definition here (T-26-24 discipline).
+ */
+async function isTrackAdmittedToSyncLibrary(service: SupabaseClient, trackId: string): Promise<boolean> {
+  const { data } = await service
+    .from('sync_listings')
+    .select('id')
+    .eq('track_id', trackId)
+    .eq('status', 'admitted')
+    .limit(1)
+    .maybeSingle()
+  return isAdmittedToSyncLibrary({ has_admitted_sync_listing: data != null })
+}
+
 /**
  * Idempotent add (R11 AC): re-adding a track already present (non-removed)
  * returns the SAME row unchanged — never a second selects_tracks row. A
  * previously soft-removed row is un-removed (removed_at/removed_by cleared)
  * rather than inserting a duplicate, preserving the original added_by/
  * created_at provenance.
+ *
+ * 2026-10-04 (closes a live exposure): a track may only be newly added — a
+ * fresh insert OR un-removing a previously soft-removed row — when it has
+ * its own ADMITTED sync_listings row. Before this check, any staff member
+ * (ae/bd/leadership) could add an unadmitted track straight onto a Selects,
+ * and the public /selects/[token] player (app/selects/[token]/page.tsx)
+ * renders every non-removed row with no admission filter of its own — so an
+ * unadmitted, possibly unlicensable song could reach a buyer. Returning the
+ * SAME already-present row unchanged is deliberately NOT gated here: that
+ * path adds nothing new, and gating it would turn a later admission
+ * withdrawal into a false idempotency break for a row that was already live.
  */
-export async function addSelectsTrack(service: SupabaseClient, input: AddSelectsTrackInput): Promise<SelectsTrack> {
+export async function addSelectsTrack(
+  service: SupabaseClient,
+  input: AddSelectsTrackInput
+): Promise<AddSelectsTrackResult> {
   const { data: existing } = await service
     .from('selects_tracks')
     .select(SELECTS_TRACK_COLUMNS)
@@ -204,7 +244,10 @@ export async function addSelectsTrack(service: SupabaseClient, input: AddSelects
   if (existing) {
     const row = existing as SelectsTrack
     if (row.removed_at === null) {
-      return row
+      return { ok: true, track: row }
+    }
+    if (!(await isTrackAdmittedToSyncLibrary(service, input.trackId))) {
+      return { ok: false, reason: 'not_admitted' }
     }
     const { data, error } = await service
       .from('selects_tracks')
@@ -213,7 +256,11 @@ export async function addSelectsTrack(service: SupabaseClient, input: AddSelects
       .select(SELECTS_TRACK_COLUMNS)
       .single()
     if (error || !data) throw new Error(`Failed to re-add track: ${error?.message ?? 'unknown error'}`)
-    return data as SelectsTrack
+    return { ok: true, track: data as SelectsTrack }
+  }
+
+  if (!(await isTrackAdmittedToSyncLibrary(service, input.trackId))) {
+    return { ok: false, reason: 'not_admitted' }
   }
 
   const nextPosition = await nextSelectsTrackPosition(service, input.selectsId)
@@ -231,7 +278,7 @@ export async function addSelectsTrack(service: SupabaseClient, input: AddSelects
     .single()
 
   if (error || !data) throw new Error(`Failed to add track: ${error?.message ?? 'unknown error'}`)
-  return data as SelectsTrack
+  return { ok: true, track: data as SelectsTrack }
 }
 
 /**
