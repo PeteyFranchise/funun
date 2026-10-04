@@ -55,6 +55,20 @@ import { verifyArtifact, PROHIBITED_LITERALS } from './verify-marketing-artifact
 const FIXTURE_DIR = join(__dirname, '__fixtures__', 'marketing-sanitizer')
 const fixture = (name: string): string => readFileSync(join(FIXTURE_DIR, name), 'utf8')
 
+describe('marketing brand header', () => {
+  const artifact = readFileSync(join(process.cwd(), ARTIFACT_OUTPUT_PATH), 'utf8')
+
+  it('keeps the approved pronunciation adjacent to the Funūn wordmark', () => {
+    expect(artifact).toContain(
+      '<span class="glyph" aria-hidden="true"></span><span>Fun&#363;n</span><em>(fuh-NOON)</em>',
+    )
+  })
+
+  it('does not hide the pronunciation at narrow viewport widths', () => {
+    expect(artifact).not.toContain('@media(max-width:560px){.navmark em{display:none}}')
+  })
+})
+
 // ─── Task 1: marketing-assets.ts ────────────────────────────────────────
 
 describe('verifyFrozenSource', () => {
@@ -545,6 +559,18 @@ describeIfArtifact('the real generated artifact', () => {
   it('preserves main{padding-top:44px} and the body data attributes', () => {
     expect(html).toContain('main{padding-top:44px}')
     expect(html).toContain('<body data-bg="black" data-hero="stream">')
+  })
+
+  it('supports one-tap collaborator details without native touch selection callouts', () => {
+    expect(html).toContain('tap or hover a face for details')
+    expect(html).not.toContain('hover a face for their details')
+    expect(html).toContain('-webkit-touch-callout:none')
+    expect(html).toContain("const d=document.createElement('button')")
+    expect(html).toContain("el.addEventListener('pointerup'")
+    expect(html).toContain('const tapped=pressedNode')
+    expect(html).toContain("e.pointerType==='touch'")
+    expect(html).toContain("el.addEventListener('contextmenu',e=>e.preventDefault())")
+    expect(html).toContain("el.addEventListener('selectstart',e=>e.preventDefault())")
   })
 
   it('never leaves the nonce placeholder token missing a surrounding <script nonce=...> tag', () => {
