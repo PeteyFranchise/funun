@@ -406,3 +406,51 @@ Funūn Team Member would otherwise be guessing with the least context.
 **Worth re-weighing §7's scope once the in-flight deliberation reports.** The migration may be
 smaller than it looked, and the "say I cannot determine" fallback may cover a much narrower set of
 cases than first assumed.
+
+---
+
+## 10. work→track link: DECIDED — add the direct link (owner, 2026-10-04)
+
+### What the deliberation found
+
+`.planning/deliberations/2026-10-04-work-to-track-eligibility-resolution.md` (branch
+`work-track-eligibility-deliberation-2026-10-04`) established three things:
+
+1. **The link was never deliberately refused.** Migration 135's "deliberately absent" comment
+   (`135_works_core.sql:99-121`) refuses exactly two things: a reverse pointer from `works` to
+   `split_sheets`, and an artist-labels column. **Track linkage is not among them** — an
+   unaddressed gap, not a reversed decision. The worry that prompted this investigation is cleared.
+2. **The correspondence already exists** for Song-Passport-graduated tracks:
+   `track_id → master_designation_id → work_version_id`, and separately
+   `→ passport_id → song_passports.work_id` (UNIQUE). FK-enforced, append-only, written atomically
+   at graduation (migration 154). It is queried today **only forwards**
+   (`lib/song-passport/repository.ts:32`); nothing reads it track→work.
+3. **It does not cover legacy uploads.** The still-live legacy route
+   (`app/api/vault/[projectId]/tracks/route.ts`) creates tracks with **zero** connection to
+   `works`, and no `tracks.work_id` column exists anywhere.
+
+**Correction carried from that document:** the earlier claim that Crate eligibility "is stored on
+the `ai_entries` row" is true only of the **citation text**. The eligibility verdict itself is
+computed transiently and **never persisted**. This makes "denormalise the answer at graduation" a
+considerably larger step than first framed.
+
+### Decided
+
+**Add the direct link**, on top of the existing chain. Recommended alternative — read the chain
+backwards with no migration — was **put to the owner and declined**; he chose the permanent model.
+
+**A migration is required and is human-gated. The owner pushes it. An executor must NEVER run
+`supabase db push`.**
+
+### Three constraints that make this safe
+
+1. **Null means "we do not know" — never "no work."** Legacy tracks have no relationship to
+   recover, so the column stays empty for them, and empty must route to the owner's §7 rule
+   (*"cannot determine, check by hand"*) rather than to a confident negative. A nullable column
+   read as a negative is precisely the label-integrity defect this project keeps finding.
+2. **Written in the same transaction as graduation, derived from the same facts as the chain.**
+   Two records of one truth can drift; written atomically from one source they cannot. The chain
+   stays authoritative; a disagreement between them is a bug worth detecting, not a tie to break.
+3. **The back-fill is partial and must say so.** Song-Passport-graduated tracks can be filled from
+   the existing chain. Legacy uploads cannot be filled honestly and must be left null — not
+   guessed at, not defaulted.
