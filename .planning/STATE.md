@@ -4,12 +4,12 @@ milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
-status: Phases 39 and 40 SHIPPED. Migration ceiling 227 applied. Phase 41 roadmapped, not yet planned
-stopped_at: Nothing mid-flight. Next action is /gsd-plan-phase 41, or a deferred item
-last_updated: "2026-10-04T05:09:32.983Z"
-last_activity: 2026-09-13
+status: Phases 39 and 40 SHIPPED. Migration ceiling 227 applied. Phase 41 roadmapped, not yet planned. Phase 50 (The Crate Submissions Door) roadmapped 2026-10-04, not yet discussed or planned
+stopped_at: Nothing mid-flight. Next action is /gsd-plan-phase 41, /gsd-discuss-phase 50, or a deferred item
+last_updated: "2026-10-04T12:00:00.000Z"
+last_activity: 2026-10-04
 progress:
-  total_phases: 49
+  total_phases: 50
   completed_phases: 39
   total_plans: 341
   completed_plans: 338
@@ -31,6 +31,35 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 > this paragraph remains the explicit Phase 31.2 record until its own completion pass occurs.
 
 ## Current Position
+
+### UPDATE 2026-10-04 — Phase 50 roadmapped (not yet discussed or planned)
+
+**The Crate Submissions Door (valve, invites, rights-enforced advance)** added to
+`.planning/ROADMAP.md` as Phase 50, from a completed, owner-ratified 16-section deliberation
+(`.planning/deliberations/2026-10-04-owner-decisions-submissions-and-gate-0.md`) and its companion
+work→track eligibility deliberation. Extends the existing `/admin/sync-library` staff queue (Phase
+26/30) — opens a public no-invite submission door behind a leadership-only valve, adds a Funūn
+Team Member invite door that bypasses the valve, enforces AI-provenance eligibility at the moment
+a song advances into The Crate, and adds a staff-only multi-reviewer collaborative surface.
+
+Ten slices pre-identified (not yet discussed/planned) in
+`.planning/phases/50-crate-submissions-door-valve-rights-enforcement/50-SLICES.md`: the valve must
+ship before the public door (hard ordering, not reorderable — the door's migration edits the live
+`handle_new_user()` trigger and reads the valve's table); eligibility enforcement (Slice 6) has a
+hard external dependency on migration 230, planned but unpushed via quick task `261004-wtl`; the
+same slice also touches the same admit route as the unmerged `anr-sync-library-visibility` branch.
+18 requirements registered (CSUB-01..CSUB-18) in REQUIREMENTS.md.
+
+**A pre-existing, phase-independent exposure was found while grounding this roadmap pass:**
+`addSelectsTrack()` (`lib/selects/persistence.ts:196-235`) and its route
+(`app/api/admin/selects/[id]/tracks/route.ts`) perform no server-side check that a track is
+admitted to The Crate before adding it to a Selects — any current `ae`/`bd`/`leadership` staff
+member can already add an unadmitted track today, reachable via the public `/selects/[token]`
+player. Recorded as Slice 9 in the breakdown; does not depend on the rest of Phase 50 and could
+ship as its own quick task immediately.
+
+**Nothing executed. No code or migration written this pass** — roadmap, requirements, and the
+slice-breakdown planning artifact only.
 
 ### UPDATE 2026-09-19 — Phases 39 and 40 shipped; nothing mid-flight
 

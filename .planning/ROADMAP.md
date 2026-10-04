@@ -14,6 +14,7 @@
 - 🧭 **Playbook Releases 32–39 — Enterprise Maturity Roadmap** — proposed sequence after Release 31 activation evidence: R32 Integration Hub, R33 AI Doctrine Studio, R34 Coverage & Continuity, R35 Audit & Evidence Packages, R36 Mobile & Offline Field Guide, R37 Knowledge Health Intelligence, R38 Partner Enablement Portals, and R39 Business Continuity & Recovery. These are roadmap candidates, not production commitments; each remains gated by observed need, privacy/security/legal/accessibility review, and explicit owner approval. See `.planning/deliberations/playbook-releases-32-39-roadmap.md`.
 - 📝 **Post–Phase 38 — Client Partner Qualification Gameplan** — install the reusable BDT qualification workflow required by the Business Development Doctrine, including a non-blocking organic-buyer fast path, documented access recommendation, authorized verification boundaries, and the BDT-to-AE joint-ownership handoff. Tracked as Phase 38.3 below.
 - 📝 **Phase 41 — Collaborator Discovery & Mobile Contact Matching** — replace the Collaborators room's email-first fork with one coherent three-path flow: Find on Funūn by name or `@handle` and Add to roster; Invite by email when no discoverable member is found; Enter manually when the member already holds the person's professional/rights information. A later native-mobile slice may offer opt-in `Find from contacts`, but only after privacy-preserving matching, member discoverability consent, blocking, data-minimization, anti-enumeration, platform-policy, legal, and security review. Neither path may silently connect, message, invite, credit, grant project access, or declare rights. Detailed phase entry below.
+- 📝 **Phase 50 — The Crate Submissions Door (valve, invites, rights-enforced advance)** — owner-decided 2026-10-04 (`.planning/deliberations/2026-10-04-owner-decisions-submissions-and-gate-0.md`): extends the existing `/admin/sync-library` staff queue — never a second one — to open a public, no-invite submission door gated by a leadership-only valve, add a Funūn Team Member invite door (bypasses the valve), enforce AI-provenance eligibility at the moment of advance (consumes migration 230, planned separately by quick task `261004-wtl`), and add a staff-only multi-reviewer collaborative surface. Full slice breakdown: `.planning/phases/50-crate-submissions-door-valve-rights-enforcement/50-SLICES.md`. Detailed phase entry below.
 - 🔭 **Post–Release 39 research — Playbook Long-Horizon Exploration** — preserve, but do not yet schedule, research into workforce skills and capacity forecasting; regulatory and jurisdiction-specific overlays; advanced organizational simulations; cross-department benchmarking; voice-based training; acquisition/merger onboarding; anonymous doctrine-quality reporting; enterprise partner administration; historical decision intelligence; and custom automation/integration marketplaces. Each requires evidence, explicit human-decision boundaries, and security/privacy/legal/accessibility review before it can receive a release number. See `.planning/deliberations/playbook-post-39-research-roadmap.md`.
 - 🧭 **Contract Locker final destination — Independent Legal Services** — after governed templates and narrow self-service terms, partner with qualified law firms so users can request bespoke matters under direct firm engagement and firm-set a la carte pricing; requires lengthy GSD/legal discussion, outside business development and internal platform development)
 - 📝 **Near-term — Phase 37.2: Writer's Room Live Collaboration** — block-level presence, section-aware lyrics/notes editing, soft locks, snapshots, disconnect recovery and meaningful diary events; owner-approved for GSD discussion and planning after the Phase 37.1 device gate)
@@ -3666,3 +3667,113 @@ A catalogue is not just songs. Anything the person would lose by leaving:
 The homepage may remain live with the truthful interim copy. Do not restore the broader
 whole-account-export claim until this phase ships and is verified. The implementation remains a
 separate security-sensitive phase rather than a first-week beta patch.
+
+---
+
+### Phase 50: The Crate Submissions Door (valve, invites, rights-enforced advance)
+
+**Status:** Roadmapped 2026-10-04, from a completed owner-ratified deliberation (16 sections, all
+decided unless marked otherwise). Not yet discussed, not yet planned. Full slice breakdown with
+file-level grounding, dependency order, migration flags, and verification notes:
+`.planning/phases/50-crate-submissions-door-valve-rights-enforcement/50-SLICES.md`.
+
+**Goal:** Submitting a song becomes Funūn's front door as well as its invite-only one — anyone may
+create an account for the sole purpose of submitting, a Funūn Team Member may bring someone in
+directly, and leadership can shut unsolicited intake when the team is overwhelmed — while the
+moment a song actually advances into The Crate (licensable, buyer-visible) finally enforces
+AI-provenance eligibility and splits/sample-clearance state instead of trusting the reviewer to
+have checked.
+
+**This phase extends, not replaces, `/admin/sync-library`** (`app/(admin)/admin/sync-library/page.tsx`)
+— the existing staff review queue, with its `LEGAL_TRANSITIONS` state machine
+(`lib/sync-library/submission.ts:31-41`), `logStaffAction` audit, `SyncReadinessWorklist`, and
+blanket-agreement wiring already built. A plan that stands up a second submissions screen is wrong.
+
+**Depends on:**
+- Phase 26 (Sync-Library Inclusion & Artist Submission) and Phase 30 (The Crate / Sync Readiness) —
+  the surface and tables this phase extends.
+- Phase 27 (Artist Invitation-Only Onboarding) — this phase partially reopens what Phase 27 closed,
+  behind a new valve; Phase 27's `handle_new_user()` gate (migration 098) is read and extended, not
+  replaced.
+- **External, not built by this phase:** migration 230 (`tracks.work_id` direct link) and
+  `resolveTrackAiProvenance()`, already planned and code-complete but unpushed, via quick task
+  `261004-wtl`. Slice 6 (below) cannot ship until the owner has pushed that migration.
+- **In-flight, not built by this phase:** branch `anr-sync-library-visibility` (A&R admit/reject/
+  quality-review/view permissions on the same queue) — unmerged at roadmap time, edits the same
+  admit route Slice 6 edits. Confirm merge order before planning Slice 6.
+
+**Requirements:** CSUB-01 through CSUB-18 (see REQUIREMENTS.md).
+
+**Success Criteria** (what must be TRUE):
+1. An existing Member can submit up to 3 songs in one pass; staff see each as its own independently
+   reviewable, admit/reject/claim-able item — never a bundle.
+2. A brand-new visitor with no invite can create an account for the sole purpose of submitting a
+   song, but only when leadership has left the valve open; when closed, they see why and can join
+   a list or reach the team directly if they have a larger catalogue.
+3. A Funūn Team Member can invite a specific artist to submit a specific publicly shared song, or
+   send a single-use invite to someone with no particular song in mind — both work even when the
+   valve is shut, and the queue shows who invited them and why.
+4. Advancing a song into The Crate enforces AI-provenance eligibility at that instant; when it
+   cannot be determined, staff see "cannot determine, check by hand" — never a confident "clean."
+5. A song accepted but not yet rights-ready is visible and pitchable in the catalogue, routed to
+   "contact" rather than instantly licensable, with staff able to see what's outstanding, prompt
+   the artist, and — only when truly necessary — draft or fill rights data on their behalf in a
+   state the artist must confirm before it takes effect.
+6. The submitting artist sees an honest acknowledgment and, eventually, an honest outcome —
+   including a decline — with zero internal review discussion ever surfacing to them.
+7. Staff reviewing the same submission can leave comments (general and pinned to a moment in the
+   track) and reactions visible only to staff, nudge a colleague who already has access, or grant
+   a look to someone who does not (audited); none of this is visible to the artist, ever.
+8. A submission that has not been admitted cannot be mechanically added to a Selects or reach any
+   buyer-facing surface, regardless of who has been shown it internally.
+
+**UI hint:** yes
+
+**Highest regression risk:** Slice 4 (opening the door) — it is a migration that edits the live
+`handle_new_user()` Postgres trigger that is the ENTIRE existing mechanism preventing unsolicited
+public signup (`supabase/migrations/098_artist_signup_gate.sql`). A defect there is either an open
+hole regardless of valve state, or a broken signup path for every existing account type.
+
+**Cannot be sliced further:** the `handle_new_user()` `CREATE OR REPLACE FUNCTION` edit is one
+atomic statement — there is no partial version. The valve (Slice 3) must already be live, reading
+closed, before that migration is even written — not merely before it ships.
+
+**Needs a human in a browser:** this repo has no jsdom; every interaction-state claim in Slice 10
+(the multi-reviewer surface — comments, moment-pins, reactions, nudge-vs-grant) and the valve's
+two live states in Slice 4 must be verified by a person in an actual browser, not by a component
+test.
+
+**A pre-existing exposure found while grounding this phase, independent of whether Phase 50 ships:**
+`app/api/admin/selects/[id]/tracks/route.ts`'s `POST` handler and
+`lib/selects/persistence.ts:196-235`'s `addSelectsTrack()` perform **zero** server-side check that
+a `track_id` is admitted to The Crate before inserting it into a Selects — only a bare FK and a
+staff-role check. Any current `ae`/`bd`/`leadership` staff member can already add an unadmitted
+track to a Selects today, reachable via the public, unauthenticated `/selects/[token]` player. This
+is Slice 9 in the slice breakdown and does not depend on anything else in this phase — the owner
+may want it fixed as its own quick task immediately rather than waiting.
+
+**Migrations:** Unassigned. Multiple phase slices need one (see the slice breakdown's summary
+table). Claim numbers only at discuss/plan time, after re-checking `supabase/migrations/` AND
+every `.claude/worktrees/*/supabase/migrations/` directory — 229 (`261004-ttq`) and 230
+(`261004-wtl`) are already claimed-but-unapplied by concurrent quick tasks, and
+`228_split_sheet_party_identity_provenance.sql` already exists on disk under a different
+description than STATE.md's own narrative for "migration 228" gives it. Every migration here is
+human-gated; an executor must never run `supabase db push`. Slice 4's trigger edit is reviewed with
+the same weight this project gave migration 190's custody trigger.
+
+**Explicitly excluded from this phase (decided or deferred elsewhere — do not re-add):** the "I'd
+like this looked at" lighter intake door (CUT by the owner, §16 — not deferred, cancelled); bulk
+catalogue intake (§11 — its own future phase); SMS/iMessage outbound (roadmapped separately,
+`2026-10-04-sms-and-imessage-outbound.md`); staff discovery/browse of public music (roadmapped
+separately, `2026-10-04-staff-discovery-of-public-music.md` — the invite door in Slice 5 works from
+an artist's public profile page in the meantime); migration 230 itself and A&R's permission
+widening (both already planned/in-flight elsewhere, consumed here, not rebuilt).
+
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD — run `/gsd-discuss-phase 50`. Ten slices pre-identified in
+  `.planning/phases/50-crate-submissions-door-valve-rights-enforcement/50-SLICES.md`; the hard
+  valve-before-door ordering and the migration-230/A&R-branch external dependencies must be
+  confirmed still true (re-check, do not assume) before planning begins.

@@ -969,7 +969,47 @@ from migration 078** and lets a Phase 21 `co-owner`/`editor` seize custody today
 24, 25, 27. **The 13 deferred to 38.0.2 are safe ONLY while the D-56 kill switch is OFF in
 production** (R-03 + R-07). If the switch goes on before 38.0.2 ships, they stop being safe.
 
+## v1.2 — Phase 50: The Crate Submissions Door Requirements
+
+Derived from `.planning/deliberations/2026-10-04-owner-decisions-submissions-and-gate-0.md`
+(16 sections, owner-ratified 2026-10-04) and its companion
+`.planning/deliberations/2026-10-04-work-to-track-eligibility-resolution.md`. Full slice-level
+grounding (file:line citations, dependency order, migration flags): see
+`.planning/phases/50-crate-submissions-door-valve-rights-enforcement/50-SLICES.md`. These
+requirements extend the existing `/admin/sync-library` surface (Phase 26/30) — none of them stand
+up a second queue.
+
+| ID | Requirement | Decision | Slice |
+|---|---|---|---|
+| CSUB-01 | Member can submit up to 3 songs in one submission; each song becomes its own independently reviewable item | §9 | 1 |
+| CSUB-02 | Submission captures contact info once per person, an ownership question ("yours, or do you represent them?"), and a catalogue-scale flag that routes to a human conversation, never a bulk queue | §5, §11 | 1 |
+| CSUB-03 | How someone arrived (self-serve submission intent, a Crate-submission invite, or ordinary signup) is captured at signup, carried in `user_metadata`, and is never re-derived afterward | §3, §6 | 2, 4 |
+| CSUB-04 | Leadership can close and reopen unsolicited public submissions; the state change is audited | §12 | 3 |
+| CSUB-05 | When closed, a visitor sees why, can join a list to be told when it reopens, and can still reach the team directly if they have a larger catalogue | §12 | 3 |
+| CSUB-06 | Anyone may create an account for the sole purpose of submitting a song, gated server-side (inside the `handle_new_user()` trigger, not app-layer only) by the valve, with no invite required | §12 | 4 |
+| CSUB-07 | A submission already in progress completes even if the valve closes mid-session | §12 | 4 |
+| CSUB-08 | A Funūn Team Member can invite a specific artist to submit a specific song that artist shared publicly; the artist may swap the song before submitting, with a line open to discuss the swap | §13 | 5 |
+| CSUB-09 | A Funūn Team Member can send a single-use, non-shareable, email-bound invite to someone with no particular song in mind | §13 | 5 |
+| CSUB-10 | Both invite types work even when the valve is closed; the review queue shows who invited the artist and why, using a value distinct from the existing `entry_source`/`admin_invited` meaning | §13 | 5 |
+| CSUB-11 | Any Funūn Team Member with queue access can claim a submission for review so two people do not review the same song twice | §4 | (queue display, cross-cutting) |
+| CSUB-12 | Advancing a song into The Crate enforces AI-provenance eligibility at that instant, as an independent precondition from the existing readiness gate; when it cannot be determined, the song is marked for a manual check, never treated as clear | §5, §7, §10 | 6 |
+| CSUB-13 | A song accepted but not yet rights-ready is visible and pitchable in the catalogue, routed to "contact," never instantly licensable | §5 | 6 |
+| CSUB-14 | The artist can see what is outstanding on their song; anything a Funūn Team Member drafted or entered on their behalf is visibly marked as such and takes no effect until the artist confirms it | §5 | 7 |
+| CSUB-15 | The artist sees acknowledgment on submission and the eventual outcome, including a decline, and never sees internal staff review discussion | §4, §15 | 8 |
+| CSUB-16 | A Funūn Team Member can leave a general comment or a comment pinned to a moment in the track on a submission under review, visible only to staff, in a staff-only data store never shared with the artist-facing collaborator-comment table | §15 | 10 |
+| CSUB-17 | A Funūn Team Member can nudge a colleague who already has queue access, or grant a look to someone who does not (e.g. an AE); the two are visually distinguished and the grant is audited via `logStaffAction` | §15 | 10 |
+| CSUB-18 | A submission that is not yet admitted cannot be mechanically added to a Selects or reach any buyer-facing surface, and is visibly marked as not licensable wherever it is shared internally | §15 + a verified gap in `addSelectsTrack()` found while grounding this phase | 9, 10 |
+
+**Explicitly out of scope for Phase 50 (decided or deferred elsewhere — do not register as a gap
+here):** the "I'd like this looked at" lighter intake door (CUT by the owner, §16); bulk catalogue
+intake (§11); SMS/iMessage outbound; staff discovery/browse of public music; migration 230 itself
+and the A&R permission widening on `/admin/sync-library` (both built/in-flight on separate
+branches, consumed by CSUB-12/CSUB-11 respectively, not rebuilt here).
+
+**Coverage:** 18 requirements, 1 phase (Phase 50), 10 slices. CSUB-11 is cross-cutting (queue
+display) rather than owned by one slice.
+
 ---
 ---
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-09-06 — Phase 38.0.1 registered WSR-01..WSR-27 (Workspace Authorization Remediation; slices A + B + E + WSR-27 planned as Phase 38.0.1, C + D proposed as Phase 38.0.2). IDs derived from 38.0.1-CONTEXT.md R-01..R-18; phase-scoped. Prior entry: 2026-09-05 — Phase 38 registered WS-01..WS-31 (Member Organization & Team Workspaces; Slices A–D planned as Phase 38, E–G as 38.1, H–I as 38.2). IDs derived from 38-CONTEXT.md D-01..D-56; phase-scoped. Prior entry: 2026-08-17 — Phase 33 registered PLAYBOOK-01..10 (The Playbook double-sidebar shell + IT Team room read-only v1: `it` StaffRole + owner-run migration 114, Rail 1 entry + Rail 2 rooms/ghosts/role-conditional IT room, 4 markdown-rendered doc pages + Vercel file-tracing, bespoke live Monitoring Dashboard — health/digest/thresholds/vendors/uptime link-out). IDs derived from 33-CONTEXT.md D-01..D-10 (no SPEC.md for this phase); phase-scoped. Prior 2026-08-16 entry: Phase 31 Slice-1 R1/R2/R5/R10/R11/R12 — phase-scoped, distinct from Phase 19's.*
+*Last updated: 2026-10-04 — Phase 50 registered CSUB-01..CSUB-18 (The Crate Submissions Door: valve, invites, rights-enforced advance; 10 slices across the phase, derived from `2026-10-04-owner-decisions-submissions-and-gate-0.md` §16 and the work→track eligibility companion deliberation). IDs derived from the owner-ratified deliberation directly (no separate CONTEXT.md yet — phase not discussed); phase-scoped. Prior entry: 2026-09-06 — Phase 38.0.1 registered WSR-01..WSR-27 (Workspace Authorization Remediation; slices A + B + E + WSR-27 planned as Phase 38.0.1, C + D proposed as Phase 38.0.2). IDs derived from 38.0.1-CONTEXT.md R-01..R-18; phase-scoped. Prior entry: 2026-09-05 — Phase 38 registered WS-01..WS-31 (Member Organization & Team Workspaces; Slices A–D planned as Phase 38, E–G as 38.1, H–I as 38.2). IDs derived from 38-CONTEXT.md D-01..D-56; phase-scoped. Prior entry: 2026-08-17 — Phase 33 registered PLAYBOOK-01..10 (The Playbook double-sidebar shell + IT Team room read-only v1: `it` StaffRole + owner-run migration 114, Rail 1 entry + Rail 2 rooms/ghosts/role-conditional IT room, 4 markdown-rendered doc pages + Vercel file-tracing, bespoke live Monitoring Dashboard — health/digest/thresholds/vendors/uptime link-out). IDs derived from 33-CONTEXT.md D-01..D-10 (no SPEC.md for this phase); phase-scoped. Prior 2026-08-16 entry: Phase 31 Slice-1 R1/R2/R5/R10/R11/R12 — phase-scoped, distinct from Phase 19's.*
