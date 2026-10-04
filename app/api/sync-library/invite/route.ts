@@ -13,7 +13,10 @@ import { buildSyncLibraryInviteNotification } from '@/lib/social/notifications'
 // T-26-17: requireStaff() is the FIRST statement, before any DB read.
 // Curation stays with the broader permissioned-staff role per CONTEXT
 // ("admission stays with the broader permissioned-staff curation role") —
-// leadership AND ae, unlike the leadership-only removal route.
+// leadership, ae, AND anr, unlike the leadership-only removal route.
+//
+// OWNER DECISION 2026-10-04 ("A&R gets artist invite capabilities from
+// here on out."): widened from leadership + ae to leadership + ae + anr.
 
 // Statuses that occupy capability_grants_active_uniq (migration 042) — an
 // existing row in either blocks a fresh insert and should be returned
@@ -25,8 +28,9 @@ type ProfileRow = { id: string; member_type: string }
 type GrantRow = { id: string; status: string }
 
 export async function POST(request: Request) {
-  // T-26-17: staff-gate-first — precedes any DB read.
-  const auth = await requireStaff(['leadership', 'ae'])
+  // T-26-17: staff-gate-first — precedes any DB read. leadership + ae +
+  // anr (OWNER DECISION 2026-10-04 — see header note above).
+  const auth = await requireStaff(['leadership', 'ae', 'anr'])
   if ('error' in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
