@@ -87,6 +87,8 @@ export type LyricsPadProps = {
   onOpenComments?: (blockId: string, label: string) => void
   onOpenSuggestions?: (blockId: string, label: string, currentText: string) => void
   suggestionCounts?: Record<string, number>
+  /** Unresolved Studio Note count per block, keyed the same way as `suggestionCounts`. */
+  unresolvedCommentCounts?: Record<string, number>
   onAddSinger: (blockId: string) => void
   onDetach: (blockId: string) => void
   /** Delete a section. The card confirms in place first when the block still holds words. */
@@ -264,6 +266,7 @@ function SortableLyricBlock({
   onOpenComments,
   onOpenSuggestions,
   suggestionCount,
+  unresolvedCommentCount,
   onAddSinger,
   onDetach,
   onRemove,
@@ -287,6 +290,7 @@ function SortableLyricBlock({
   onOpenComments?: () => void
   onOpenSuggestions?: () => void
   suggestionCount: number
+  unresolvedCommentCount?: number
   onAddSinger: () => void
   onDetach: () => void
   onRemove: () => void
@@ -316,6 +320,7 @@ function SortableLyricBlock({
       onOpenComments={onOpenComments}
       onOpenSuggestions={onOpenSuggestions}
       suggestionCount={suggestionCount}
+      unresolvedCommentCount={unresolvedCommentCount}
       onAddSinger={onAddSinger}
       onDetach={onDetach}
       onRemove={onRemove}
@@ -417,6 +422,7 @@ export function LyricsPad({
   onOpenComments,
   onOpenSuggestions,
   suggestionCounts = {},
+  unresolvedCommentCounts = {},
   onAddSinger,
   onDetach,
   onRemoveBlock,
@@ -845,6 +851,7 @@ export function LyricsPad({
           onOpenComments={onOpenComments ? () => void handleOpenBlockComments(block.id, block.label) : undefined}
           onOpenSuggestions={onOpenSuggestions ? () => void handleOpenBlockSuggestions(block.id, block.label, text) : undefined}
           suggestionCount={suggestionCounts[block.id] ?? 0}
+          unresolvedCommentCount={unresolvedCommentCounts[block.id] ?? 0}
           onAddSinger={() => onAddSinger(block.id)}
           onDetach={() => onDetach(block.id)}
           onRemove={() => onRemoveBlock(block.id)}

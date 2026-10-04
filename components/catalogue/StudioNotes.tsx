@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react'
 import type {
   LyricCommentParticipant,
   StudioNoteContext,
-  StudioNoteSource,
   StudioNoteThreadView,
 } from '@/types/catalogue'
 import { studioNoteMatchesFilter } from '@/lib/catalogue/studio-notes'
@@ -18,8 +17,6 @@ type StudioNotesProps = {
   viewerUserId: string
   notes: StudioNoteThreadView[]
   participants: LyricCommentParticipant[]
-  versions: { id: string; label: string; durationSeconds: number | null }[]
-  lyricBlocks: { id: string; label: string }[]
   composerOpen: boolean
   onComposerOpenChange: (open: boolean) => void
   highlightedNoteId?: string | null
@@ -47,12 +44,6 @@ function initials(name: string): string {
 function formatTimestamp(milliseconds: number): string {
   const seconds = Math.max(0, Math.floor(milliseconds / 1000))
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
-}
-
-function parseTimestamp(value: string): number | null {
-  const match = value.trim().match(/^(\d{1,3}):([0-5]\d)$/)
-  if (!match) return null
-  return (Number(match[1]) * 60 + Number(match[2])) * 1000
 }
 
 function MentionText({ body, recipients }: { body: string; recipients: LyricCommentParticipant[] }) {
@@ -91,8 +82,6 @@ function contextRequest(context: StudioNoteContext) {
 function NoteComposer({
   workId,
   participants,
-  versions,
-  lyricBlocks,
   viewerUserId,
   replyTo,
   onCancel,
@@ -100,18 +89,15 @@ function NoteComposer({
 }: {
   workId: string
   participants: LyricCommentParticipant[]
-  versions: StudioNotesProps['versions']
-  lyricBlocks: StudioNotesProps['lyricBlocks']
   viewerUserId: string
   replyTo: StudioNoteThreadView | null
   onCancel: () => void
   onChanged: () => void
 }) {
-  const initialSource = replyTo?.source ?? 'song'
-  const [source, setSource] = useState<StudioNoteSource>(initialSource)
-  const [versionId, setVersionId] = useState(replyTo?.context.kind === 'audio' ? replyTo.context.versionId : versions[0]?.id ?? '')
-  const [timestamp, setTimestamp] = useState(replyTo?.context.kind === 'audio' ? formatTimestamp(replyTo.context.timestampMs) : '0:00')
-  const [blockId, setBlockId] = useState(replyTo?.context.kind === 'lyrics' ? replyTo.context.blockId : lyricBlocks[0]?.id ?? '')
+  // A new note is always a song note; a reply keeps inheriting its parent's
+  // source, which this module only ever shows as 'song' now that the
+  // audio/lyric creation paths live at their own anchors (D-SNK-02).
+  const source = replyTo?.source ?? 'song'
   const [recipientIds, setRecipientIds] = useState<string[]>(replyTo?.author ? [replyTo.author.userId] : [])
   const draftKey = `funun:user:${viewerUserId}:work:${workId}:studio-note:${replyTo?.id ?? 'new'}`
   const [body, setBody] = useState(() => readTextDraft(draftKey)?.text ?? '')
@@ -139,11 +125,6 @@ function NoteComposer({
 
   async function submit() {
     if (!body.trim() || saving) return
-    const timestampMs = source === 'audio' ? parseTimestamp(timestamp) : null
-    if (source === 'audio' && timestampMs === null) {
-      setError('Use a timestamp like 1:45.')
-      return
-    }
     setSaving(true)
     setError(null)
     const response = await fetch(`/api/works/${workId}/studio-notes`, {
@@ -154,9 +135,6 @@ function NoteComposer({
         body: body.trim(),
         recipientUserIds: recipientIds,
         parentId: replyTo?.id ?? null,
-        versionId: source === 'audio' ? versionId : null,
-        timestampMs,
-        blockId: source === 'lyrics' ? blockId : null,
       }),
     })
     const result = (await response.json().catch(() => ({}))) as { error?: string }
@@ -181,37 +159,7 @@ function NoteComposer({
         <button type="button" onClick={onCancel} aria-label="Close note composer" className="text-lavdim hover:text-white">×</button>
       </div>
 
-      {!replyTo ? (
-        <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Attach note to">
-          {(['song', 'audio', 'lyrics'] as StudioNoteSource[]).map(option => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => setSource(option)}
-              aria-pressed={source === option}
-              disabled={(option === 'audio' && versions.length === 0) || (option === 'lyrics' && lyricBlocks.length === 0)}
-              className={`rounded-full border px-2.5 py-1 text-[10px] disabled:opacity-30 ${source === option ? 'border-brandindigo bg-brandindigo/15 text-white' : 'border-hairstrong text-lavdim hover:text-white'}`}
-            >
-              {option === 'song' ? 'Whole song' : option === 'audio' ? 'Audio moment' : 'Lyric section'}
-            </button>
-          ))}
-        </div>
-      ) : <p className="mt-3 text-[10px] font-semibold text-brandindigo">{replyTo.context.label}</p>}
-
-      {!replyTo && source === 'audio' ? (
-        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_88px] gap-2">
-          <select value={versionId} onChange={event => setVersionId(event.target.value)} aria-label="Recording version" className="rounded-[8px] border border-hair bg-card px-2.5 py-2 text-[11px] text-white outline-none">
-            {versions.map(version => <option key={version.id} value={version.id}>{version.label}</option>)}
-          </select>
-          <input value={timestamp} onChange={event => setTimestamp(event.target.value)} aria-label="Timestamp" placeholder="1:45" className="rounded-[8px] border border-hair bg-card px-2.5 py-2 text-[11px] text-white outline-none" />
-        </div>
-      ) : null}
-
-      {!replyTo && source === 'lyrics' ? (
-        <select value={blockId} onChange={event => setBlockId(event.target.value)} aria-label="Lyric section" className="mt-3 w-full rounded-[8px] border border-hair bg-card px-2.5 py-2 text-[11px] text-white outline-none">
-          {lyricBlocks.map(block => <option key={block.id} value={block.id}>{block.label}</option>)}
-        </select>
-      ) : null}
+      {replyTo ? <p className="mt-3 text-[10px] font-semibold text-brandindigo">{replyTo.context.label}</p> : null}
 
       {!replyTo && selectableParticipants.length > 0 ? (
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
@@ -253,8 +201,6 @@ function NoteThread({
   note,
   viewerUserId,
   participants,
-  versions,
-  lyricBlocks,
   busyKey,
   onBusy,
   onChanged,
@@ -264,8 +210,6 @@ function NoteThread({
   note: StudioNoteThreadView
   viewerUserId: string
   participants: LyricCommentParticipant[]
-  versions: StudioNotesProps['versions']
-  lyricBlocks: StudioNotesProps['lyricBlocks']
   busyKey: string | null
   onBusy: (key: string | null) => void
   onChanged: () => void
@@ -343,8 +287,6 @@ function NoteThread({
           <NoteComposer
             workId={workId}
             participants={participants}
-            versions={versions}
-            lyricBlocks={lyricBlocks}
             viewerUserId={viewerUserId}
             replyTo={note}
             onCancel={() => setReplying(false)}
@@ -361,8 +303,6 @@ export function StudioNotes({
   viewerUserId,
   notes,
   participants,
-  versions,
-  lyricBlocks,
   composerOpen,
   onComposerOpenChange,
   highlightedNoteId = null,
@@ -411,8 +351,6 @@ export function StudioNotes({
           <NoteComposer
             workId={workId}
             participants={participants}
-            versions={versions}
-            lyricBlocks={lyricBlocks}
             viewerUserId={viewerUserId}
             replyTo={null}
             onCancel={() => onComposerOpenChange(false)}
@@ -438,8 +376,6 @@ export function StudioNotes({
               note={note}
               viewerUserId={viewerUserId}
               participants={participants}
-              versions={versions}
-              lyricBlocks={lyricBlocks}
               busyKey={busyKey}
               onBusy={setBusyKey}
               onChanged={onChanged}

@@ -3,6 +3,7 @@ import { WorkPage, Toast, type VersionCardData, type WorkPageProps } from './Wor
 import type { GuidingLineStep } from '@/lib/catalogue/guiding-line'
 import type { LyricsPadBlock } from './LyricsPad'
 import type { DiaryFeedEntry } from './DiaryFeed'
+import type { StudioNoteThreadView } from '@/types/catalogue'
 
 // No jsdom in this repo (testEnvironment: 'node') — asserted as static
 // markup, same treatment as every other components/catalogue/*.test.tsx
@@ -156,6 +157,203 @@ function makeProps(overrides: Partial<WorkPageProps> = {}): WorkPageProps {
     ...overrides,
   }
 }
+
+// ─── Studio Notes scoped by kind (261004-snk) ──────────────────────────
+// One thread per kind, unresolved, with a distinctive body each so a test
+// can assert a body is shown (or conspicuously absent) without depending
+// on any other fixture text.
+const songThread: StudioNoteThreadView = {
+  id: 'note-song-1',
+  source: 'song',
+  parentId: null,
+  body: 'SONG_NOTE_BODY_UNIQUE',
+  author: null,
+  recipients: [],
+  resolvedAt: null,
+  resolvedByName: null,
+  createdAt: '2026-01-01T00:00:00Z',
+  context: { kind: 'song', label: 'Whole song' },
+  canResolve: false,
+  reactions: [],
+  replies: [],
+}
+
+const audioThread: StudioNoteThreadView = {
+  id: 'note-audio-1',
+  source: 'audio',
+  parentId: null,
+  body: 'AUDIO_NOTE_BODY_UNIQUE',
+  author: null,
+  recipients: [],
+  resolvedAt: null,
+  resolvedByName: null,
+  createdAt: '2026-01-01T00:01:00Z',
+  context: { kind: 'audio', label: 'v1 · 0:05', versionId: 'v1', timestampMs: 5000 },
+  canResolve: false,
+  reactions: [],
+  replies: [],
+}
+
+const lyricThread: StudioNoteThreadView = {
+  id: 'note-lyric-1',
+  source: 'lyrics',
+  parentId: null,
+  body: 'LYRIC_NOTE_BODY_UNIQUE',
+  author: null,
+  recipients: [],
+  resolvedAt: null,
+  resolvedByName: null,
+  createdAt: '2026-01-01T00:02:00Z',
+  context: { kind: 'lyrics', label: 'Verse 1', blockId: 'b1' },
+  canResolve: false,
+  reactions: [],
+  replies: [],
+}
+
+describe('WorkPage — Studio Notes scoped by kind', () => {
+  it('shows only the song thread in the Studio Notes module, and counts only it', () => {
+    const markup = renderToStaticMarkup(
+      <WorkPage {...makeProps({ studioNotes: [songThread, audioThread, lyricThread] })} />
+    )
+    expect(markup).toContain('SONG_NOTE_BODY_UNIQUE')
+    expect(markup).not.toContain('AUDIO_NOTE_BODY_UNIQUE')
+    expect(markup).not.toContain('LYRIC_NOTE_BODY_UNIQUE')
+    expect(markup).toContain('1 open thread')
+    expect(markup).not.toContain('3 open threads')
+  })
+
+  it('reads 0 open threads when there are no unresolved song threads, even with unresolved audio and lyric threads', () => {
+    const resolvedSong: StudioNoteThreadView = { ...songThread, resolvedAt: '2026-01-01T00:05:00Z', resolvedByName: 'Shane' }
+    const markup = renderToStaticMarkup(
+      <WorkPage {...makeProps({ studioNotes: [resolvedSong, audioThread, lyricThread] })} />
+    )
+    expect(markup).toContain('0 open threads')
+  })
+
+  it('agrees on plural for two unresolved song threads', () => {
+    const secondSong: StudioNoteThreadView = { ...songThread, id: 'note-song-2', body: 'SONG_NOTE_BODY_TWO', createdAt: '2026-01-01T00:03:00Z' }
+    const markup = renderToStaticMarkup(
+      <WorkPage {...makeProps({ studioNotes: [songThread, secondSong] })} />
+    )
+    expect(markup).toContain('2 open threads')
+  })
+
+  it('names unresolved audio-comment threads across active and archived takes in the Versions description', () => {
+    const archivedVersion: VersionCardData = {
+      ...baseVersions[0]!,
+      id: 'v0',
+      display: 'v0',
+      description: 'Old demo',
+      archivedAt: '2026-01-02T00:00:00Z',
+      canManage: false,
+    }
+    const audioOnActive: StudioNoteThreadView = {
+      ...audioThread,
+      id: 'note-audio-active',
+      context: { kind: 'audio', label: 'v1 · 0:05', versionId: 'v1', timestampMs: 5000 },
+    }
+    const audioOnArchived: StudioNoteThreadView = {
+      ...audioThread,
+      id: 'note-audio-archived',
+      context: { kind: 'audio', label: 'v0 · 0:10', versionId: 'v0', timestampMs: 10000 },
+    }
+    const markup = renderToStaticMarkup(
+      <WorkPage
+        {...makeProps({
+          versions: [baseVersions[0]!, archivedVersion],
+          studioNotes: [audioOnActive, audioOnArchived],
+        })}
+      />
+    )
+    expect(markup).toContain('1 active take · 2 unresolved comments')
+  })
+
+  it('keeps the Versions description byte-identical to before when there are no unresolved audio threads', () => {
+    // The exact-close assertion below is what makes this byte-identical:
+    // any appended " · N unresolved comment(s)" clause would land before
+    // the closing tag and break the match. (TimedTrackPlayer separately
+    // renders its own "0 unresolved comments" line regardless of this
+    // description — unrelated pre-existing text, not asserted against here.)
+    const markup = renderToStaticMarkup(<WorkPage {...makeProps()} />)
+    expect(markup).toContain('>1 active take<')
+  })
+
+  it('shows the per-take unresolved count only on the archived row that has one', () => {
+    const archivedWithNote: VersionCardData = {
+      ...baseVersions[0]!,
+      id: 'v0',
+      display: 'v0',
+      description: 'Old demo',
+      archivedAt: '2026-01-02T00:00:00Z',
+      canManage: false,
+    }
+    const archivedWithoutNote: VersionCardData = {
+      ...baseVersions[0]!,
+      id: 'v-2',
+      display: 'v-2',
+      description: 'Another old demo',
+      archivedAt: '2026-01-03T00:00:00Z',
+      canManage: false,
+    }
+    const audioOnArchived: StudioNoteThreadView = {
+      ...audioThread,
+      id: 'note-audio-archived-row',
+      context: { kind: 'audio', label: 'v0 · 0:10', versionId: 'v0', timestampMs: 10000 },
+    }
+    const markup = renderToStaticMarkup(
+      <WorkPage
+        {...makeProps({
+          versions: [baseVersions[0]!, archivedWithNote, archivedWithoutNote],
+          studioNotes: [audioOnArchived],
+        })}
+      />
+    )
+    const archivedSection = markup.slice(markup.indexOf('Archived takes'))
+    const oldDemoIndex = archivedSection.indexOf('Old demo')
+    const anotherOldDemoIndex = archivedSection.indexOf('Another old demo')
+    expect(oldDemoIndex).toBeGreaterThan(-1)
+    expect(anotherOldDemoIndex).toBeGreaterThan(oldDemoIndex)
+    const withNoteRow = archivedSection.slice(oldDemoIndex, anotherOldDemoIndex)
+    const withoutNoteRow = archivedSection.slice(anotherOldDemoIndex)
+    expect(withNoteRow).toContain('1 unresolved comment')
+    expect(withoutNoteRow).not.toContain('unresolved')
+  })
+
+  it('renders an unresolved count on a lyric block’s own Comments control, matching the Studio Notes count for that block', () => {
+    const lyricOnBlockFirst: StudioNoteThreadView = { ...lyricThread, id: 'note-lyric-a' }
+    const lyricOnBlockSecond: StudioNoteThreadView = { ...lyricThread, id: 'note-lyric-b', createdAt: '2026-01-01T00:03:00Z' }
+    const markup = renderToStaticMarkup(
+      <WorkPage {...makeProps({ studioNotes: [lyricOnBlockFirst, lyricOnBlockSecond] })} />
+    )
+    expect(markup).toContain('💬 Comments (2)')
+  })
+
+  it('renders the lyric block’s Comments control exactly as today when it has no unresolved threads', () => {
+    const markup = renderToStaticMarkup(<WorkPage {...makeProps()} />)
+    expect(markup).toContain('💬 Comments<')
+    expect(markup).not.toContain('💬 Comments (')
+  })
+
+  // The deep-link routing itself fires from a useEffect (D-SNK-05), which
+  // this harness cannot observe — renderToStaticMarkup never runs effects.
+  // That decision is already covered by resolveLyricNoteDeepLink's own
+  // cases in lib/catalogue/studio-notes.test.ts. What this harness CAN
+  // assert is that supplying a lyric-kind highlightedStudioNoteId renders
+  // no crash and does not highlight anything inside the (now song-only)
+  // Studio Notes module, since the id will never match a song thread.
+  it('does not crash or highlight anything in Studio Notes for a lyric-kind highlightedStudioNoteId', () => {
+    const markup = renderToStaticMarkup(
+      <WorkPage
+        {...makeProps({
+          studioNotes: [songThread, lyricThread],
+          highlightedStudioNoteId: lyricThread.id,
+        })}
+      />
+    )
+    expect(markup).toContain('SONG_NOTE_BODY_UNIQUE')
+    expect(markup).not.toContain(`border-brandindigo ring-2 ring-brandindigo/20`)
+  })
+})
 
 describe('WorkPage', () => {
   it('renders the header, the composer card, the diary and the versions list for a populated work', () => {

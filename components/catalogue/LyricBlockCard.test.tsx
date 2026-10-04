@@ -195,6 +195,68 @@ describe('LyricBlockCard', () => {
     expect(markup).toContain('Comments')
   })
 
+  it('renders an unresolved count on the existing Comments control when the block has unresolved Studio Notes threads', () => {
+    const markup = renderToStaticMarkup(
+      <LyricBlockCard
+        label="Chorus"
+        text="Hook"
+        isRepeat={false}
+        author={{ initial: 'P', name: null, isOwner: true }}
+        vocalState="primary"
+        singers={[]}
+        onTextChange={noop}
+        onOpenComments={noop}
+        unresolvedCommentCount={2}
+        onAddSinger={noop}
+        onDetach={noop}
+        onRemove={noop}
+      />
+    )
+    expect(markup).toContain('💬 Comments (2)')
+    expect(markup).toContain('aria-label="Open comments for Chorus (2 unresolved)"')
+  })
+
+  it('renders the Comments control exactly as today when the block has no unresolved threads', () => {
+    const markup = renderToStaticMarkup(
+      <LyricBlockCard
+        label="Chorus"
+        text="Hook"
+        isRepeat={false}
+        author={{ initial: 'P', name: null, isOwner: true }}
+        vocalState="primary"
+        singers={[]}
+        onTextChange={noop}
+        onOpenComments={noop}
+        onAddSinger={noop}
+        onDetach={noop}
+        onRemove={noop}
+      />
+    )
+    expect(markup).toContain('💬 Comments<')
+    expect(markup).not.toContain('💬 Comments (')
+    expect(markup).toContain('aria-label="Open comments for Chorus"')
+  })
+
+  it('renders no Comments control — and so no marker — on a repeat block, even with unresolved threads', () => {
+    const markup = renderToStaticMarkup(
+      <LyricBlockCard
+        label="Chorus 2"
+        text="Hook"
+        isRepeat
+        author={{ initial: 'P', name: null, isOwner: true }}
+        vocalState="primary"
+        singers={[]}
+        onTextChange={noop}
+        onOpenComments={noop}
+        unresolvedCommentCount={3}
+        onAddSinger={noop}
+        onDetach={noop}
+        onRemove={noop}
+      />
+    )
+    expect(markup).not.toContain('💬 Comments')
+  })
+
   it('offers alternate lyrics with the pending count only on an original section', () => {
     const markup = renderToStaticMarkup(
       <LyricBlockCard

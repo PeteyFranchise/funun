@@ -244,3 +244,83 @@ export function studioNoteMatchesFilter(
   return note.recipients.some(recipient => recipient.userId === viewerUserId)
     || note.replies.some(reply => reply.recipients.some(recipient => recipient.userId === viewerUserId))
 }
+
+// ─── source-scoped selectors (Studio Notes scoped-by-kind) ─────────────
+
+/**
+ * Returns only the song-kind threads from a mixed three-kind list, order
+ * preserved. The Studio Notes module lists song notes only; this is the
+ * single place that subset is derived.
+ */
+export function selectSongStudioNotes(notes: StudioNoteThreadView[]): StudioNoteThreadView[] {
+  return notes.filter(note => note.source === 'song')
+}
+
+/**
+ * Unresolved audio-root count per version, restricted to the versions the
+ * caller actually renders. Zero-count versions are omitted so callers can
+ * derive both a per-row number and a total that can never disagree.
+ */
+export function countUnresolvedAudioNotesByVersion(
+  notes: StudioNoteThreadView[],
+  versionIds: Iterable<string>
+): Record<string, number> {
+  const allowed = new Set(versionIds)
+  const counts: Record<string, number> = {}
+  for (const note of notes) {
+    if (note.context.kind !== 'audio') continue
+    if (note.resolvedAt !== null) continue
+    if (!allowed.has(note.context.versionId)) continue
+    counts[note.context.versionId] = (counts[note.context.versionId] ?? 0) + 1
+  }
+  return counts
+}
+
+/**
+ * Total unresolved audio-root count across the allowed versions. Derived
+ * from `countUnresolvedAudioNotesByVersion` so the header total and the
+ * per-row numbers it is built from can never drift apart.
+ */
+export function countUnresolvedAudioNotes(
+  notes: StudioNoteThreadView[],
+  versionIds: Iterable<string>
+): number {
+  const byVersion = countUnresolvedAudioNotesByVersion(notes, versionIds)
+  return Object.values(byVersion).reduce((sum, count) => sum + count, 0)
+}
+
+/**
+ * Unresolved lyric-root count per block. Zero-count blocks are omitted so a
+ * block's own Comments control only ever shows a number it can back up.
+ */
+export function countUnresolvedLyricNotesByBlock(
+  notes: StudioNoteThreadView[]
+): Record<string, number> {
+  const counts: Record<string, number> = {}
+  for (const note of notes) {
+    if (note.context.kind !== 'lyrics') continue
+    if (note.resolvedAt !== null) continue
+    counts[note.context.blockId] = (counts[note.context.blockId] ?? 0) + 1
+  }
+  return counts
+}
+
+/**
+ * Resolves a historical `?studioNote=<id>` id to the lyric block it belongs
+ * to, matching either a thread's root id or any of its reply ids. Returns
+ * null for a song or audio id, an id that matches nothing, or a missing id —
+ * the only cases where the old deep-link form should do nothing.
+ */
+export function resolveLyricNoteDeepLink(
+  notes: StudioNoteThreadView[],
+  noteId: string | null | undefined
+): { blockId: string; label: string } | null {
+  if (!noteId) return null
+  for (const note of notes) {
+    const matches = note.id === noteId || note.replies.some(reply => reply.id === noteId)
+    if (!matches) continue
+    if (note.context.kind !== 'lyrics') return null
+    return { blockId: note.context.blockId, label: note.context.label }
+  }
+  return null
+}

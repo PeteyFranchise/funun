@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ComposerCard, ComposerCardEmptyState } from './ComposerCard'
 import { GuidingLine } from './GuidingLine'
@@ -30,6 +30,12 @@ import { pickSupportedMimeType } from '@/lib/catalogue/hum-capture'
 import { AUDIO_FILE_ACCEPT } from '@/lib/catalogue/audio-mime'
 import { uploadWorkVersion } from '@/lib/catalogue/version-upload-client'
 import { deriveBlockNumerals } from '@/lib/catalogue/blocks'
+import {
+  countUnresolvedAudioNotesByVersion,
+  countUnresolvedLyricNotesByBlock,
+  resolveLyricNoteDeepLink,
+  selectSongStudioNotes,
+} from '@/lib/catalogue/studio-notes'
 import type { GuidingLineStep } from '@/lib/catalogue/guiding-line'
 import type { RoomActivity, RoomActivityKind, RoomPresencePerson } from '@/lib/catalogue/room-presence'
 import {
@@ -323,6 +329,7 @@ function VersionsList({
   onTakeRenamed,
   onWorkingTake,
   draftOwnerId,
+  unresolvedAudioByVersion = {},
 }: {
   workId: string
   versions: VersionCardData[]
@@ -336,6 +343,9 @@ function VersionsList({
   onTakeRenamed: (versionId: string, label: string) => Promise<{ ok: boolean; error?: string }>
   onWorkingTake: (versionId: string) => Promise<{ ok: boolean; error?: string }>
   draftOwnerId: string
+  /** Unresolved audio-comment count per version id. An archived take has no
+   * player, so this is the only place its own unresolved comments surface. */
+  unresolvedAudioByVersion?: Record<string, number>
 }) {
   if (versions.length === 0) {
     return <p className="text-[11px] text-lavdim">No takes yet.</p>
@@ -398,15 +408,23 @@ function VersionsList({
         <details className="mt-2 rounded-[10px] border border-hair bg-card/60 px-3 py-2">
           <summary className="cursor-pointer text-[10px] font-semibold text-lavdim">Archived takes ({archivedVersions.length})</summary>
           <div className="mt-2 space-y-2 border-t border-hair pt-2">
-            {archivedVersions.map(version => (
-              <div key={version.id} className="flex items-center justify-between gap-3 rounded-[8px] bg-card2 px-3 py-2">
-                <span className="min-w-0 truncate text-[10px] text-lav"><b className="text-white">{version.display}</b> {version.description}</span>
-                <span className="flex shrink-0 items-center gap-3">
-                  {version.downloadUrl && <a href={version.downloadUrl} download aria-label={`Download archived ${version.display} ${version.description}`} className="text-[10px] text-lavdim hover:text-white">Download</a>}
-                  {version.canManage && <button type="button" onClick={() => void onTakeManaged(version.id, false)} className="text-[10px] font-semibold text-brandindigo hover:text-white">Restore</button>}
-                </span>
-              </div>
-            ))}
+            {archivedVersions.map(version => {
+              const unresolvedCount = unresolvedAudioByVersion[version.id] ?? 0
+              return (
+                <div key={version.id} className="flex items-center justify-between gap-3 rounded-[8px] bg-card2 px-3 py-2">
+                  <span className="min-w-0 truncate text-[10px] text-lav"><b className="text-white">{version.display}</b> {version.description}</span>
+                  <span className="flex shrink-0 items-center gap-3">
+                    {unresolvedCount > 0 && (
+                      <span className="text-[10px] text-brandindigo" title="Restore this take to open its comments">
+                        {unresolvedCount} unresolved {unresolvedCount === 1 ? 'comment' : 'comments'}
+                      </span>
+                    )}
+                    {version.downloadUrl && <a href={version.downloadUrl} download aria-label={`Download archived ${version.display} ${version.description}`} className="text-[10px] text-lavdim hover:text-white">Download</a>}
+                    {version.canManage && <button type="button" onClick={() => void onTakeManaged(version.id, false)} className="text-[10px] font-semibold text-brandindigo hover:text-white">Restore</button>}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </details>
       )}
@@ -1075,21 +1093,35 @@ export function WorkPage({
     })
   }
 
-  async function handleOpenLyricComments(blockId: string, label: string) {
-    setLyricHistory(null)
-    setLyricSuggestions(null)
-    setLyricComments({
-      blockId,
-      label,
-      comments: [],
-      participants: [],
-      loading: true,
-      error: null,
-      saving: false,
-      resolvingId: null,
-    })
-    await refreshLyricComments(blockId)
-  }
+  const handleOpenLyricComments = useCallback(
+    async (blockId: string, label: string) => {
+      setLyricHistory(null)
+      setLyricSuggestions(null)
+      setLyricComments({
+        blockId,
+        label,
+        comments: [],
+        participants: [],
+        loading: true,
+        error: null,
+        saving: false,
+        resolvingId: null,
+      })
+      await refreshLyricComments(blockId)
+    },
+    [refreshLyricComments]
+  )
+
+  // A historical `?studioNote=` link for a lyric-kind note used to land on
+  // the Studio Notes module; that module is now song-scoped (D-SNK-02), so
+  // route a lyric id to the block's own comments panel instead. Song ids
+  // keep flowing to StudioNotes untouched via highlightedStudioNoteId below;
+  // audio notes never use this link form.
+  useEffect(() => {
+    if (!highlightedStudioNoteId) return
+    const lyricTarget = resolveLyricNoteDeepLink(studioNotes, highlightedStudioNoteId)
+    if (lyricTarget) void handleOpenLyricComments(lyricTarget.blockId, lyricTarget.label)
+  }, [highlightedStudioNoteId, studioNotes, handleOpenLyricComments])
 
   async function handleOpenLyricSuggestions(blockId: string, label: string, currentText: string) {
     setLyricHistory(null)
@@ -1438,12 +1470,30 @@ export function WorkPage({
       }]
     : [])
   const activeVersionCount = versions.filter(version => !version.archivedAt).length
-  const openStudioNoteCount = studioNotes.filter(note => note.resolvedAt === null).length
+  // Studio Notes now lists song-kind threads only (D-SNK-01, D-SNK-02); the
+  // aggregated `studioNotes` list stays available below for the Versions and
+  // lyric-block counts, which still need all three kinds.
+  const songStudioNotes = useMemo(() => selectSongStudioNotes(studioNotes), [studioNotes])
+  const openStudioNoteCount = songStudioNotes.filter(note => note.resolvedAt === null).length
+  // The allowlist is every take VersionsList renders — active AND archived —
+  // because archived rows now display their own number too (D-SNK-03).
+  const allRenderedVersionIds = useMemo(() => versions.map(version => version.id), [versions])
+  const unresolvedAudioByVersion = useMemo(
+    () => countUnresolvedAudioNotesByVersion(studioNotes, allRenderedVersionIds),
+    [studioNotes, allRenderedVersionIds]
+  )
+  const unresolvedAudioTotal = useMemo(
+    () => Object.values(unresolvedAudioByVersion).reduce((sum, count) => sum + count, 0),
+    [unresolvedAudioByVersion]
+  )
+  const unresolvedLyricByBlock = useMemo(() => countUnresolvedLyricNotesByBlock(studioNotes), [studioNotes])
+  const versionsDescription = `${activeVersionCount} active ${activeVersionCount === 1 ? 'take' : 'takes'}`
+    + (unresolvedAudioTotal > 0 ? ` · ${unresolvedAudioTotal} unresolved ${unresolvedAudioTotal === 1 ? 'comment' : 'comments'}` : '')
   const roomModules: WriterRoomModule[] = [
     {
       key: 'module:versions',
       label: 'Versions',
-      description: `${activeVersionCount} active ${activeVersionCount === 1 ? 'take' : 'takes'}`,
+      description: versionsDescription,
       content: (
         <VersionsList
           workId={workId}
@@ -1458,6 +1508,7 @@ export function WorkPage({
           onTakeRenamed={handleTakeRenamed}
           onWorkingTake={handleWorkingTake}
           draftOwnerId={presence.viewer.userId}
+          unresolvedAudioByVersion={unresolvedAudioByVersion}
         />
       ),
     },
@@ -1485,16 +1536,8 @@ export function WorkPage({
           <StudioNotes
             workId={workId}
             viewerUserId={presence.viewer.userId}
-            notes={studioNotes}
+            notes={songStudioNotes}
             participants={studioNoteParticipants}
-            versions={versions
-              .filter(version => !version.archivedAt)
-              .map(version => ({
-                id: version.id,
-                label: `${version.display} ${version.description}`.trim(),
-                durationSeconds: version.durationSeconds,
-              }))}
-            lyricBlocks={deriveBlockNumerals(liveLyricsBlocks).map(block => ({ id: block.id, label: block.label }))}
             composerOpen={studioNoteComposerOpen}
             onComposerOpenChange={setStudioNoteComposerOpen}
             highlightedNoteId={highlightedStudioNoteId}
@@ -1664,6 +1707,7 @@ export function WorkPage({
           onOpenComments={(blockId, label) => void handleOpenLyricComments(blockId, label)}
           onOpenSuggestions={(blockId, label, currentText) => void handleOpenLyricSuggestions(blockId, label, currentText)}
           suggestionCounts={liveSuggestionCounts}
+          unresolvedCommentCounts={unresolvedLyricByBlock}
           onRemoveBlock={blockId => void handleRemoveBlock(blockId)}
           onAddSinger={blockId => setFlow({ kind: 'add-singer', blockId })}
           onDetach={blockId => void handleDetach(blockId)}
