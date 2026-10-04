@@ -613,3 +613,59 @@ records how a song arrived regardless).
   `admin_invited` already means something else — a staff-granted `sync_library` capability. A
   Crate-submission invite is a third thing and must not be quietly folded into an existing value
   whose meaning differs.
+
+### Two kinds of Crate invite (DECIDED, owner 2026-10-04)
+
+**"Submit THIS"** — a Funūn Team Member finds a specific song shared publicly on Funūn and points
+at it. The artist already has an account.
+
+**"Submit me something"** — the staff member knows the person, rates them, has no particular song
+in mind, and the person may have no Funūn account at all. *"I know you in real life and I know you
+are talented — send me some great songs and join The Crate."*
+
+**Decided:**
+
+- **"Submit me something" is tied to one person**, issued to a specific email, single use. Not a
+  shareable link. This matters because **invites bypass the valve**: a link that works for whoever
+  holds it would be an uncapped way around the switch, discovered only when the queue floods. A
+  revocable team link was considered and set aside as a second thing to build and track.
+- **"Submit THIS" pre-fills the song, and the artist may swap it** for something they would rather
+  be judged on — **with a communication line open** so the staff member can make the case for the
+  song they actually wanted. The artist still answers every rights question themselves
+  (splits, AI disclosure, ownership); the pre-fill is the song, never the answers.
+
+### What the investigation found (2026-10-04)
+
+**1. There is no SMS capability anywhere in Funūn.** Confirmed by reading, not grep: no SMS vendor
+in `package.json`, no send path in the codebase. Every "phone" reference is pure formatting, a
+stored field, or DocuSeal's own signer SMS — a third party's, not Funūn's. **Phone outreach means
+onboarding a new vendor, not enabling a feature.** Email runs through Resend
+(`lib/email/index.ts`), the single outbound chokepoint.
+
+**2. The existing sync-library invite cannot do either of these jobs.** It takes a `profileId`,
+requires an existing `user_profiles` artist row, writes a `capability_grants` row, and fires an
+**in-app notification only** — nothing outbound. Its sole effects are a dashboard spotlight card
+and tagging `entry_source` on whatever the artist later submits. Per migration 096's own comment,
+both entry paths converge on the same admit gate: **the grant does not skip review.** It also
+**never expires** — no TTL in schema or code.
+
+Separately, `artist_invites` *can* reach a non-member by email with a 30-day token, but it lands
+in **ordinary signup** with no tie to the Crate. Its machinery (atomic mint/rotate RPC, Resend
+send, 30-day token) is the right precedent to model, but a Crate-submission invite needs its own
+token type — `artist_invites` rows terminate in a plain account.
+
+**3. The public boundary holds — this was the thing most worth checking.** `vault_projects.is_public`
+is enforced by an RLS policy created with no `TO` clause, so it applies to every role **including
+staff**, and it has survived every later policy rewrite untouched. The public profile page uses a
+session-scoped client, not service-role, and applies the same rule to a staff viewer as to anyone
+else — there is no staff bypass in that route. No admin surface was found that browses unpublished
+music; the Selects catalogue shows only tracks already **admitted** to the Crate.
+
+**Two consequences for "Submit THIS":**
+
+- **Publicness is project-level, not per-song.** There is no per-track public flag; every track
+  under a public project is visible. So an artist cannot share one song publicly — the invite
+  points at a track inside a project they chose to make public.
+- **There is no way to browse public music.** No discovery surface exists; a staff member would
+  have to already be on that artist's profile. "Comes across music shared publicly" is currently
+  a matter of stumbling onto it, so a browse surface would be **new work**, not a wiring job.
