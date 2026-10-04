@@ -535,3 +535,29 @@ submissions complete. **Closing the door must not strand someone mid-upload.**
 A valve is necessary but **not sufficient**. An open upload path also needs the ordinary
 protections — rate limiting, file type and size validation, and abuse handling — and those are
 not the same thing as a switch the team flips when tired.
+
+### The valve, settled (owner, 2026-10-04)
+
+**Who flips it: leadership only.** Closing the front door to Funūn is a business decision with
+marketing consequences, so it sits with the people accountable for them — and matches how every
+other consequential staff action is already gated. Rejected: letting A&R close it (one overwhelmed
+reviewer should not be able to shut the acquisition channel) and an automatic queue-size threshold
+(a number deciding the front door, with a correct value nobody can know yet).
+
+**What a visitor sees while it is closed:** the waitlist, told plainly *why* — submissions are
+paused while the team catches up, join the list and we will say when they reopen. Honest about the
+reason, captures them for the reopening, and does not pretend the door never existed.
+
+**Plus an escape hatch: they can still reach the team** if they have a larger catalogue or
+genuinely need to speak to someone.
+
+**Why the hatch matters, and how it ties back to §11.** The valve exists to throttle *individual
+unsolicited songs*. Someone arriving with a catalogue they want in The Crate is a different and
+larger opportunity, and §11 already decided that person is **flagged for a human conversation
+rather than fed through the song queue**. Turning them away because the song valve is shut would
+close the wrong door on the wrong person.
+
+So the hatch is not a politeness — it is the §11 path staying open while the §12 path is shut.
+
+**Still open:** whether in-flight submissions complete when the valve closes. They must —
+**closing the door cannot strand someone mid-upload.**
