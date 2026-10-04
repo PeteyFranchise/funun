@@ -787,3 +787,33 @@ Crate tracks, which would already prevent a shared submission being added to a S
 that gate holds** rather than assuming it. If it does, the remaining exposure is a verbal pitch,
 which no code prevents — but a shared, unadmitted song should at minimum be **visibly marked as
 not licensable** wherever an AE encounters it.
+
+---
+
+## 16. The lighter door is CUT (owner, 2026-10-04)
+
+**Owner:** *"this seems redundant and unnecessary, especially right now. Let's just have the one
+submission door."*
+
+**There is one way in: submit the song.** The *"I'd like this looked at"* signal described in §3 is
+cancelled, not deferred.
+
+### What this cancels
+
+- **The consent gap and its resolution (§4).** The whole problem — a song arriving on a lighter
+  consent, lovable but not advanceable, with the artist asked to re-submit properly before it
+  could enter The Crate — **disappears with the door that created it.** One door, one consent:
+  submitting *is* asking for Crate consideration.
+- The second intake path, its wording, and the two-tier distinction the review queue would have
+  had to carry and display.
+
+### Why this is the better call
+
+The lighter door was invented to serve people not ready to commit. But §12 already made
+submitting itself the low-commitment act — anyone can walk up, free, and the song *is* the
+application. A softer version of a door that is already open is not a kindness, it is a second
+thing to explain, and the review queue would have had to explain it too, on every row, forever.
+
+**The intake paths are now exactly two, and they differ by who initiated, not by what was
+consented to:** the artist submits (§12), or a Funūn Team Member invites them to (§13). Both end
+in the same place, with the same consent, in the same queue.
