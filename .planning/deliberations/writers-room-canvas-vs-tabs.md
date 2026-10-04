@@ -1,9 +1,10 @@
 # Writer's Room — what belongs in the canvas, and what needs its own tab
 
 **Opened:** 2026-10-04, while scoping the Writer's Room restyle.
-**Status:** one question open for the owner (Studio Notes). Everything else below is a
-proposed refinement awaiting owner ratification, not a decision already taken.
-**Supersedes nothing yet.** Phase 37 decision 001 stands until the owner rules.
+**Status:** Studio Notes routing is **DECIDED** (owner, 2026-10-04). The canvas-vs-tabs
+sort and the mobile case remain proposals awaiting ratification.
+**Supersedes nothing yet.** Phase 37 decision 001 stands until the owner rules on the
+layout question.
 
 ---
 
@@ -99,10 +100,11 @@ evidence about the phone. Do not let the desktop answer settle the mobile one by
 
 ---
 
-## Studio Notes — route by kind, not by surface (owner leaning 2026-10-04)
+## Studio Notes — route by kind, not by surface (DECIDED, owner 2026-10-04)
 
-**Owner:** *"If we do 1, we can still open a thread and view the notes below? I'm leaning
-toward this"* — i.e. no catch-all Notes tab; Notes live next to what they are about.
+**Owner, 2026-10-04:** *"notes tab should be scoped to song-level studio notes only…
+audio notes go inside Takes beside the waveform, lyrics notes go in the canvas beside the
+block stays this way."* No catch-all Notes tab; notes live next to what they are about.
 
 **Threads already work.** `StudioNotes.tsx` is 455 lines with replies, resolve/unresolve
 and `StudioNoteThreadView` in the types. Opening a thread and reading its notes is
@@ -122,7 +124,7 @@ settled by the code.
 So today's single "Studio Notes" module is three unrelated things wearing one label — a
 `label-integrity-funun` instance, and the reason it has no natural home.
 
-### Decided, subject to ratification
+### Decided
 
 - **`audio` → inside Takes**, beside the waveform. The anchor is audio time and the
   waveform is the only surface where that position is visible and clickable. A note
@@ -131,35 +133,35 @@ So today's single "Studio Notes" module is three unrelated things wearing one la
 - **`lyrics` → the canvas**, beside the block, where `LyricCommentsPanel` already lives.
   It passes the per-block test outright.
 
-### OPEN SUB-QUESTION — where does the `song` kind go?
+### The `song` kind keeps a tab — scoped (DECIDED)
 
-**This is the one still to settle, and it is bigger than it looks.**
+- **`song` → a Notes tab, containing song-level studio notes and nothing else.**
 
 `normalizeSongNote(row: WorkStudioNote)` reads the **base** studio-notes table. A
 song-level note is not a leftover category — it is the **ordinary** Studio Note ("we
 should re-cut the bridge"), and probably the most common kind. `audio` and `lyrics` are
-the specialised ones layered on top.
+the specialised ones layered on top, so the base case keeping a home is the conservative
+reading, not the expansive one.
 
-**Routing it to the Diary was proposed and withdrawn.** Twice wrong: a Studio Note is a
-*thread* (replies, resolve state, participants) while the Diary is an *event ledger*
-(version chips, sheet events, roster events) — dropping resolvable conversations into a
-chronological event list repeats the exact category error this document was opened to
-diagnose. And it would route the default note type into the surface least able to hold
-it.
+The tab survives, but it is a different object: it now has a definition — *notes about
+the song* — instead of being a container for three unrelated things. Today's module is
+the catch-all; this is not.
 
-Two honest options:
+**Routing it to the Diary was proposed and withdrawn.** Recorded because the reasoning
+generalises: a Studio Note is a *thread* (replies, resolve state, participants) while the
+Diary is an *event ledger* (version chips, sheet events, roster events). Dropping
+resolvable conversations into a chronological event list repeats the exact category error
+this document was opened to diagnose — and it would route the default note type into the
+surface least able to hold it.
 
-**A — keep a Notes tab, scoped to song-level notes only.** Seven tabs again, but the tab
-now has a definition ("notes about the song") instead of being a catch-all, and the
-anchored kinds have moved to their anchors. Smaller and more coherent than today's Notes.
+**Also considered: the canvas root**, above the first lyric block. Structurally honest —
+a song-level note is anchored to the song, which is the canvas root — and it would have
+kept six tabs. Rejected because a growing thread list permanently above the lyrics fights
+the single continuous read the canvas exists for.
 
-**B — put them at the canvas root**, above the first lyric block. If the lyrics are the
-canvas, a song-level note is anchored to the song — the canvas root. Keeps six tabs and
-song notes stay visible while reading.
-
-*Recommendation: A.* B is elegant but puts a growing thread list permanently above the
-lyrics, which fights the "one continuous read" the canvas exists for. Not a strong
-preference — worth checking against a real session.
+**Tab count: seven, unchanged from the bench** — but the composition differs. The bench's
+Notes tab is today's catch-all; this one is song-level only, with the anchored kinds moved
+to their anchors.
 
 ### MUST SOLVE — unresolved notes become harder to see
 
