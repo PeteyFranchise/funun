@@ -62,7 +62,36 @@ promised a conversation most people would never get.
 intent — someone arriving from this path lands on a waitlist that names what they came to do and
 captures it, so the arrival is not wasted. Invite-only is unchanged.
 
-### The room — a new build
+### The Crate Submissions Screen — a new build
+
+**Name, confirmed by the owner:** *The Crate Submissions Screen*, on the Funūn Team Member side.
+It does **not** exist today — it is the thing being built, not an existing surface to add to.
+
+**Its job, in the owner's words:** to *accept these submissions for a review*, and then *build in a
+review process*. That is **two stages, not one**:
+
+1. **Acceptance** — an intake decision a Funūn Team Member makes: is this coming in for review at
+   all? A submission arrives, someone accepts or declines it.
+2. **Review** — what then happens to everything accepted.
+
+Keeping them separate matters: it is the difference between "nobody has looked at this yet" and
+"we looked and said no," and a queue that cannot tell those apart loses both the backlog and the
+decision.
+
+### Arrival provenance — Member vs marketing CTA
+
+**The owner requires the screen to show whether a submission came from an existing Funūn Member or
+from someone who arrived through the marketing "Submit a song" CTA.**
+
+**The trap, flagged before planning:** signup happens *before* upload (owner decision, same day),
+so **both groups are Members by the time they submit**. Asking "is this a Member?" returns yes for
+everyone and distinguishes nothing.
+
+What is actually wanted is **how they arrived** — an origin captured at the door and carried
+through to the submission. It cannot be derived afterwards from account state, because by then the
+two look identical. If nothing persists arrival origin today, capturing it is part of this build
+and must happen at signup, not at submission.
+
 
 **Decided:** a Funūn Team Member room holding submitted songs, with a review process. Visible to
 **leadership and A&R** (`anr` is a real `StaffRole`); the wider visibility list is explicitly
