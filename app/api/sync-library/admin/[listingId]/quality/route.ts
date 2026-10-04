@@ -4,21 +4,27 @@ import { requireStaff } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
 
 // ─── POST /api/sync-library/admin/[listingId]/quality ──────────────────
-// LEADERSHIP-ONLY write of the Sync Library inclusion gate's manual
-// quality-bar verdict + free-text staff guidance (30-CONTEXT.md "Quality
-// bar → audio quality + genuine sync fit"; 30-RESEARCH.md Open Question
-// 2 — a manual staff judgment for v1, no automated audio analysis).
-// Persists the migration 107 columns on sync_listings; the admit route
-// (30-04, app/api/sync-library/admin/[listingId]/route.ts) reads
-// quality_ok back as the gate's qualityOk signal.
+// Write of the Sync Library inclusion gate's manual quality-bar verdict +
+// free-text staff guidance (30-CONTEXT.md "Quality bar → audio quality +
+// genuine sync fit"; 30-RESEARCH.md Open Question 2 — a manual staff
+// judgment for v1, no automated audio analysis). Persists the migration
+// 107 columns on sync_listings; the admit route (30-04,
+// app/api/sync-library/admin/[listingId]/route.ts) reads quality_ok back
+// as the gate's qualityOk signal.
 //
-// T-30-06 (Elevation of Privilege): requireStaff(['leadership']) is the
-// FIRST statement, before any DB read — quality/notes are curation
-// writes, matching the admit/reject route's leadership-only gate (30-04
-// access fix). T-30-09 (Tampering — gate-signal spoofing): this route
-// only WRITES the staff's own judgment; it never reads or trusts a
-// client-supplied gate verdict. T-30-05 (Repudiation): logStaffAction is
-// called UNCONDITIONALLY after every successful write.
+// OWNER DECISION 2026-10-04 ("Quality review is part of A&R's job."):
+// widened from leadership-only to leadership + anr — mirrors the
+// admit/reject route's own 2026-10-04 widening (same owner decision,
+// same rationale: curating the sync catalogue is A&R's job). AE still
+// has no curation write here.
+//
+// T-30-06 (Elevation of Privilege): requireStaff(['leadership', 'anr'])
+// is the FIRST statement, before any DB read — quality/notes are
+// curation writes, matching the admit/reject route's allowlist exactly.
+// T-30-09 (Tampering — gate-signal spoofing): this route only WRITES the
+// staff's own judgment; it never reads or trusts a client-supplied gate
+// verdict. T-30-05 (Repudiation): logStaffAction is called
+// UNCONDITIONALLY after every successful write.
 
 const NOTE_MAX_LENGTH = 1000
 
@@ -35,8 +41,9 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ listingId: string }> }
 ) {
-  // T-30-06: staff-gate-first, leadership-only — precedes any DB read.
-  const auth = await requireStaff(['leadership'])
+  // T-30-06: staff-gate-first — precedes any DB read. leadership + anr
+  // (OWNER DECISION 2026-10-04 — see header note above).
+  const auth = await requireStaff(['leadership', 'anr'])
   if ('error' in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
