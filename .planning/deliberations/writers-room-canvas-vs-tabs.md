@@ -1,9 +1,10 @@
 # Writer's Room — what belongs in the canvas, and what needs its own tab
 
 **Opened:** 2026-10-04, while scoping the Writer's Room restyle.
-**Status:** one question open for the owner (Studio Notes). Everything else below is a
-proposed refinement awaiting owner ratification, not a decision already taken.
-**Supersedes nothing yet.** Phase 37 decision 001 stands until the owner rules.
+**Status:** Studio Notes routing is **DECIDED** (owner, 2026-10-04). The canvas-vs-tabs
+sort and the mobile case remain proposals awaiting ratification.
+**Supersedes nothing yet.** Phase 37 decision 001 stands until the owner rules on the
+layout question.
 
 ---
 
@@ -99,40 +100,82 @@ evidence about the phone. Do not let the desktop answer settle the mobile one by
 
 ---
 
-## OPEN QUESTION — where do Studio Notes go?
+## Studio Notes — route by kind, not by surface (DECIDED, owner 2026-10-04)
 
-**This is the one the owner needs to settle.**
+**Owner, 2026-10-04:** *"notes tab should be scoped to song-level studio notes only…
+audio notes go inside Takes beside the waveform, lyrics notes go in the canvas beside the
+block stays this way."* No catch-all Notes tab; notes live next to what they are about.
 
-Studio Notes are pinned to a timestamp in a take — the bench shows *"2:14 in Take 4"*.
-So they **are** anchored, but to **audio time**, not lyric position. They fail the
-canvas test and pass a different one.
+**Threads already work.** `StudioNotes.tsx` is 455 lines with replies, resolve/unresolve
+and `StudioNoteThreadView` in the types. Opening a thread and reading its notes is
+existing behaviour and survives being nested anywhere. That part of the question is
+settled by the code.
 
-That makes them canvas-native to the **Takes** surface, not to the lyric stream — which
-suggests Notes should not be a peer tab at all, but should live **inside Takes**, beside
-the waveform they refer to.
+### A note is not one thing — there are three kinds
 
-If that is right, the answer is **six tabs, not seven**. The bench has Notes and Takes as
-separate peers.
+`lib/catalogue/studio-notes.ts` normalizes three sources into one list:
 
-**Arguments for Notes inside Takes**
-- The anchor is audio time; the waveform is the only surface where that position is
-  visible and clickable.
-- A comment reading *"2:14 in Take 4"* in a tab with no waveform asks the reader to hold
-  a timestamp in their head and go elsewhere.
-- It keeps the tab count down, which matters most on mobile.
+| kind | source row | anchored to |
+|---|---|---|
+| `song` | `WorkStudioNote` — **the base table** | nothing; the whole song |
+| `audio` | `WorkVersionComment` | a version + `timestampMs` (`"2:14 in Take 4"`) |
+| `lyrics` | lyric comments | a lyric block |
 
-**Arguments for Notes as its own tab**
-- Notes span takes. *"N open threads"* is a whole-song count, and a writer may want every
-  unresolved thread in one list regardless of which take it sits on.
-- Burying them inside Takes makes open threads easy to miss — and an unresolved note is
-  the kind of thing that should nag.
-- The shipped module already treats them as whole-song, so this is the smaller change.
+So today's single "Studio Notes" module is three unrelated things wearing one label — a
+`label-integrity-funun` instance, and the reason it has no natural home.
 
-**Not resolvable from the code.** It depends on whether a writer thinks *"what's
-outstanding on this song?"* (list) or *"what did they say about this take?"* (in place).
-That is an owner call, ideally checked against a real session.
+### Decided
 
----
+- **`audio` → inside Takes**, beside the waveform. The anchor is audio time and the
+  waveform is the only surface where that position is visible and clickable. A note
+  reading "2:14 in Take 4" shown away from the waveform makes the reader carry a number
+  somewhere else.
+- **`lyrics` → the canvas**, beside the block, where `LyricCommentsPanel` already lives.
+  It passes the per-block test outright.
+
+### The `song` kind keeps a tab — scoped (DECIDED)
+
+- **`song` → a Notes tab, containing song-level studio notes and nothing else.**
+
+`normalizeSongNote(row: WorkStudioNote)` reads the **base** studio-notes table. A
+song-level note is not a leftover category — it is the **ordinary** Studio Note ("we
+should re-cut the bridge"), and probably the most common kind. `audio` and `lyrics` are
+the specialised ones layered on top, so the base case keeping a home is the conservative
+reading, not the expansive one.
+
+The tab survives, but it is a different object: it now has a definition — *notes about
+the song* — instead of being a container for three unrelated things. Today's module is
+the catch-all; this is not.
+
+**Routing it to the Diary was proposed and withdrawn.** Recorded because the reasoning
+generalises: a Studio Note is a *thread* (replies, resolve state, participants) while the
+Diary is an *event ledger* (version chips, sheet events, roster events). Dropping
+resolvable conversations into a chronological event list repeats the exact category error
+this document was opened to diagnose — and it would route the default note type into the
+surface least able to hold it.
+
+**Also considered: the canvas root**, above the first lyric block. Structurally honest —
+a song-level note is anchored to the song, which is the canvas root — and it would have
+kept six tabs. Rejected because a growing thread list permanently above the lyrics fights
+the single continuous read the canvas exists for.
+
+**Tab count: seven, unchanged from the bench** — but the composition differs. The bench's
+Notes tab is today's catch-all; this one is song-level only, with the anchored kinds moved
+to their anchors.
+
+### MUST SOLVE — unresolved notes become harder to see
+
+Whichever option wins, splitting one list three ways loses the single count of what is
+outstanding. Today `"N open threads"` is one number for the whole song
+(`WorkPage.tsx:1482`). After the split, an unresolved note on an old take is easy to miss
+— and an unresolved note is exactly the kind of thing that should nag.
+
+This is a design requirement of the change, not a detail to notice afterwards.
+Candidates, none chosen: an unresolved count on the Takes tab label; a line in
+`GuidingLine`, which already exists to surface the song's single most important next step
+and already has cadence gates; a song-level badge in the work header. Note `GuidingLine`
+is deliberately single-step and never stacks, so it can carry *that there is* something
+unresolved, not a list of them.
 
 ## What is NOT in this document
 
