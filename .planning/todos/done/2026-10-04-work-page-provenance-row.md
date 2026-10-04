@@ -1,8 +1,27 @@
 # Work-page provenance row ("FROM AN IDEA")
 
+**Closed:** 2026-10-04 by quick task `261004-pvr` — this todo's central premise was
+FALSE. The reverse lookup, the service-role fetch, and a rendered provenance block
+already shipped on `main` on 2026-09-03 (`c69916b4`), five weeks before this todo was
+captured and re-described them as missing. See `app/(artist)/vault/works/[workId]/page.tsx`
+(then ~lines 397-409 for the fetch, ~868-880 for the render) — verified against the live
+source before this todo was captured, which it was not.
+
+What 261004-pvr actually found missing and built: a relative timestamp (the data was
+fetched, never rendered), the bench's visual treatment (bench tokens, not the ad hoc
+classes already in place), and — the real, previously undecided gap — an explicit
+access rule for who may see the originating idea's title. The owner decided
+2026-10-04 to gate the row to idea access (`resolveIdeaAccess()`, `lib/ideas/access.ts`):
+only a viewer who is the idea's owner or an `idea_members` row sees the row at all. See
+`.planning/quick/261004-pvr-work-page-provenance-row/261004-pvr-SUMMARY.md` for the
+full record. The sections below are preserved as originally written, for the record —
+they are now known to be wrong where marked.
+
+---
+
 **Captured:** 2026-10-04 · **Status:** parked, cut from the Writer's Room restyle (part 1)
 **Owner framing:** cut because it is not cosmetic — the work has no reverse link to its
-originating idea yet.
+originating idea yet. **[WRONG — the reverse link already existed; see correction above.]**
 
 ## What the bench has
 
@@ -23,6 +42,8 @@ idea is promoted to a work (`IdeaState` includes `'promoted'`, `lib/ideas/schema
 That pointer runs **idea → work**, one direction only.
 
 ## What is missing
+
+**[WRONG — see correction at top. The lookup below already existed when this was written.]**
 
 A reverse lookup, **work → idea**, in the server page that renders the Writer's Room
 (`WorkPage.tsx` or its data-loading layer). Today there is no query that, given a work id,

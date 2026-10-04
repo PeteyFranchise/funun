@@ -25,6 +25,8 @@ import { parseWriterRoomLayout } from '@/lib/catalogue/writer-room-layout'
 import { presentStudioNotes } from '@/lib/catalogue/studio-notes'
 import { loadCommentProfiles } from '@/lib/catalogue/comment-participants.server'
 import { writersMissingFromSheet, identityKey, type PartyIdentity, type WorkMember as SplitsWorkMember } from '@/lib/catalogue/splits'
+import { pickVisibleOriginIdeas, timeAgo } from '@/lib/catalogue/origin-row'
+import { resolveIdeaAccess } from '@/lib/ideas/access'
 import { WorkPage, type VersionCardData } from '@/components/catalogue/WorkPage'
 import type { WorkRosterMember } from '@/components/catalogue/WorkRoster'
 import type { LyricsPadBlock } from '@/components/catalogue/LyricsPad'
@@ -406,6 +408,28 @@ export default async function WorkComposerPage({
   const originIdeas = Array.from(new Map(
     [...(promotedOriginIdeas ?? []), ...(linkedOriginIdeas ?? [])].map(idea => [idea.id, idea])
   ).values()).sort((left, right) => left.captured_at.localeCompare(right.captured_at)).slice(0, 5)
+  // ─── Provenance row access gate (owner decision, 2026-10-04) ──────────
+  // The fetch above runs on `service` (service-role, bypasses migration
+  // 169's `ideas_select` RLS) because it needs to find an idea by its
+  // promoted_work_id/link regardless of who currently owns the WORK. But
+  // showing an idea's title is a decision about the IDEA, not the work:
+  // `resolveWorkAccess`'s 'contribute' tier (already checked above) says
+  // nothing about whether this viewer may see any given idea's title. A
+  // work collaborator added long after promotion, or a work owner who
+  // received someone else's idea via promote_idea_to_work(p_target_work_id),
+  // has no relationship to the idea at all. The owner decided (2026-10-04,
+  // quick task 261004-pvr) to gate the row to idea access: only a viewer
+  // who is the idea's owner or an idea_members row (resolveIdeaAccess(),
+  // already RLS-respecting, already used by the promote route) sees it.
+  // Resolved against the session client, not `service` — the point is to
+  // reapply the RLS the fetch above bypassed.
+  const originIdeaAccess = await Promise.all(
+    originIdeas.map(idea => resolveIdeaAccess(supabase, idea.id, user.id))
+  )
+  const grantedOriginIdeaIds = new Set(
+    originIdeas.filter((_, i) => originIdeaAccess[i]?.granted).map(idea => idea.id)
+  )
+  const visibleOriginIdeas = pickVisibleOriginIdeas(originIdeas, grantedOriginIdeaIds)
   const splitsSheet = await loadWorkSplits(service, workId)
   const lyricLift = await loadOpenLyricLiftView(service, workId)
   const songPassportAvailable = await isSongPassportAvailableForWork(service as unknown as SongPassportCohortClient, workId, user.id)
@@ -865,16 +889,18 @@ export default async function WorkComposerPage({
         </Link>
       </Topbar>
       <div className="mx-auto max-w-5xl px-6 py-8 sm:px-9">
-        {(originIdeas ?? []).length > 0 && (
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-lav/25 bg-lav/5 px-5 py-4">
-            <div>
-              <div className="text-xs font-bold uppercase tracking-[.18em] text-lav">Started as an idea</div>
-              <p className="mt-1 text-sm text-white/55">
-                {originIdeas.map(idea => idea.title).join(' · ')} — the original capture provenance stays linked to this room.
-              </p>
-            </div>
-            <Link href={`/ideas?idea=${originIdeas[0]?.id}`} className="text-sm font-bold text-white/70 hover:text-white">
-              View origin →
+        {visibleOriginIdeas.length > 0 && (
+          <div className="mb-5 flex flex-wrap items-center gap-[9px] rounded-[10px] border border-hair bg-lav/[.03] px-[13px] py-[9px]">
+            <span className="text-[9px] font-bold uppercase tracking-[0.08em] text-lavdim">From an idea</span>
+            <span className="text-[12px] font-semibold text-white">
+              {visibleOriginIdeas.map(idea => idea.title).join(' · ')}
+            </span>
+            <span className="text-[11px] text-lavdim">{timeAgo(visibleOriginIdeas[0]!.captured_at)}</span>
+            <Link
+              href={`/ideas?idea=${visibleOriginIdeas[0]?.id}`}
+              className="ml-auto text-[11px] font-semibold text-brandindigo hover:text-white"
+            >
+              View original →
             </Link>
           </div>
         )}
