@@ -88,6 +88,8 @@ export type LyricBlockCardProps = {
   onOpenSuggestions?: () => void
   /** Pending proposals only; historical accepted/declined suggestions stay inside the panel. */
   suggestionCount?: number
+  /** Unresolved Studio Note threads anchored to this block. Mirrors `suggestionCount`'s shape and placement. */
+  unresolvedCommentCount?: number
   /** "＋🎤 who sings this?" — opens the singer picker. Owned entirely by the caller. */
   onAddSinger: () => void
   /** "Detach to vary" — copy-on-write, only ever shown on a repeat. */
@@ -218,6 +220,7 @@ export function LyricBlockCard({
   onOpenComments,
   onOpenSuggestions,
   suggestionCount = 0,
+  unresolvedCommentCount = 0,
   onAddSinger,
   onDetach,
   onRemove,
@@ -312,10 +315,10 @@ export function LyricBlockCard({
               type="button"
               onMouseDown={event => event.preventDefault()}
               onClick={onOpenComments}
-              aria-label={`Open comments for ${label}`}
+              aria-label={`Open comments for ${label}${unresolvedCommentCount > 0 ? ` (${unresolvedCommentCount} unresolved)` : ''}`}
               className="whitespace-nowrap text-[10px] font-semibold text-lavdim hover:text-white"
             >
-              💬 Comments
+              💬 Comments{unresolvedCommentCount > 0 ? ` (${unresolvedCommentCount})` : ''}
             </button>
           )}
           {!isRepeat && onOpenHistory && (
