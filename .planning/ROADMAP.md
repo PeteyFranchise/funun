@@ -3606,15 +3606,18 @@ plausible, and no localisation is planned.
 
 ### Phase 49: Take it with you — full account data export
 
-**Status:** planned. **Blocks:** the marketing page going live.
+**Status:** planned. **Current launch posture:** the homepage now describes the narrow exports
+that actually ship and identifies a complete account export as planned. This phase must ship
+before the broader one-action, whole-catalogue export can be represented as available.
 
-The marketing page's pricing FAQ now answers *"What happens to my songs if I stop paying, or
-leave?"* with **"you can always export all of your data — your whole catalogue, in the standard
-formats the rest of the industry reads."** Owner decision 2026-09-26: make the claim, then build
-to it.
+The marketing page's pricing FAQ previously answered *"What happens to my songs if I stop paying,
+or leave?"* with **"you can always export all of your data — your whole catalogue, in the standard
+formats the rest of the industry reads."** On 2026-10-03 the owner narrowed that claim to what the
+product supports today: individual songs, project files and metadata can be exported in standard
+industry formats, while a complete account export is explicitly identified as planned. This phase
+remains the capability that closes that gap.
 
-**Today that claim is ahead of the product.** Verified 2026-09-26 — plenty of narrow exports ship,
-and no account-level one does:
+**Today no account-level export exists.** Verified 2026-09-26 — plenty of narrow exports ship:
 
 | Exists | Where |
 |---|---|
@@ -3660,6 +3663,6 @@ A catalogue is not just songs. Anything the person would lose by leaving:
 
 #### Sequencing
 
-**The marketing page must not go live with this claim before this phase ships.** Phase 46 is
-"finish it and ship it" — that is the dependency. Either this lands first, or the FAQ sentence
-comes back out before launch. Do not let the page ship on a promise.
+The homepage may remain live with the truthful interim copy. Do not restore the broader
+whole-account-export claim until this phase ships and is verified. The implementation remains a
+separate security-sensitive phase rather than a first-week beta patch.

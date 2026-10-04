@@ -29,4 +29,5 @@ jobs:
       - run: npm run lint
       - run: npm test -- --runInBand
       - run: npm audit --omit=dev --audit-level=moderate
-      - run: npm audit --audit-level=high
+      - name: Audit gate (dated, self-expiring deferrals)
+        run: npm run audit:gate
