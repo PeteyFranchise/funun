@@ -18,13 +18,30 @@ import type { SyncListingEntrySource, SyncListingStatus, VaultProjectType } from
 
 // ─── /admin/sync-library ────────────────────────────────────────────────
 // Staff curation surface (26-10-PLAN.md), extended (30-09-PLAN.md) with the
-// Sync Readiness worklist. Gated to leadership + ae — the exact role set
-// the backing routes allow (requireStaff(['leadership','ae']) in
-// app/api/sync-library/invite; admit/reject and quality-review are now
-// leadership-only per 30-CONTEXT.md's access decision — see
-// app/api/sync-library/admin/[listingId]/route.ts and .../quality/route.ts;
-// the remove route stays leadership-only, unchanged). bd is not part of the
-// "broader permissioned-staff curation role" per 26-CONTEXT.md.
+// Sync Readiness worklist. Page view is gated to leadership + ae + anr
+// (OWNER DECISION 2026-10-04: let A&R see the submissions queue). This is
+// READ access only on its own — the backing routes each keep their own
+// allowlist, and the three widened/narrower below each mirror one route
+// exactly:
+//
+// - admit/reject: leadership + anr (OWNER DECISION 2026-10-04: "They
+//   should be able to admit, that is part of their job." — see
+//   app/api/sync-library/admin/[listingId]/route.ts). `canAdmit` below
+//   mirrors that allowlist.
+// - quality-review: leadership + anr (OWNER DECISION 2026-10-04: "Quality
+//   review is part of A&R's job." — see .../quality/route.ts, widened the
+//   same day as admit/reject above, same rationale). `canReviewQuality`
+//   below mirrors that allowlist and is handed to SyncReadinessWorklist
+//   in place of isLeadership — isLeadership no longer gates anything in
+//   that component.
+// - remove: still leadership-only (unchanged) — takedown of an
+//   already-live catalogue song is a different-weight action from
+//   admitting a new submission, not touched by this decision.
+// - invite: leadership + ae + anr (OWNER DECISION 2026-10-04: "A&R gets
+//   artist invite capabilities from here on out." — widened
+//   requireStaff(['leadership','ae']) to also include anr in
+//   app/api/sync-library/invite). `canInvite` below mirrors that
+//   allowlist.
 //
 // The worklist section below is built server-side via buildWorklist() over
 // data this page already batch-loads (listings/tracks/projects/artists),
@@ -63,8 +80,22 @@ export default async function AdminSyncLibraryPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect('/signin')
   const role = getStaffRole(user)
-  if (role !== 'leadership' && role !== 'ae') redirect('/')
+  if (role !== 'leadership' && role !== 'ae' && role !== 'anr') redirect('/')
+  // The ONE remaining use of isLeadership on this page — gates Remove
+  // only (SyncLibraryAdmin.tsx), a different-weight action from admit or
+  // quality review that stays leadership-only (unchanged by 2026-10-04).
   const isLeadership = role === 'leadership'
+  // Mirrors the admit/reject route's own allowlist
+  // (requireStaff(['leadership','anr'])) — OWNER DECISION 2026-10-04.
+  const canAdmit = role === 'leadership' || role === 'anr'
+  // Mirrors the quality-review route's own allowlist
+  // (requireStaff(['leadership','anr'])) — OWNER DECISION 2026-10-04
+  // ("Quality review is part of A&R's job.").
+  const canReviewQuality = role === 'leadership' || role === 'anr'
+  // Mirrors the invite route's own allowlist
+  // (requireStaff(['leadership','ae','anr'])) — OWNER DECISION 2026-10-04
+  // ("A&R gets artist invite capabilities from here on out.").
+  const canInvite = role === 'leadership' || role === 'ae' || role === 'anr'
 
   const service = createServiceClient()
 
@@ -259,7 +290,13 @@ export default async function AdminSyncLibraryPage() {
         Invite artists and curate every submitted song — one consistent admit/reject gate for
         invited and self-applied songs alike, oldest first.
       </p>
-      <SyncLibraryAdmin initialRows={rows} artistPool={artistPool} isLeadership={isLeadership} />
+      <SyncLibraryAdmin
+        initialRows={rows}
+        artistPool={artistPool}
+        isLeadership={isLeadership}
+        canAdmit={canAdmit}
+        canInvite={canInvite}
+      />
 
       <h2 className="mt-10 text-xl font-semibold text-[color:var(--ink)]">Sync Readiness</h2>
       <p className="mt-2 max-w-2xl text-[13px] text-[color:var(--ink-3)]">
@@ -267,7 +304,7 @@ export default async function AdminSyncLibraryPage() {
         gaps — incomplete isn&apos;t rejected.
       </p>
       <div className="mt-6">
-        <SyncReadinessWorklist rows={worklistRows} isLeadership={isLeadership} />
+        <SyncReadinessWorklist rows={worklistRows} canReviewQuality={canReviewQuality} />
       </div>
     </div>
   )

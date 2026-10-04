@@ -196,22 +196,78 @@ describe('POST /api/sync-library/admin/[listingId]', () => {
     expect(createServiceClient).not.toHaveBeenCalled()
   })
 
-  it('returns 403 for staff outside leadership (30-04: AE no longer admits/rejects)', async () => {
+  it('returns 403 for staff outside leadership+anr (30-04: AE still does not admit/reject)', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ error: 'Forbidden', status: 403 })
 
     const res = await POST(jsonRequest({ decision: 'admit' }), params())
 
     expect(res.status).toBe(403)
+    expect(requireStaff).toHaveBeenCalledWith(['leadership', 'anr'])
     expect(createServiceClient).not.toHaveBeenCalled()
   })
 
-  it('returns 403 for staff outside leadership on reject too (leadership-only covers the whole route)', async () => {
+  it('returns 403 for staff outside leadership+anr on reject too (the same allowlist covers the whole route)', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ error: 'Forbidden', status: 403 })
 
     const res = await POST(jsonRequest({ decision: 'reject' }), params())
 
     expect(res.status).toBe(403)
+    expect(requireStaff).toHaveBeenCalledWith(['leadership', 'anr'])
     expect(createServiceClient).not.toHaveBeenCalled()
+  })
+
+  // OWNER DECISION 2026-10-04: A&R can now admit/reject — "that is part of
+  // their job." Pinned here with an anr actor exercising the full admit
+  // path, not just a mocked requireStaff return, so a future narrowing
+  // back to leadership-only fails this test for the right reason.
+  it('admits a pending_admit listing when the actor is anr, not just leadership', async () => {
+    const ANR_UUID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: ANR_UUID }, staffRole: 'anr' })
+    const service = mockService({
+      sync_listings: [
+        { data: PENDING_ADMIT_ROW, error: null },
+        { data: null, error: null },
+        { data: [{ id: LISTING_UUID }], error: null },
+      ],
+      tracks: [{ data: { title: 'Midnight Run' }, error: null }],
+      vault_projects: [{ data: READY_PROJECT_ROW, error: null }],
+    })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await POST(jsonRequest({ decision: 'admit' }), params())
+
+    expect(res.status).toBe(200)
+    expect(requireStaff).toHaveBeenCalledWith(['leadership', 'anr'])
+    const updateBuilder = service.builders.sync_listings[1]
+    expect(updateBuilder.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'admitted', decided_by: ANR_UUID })
+    )
+    expect(logStaffAction).toHaveBeenCalledWith(
+      service,
+      expect.objectContaining({ actorId: ANR_UUID, action: 'sync_library.admit' })
+    )
+  })
+
+  it('rejects a listing when the actor is anr, not just leadership', async () => {
+    const ANR_UUID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: ANR_UUID }, staffRole: 'anr' })
+    const service = mockService({
+      sync_listings: [
+        { data: { ...PENDING_ADMIT_ROW, status: 'applied' }, error: null },
+        { data: null, error: null },
+      ],
+      tracks: [{ data: { title: 'Golden Hour' }, error: null }],
+    })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await POST(jsonRequest({ decision: 'reject', reason: 'Not a fit right now' }), params())
+
+    expect(res.status).toBe(200)
+    expect(requireStaff).toHaveBeenCalledWith(['leadership', 'anr'])
+    const updateBuilder = service.builders.sync_listings[1]
+    expect(updateBuilder.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'rejected', decided_by: ANR_UUID })
+    )
   })
 
   it('returns 400 for an invalid decision value', async () => {

@@ -7,13 +7,18 @@ import type { WorklistRow } from '@/lib/sync-library/worklist'
 // Staff-facing "what's missing per track" worklist (30-05's GET /api/sync-
 // library/worklist). Renders EXACTLY the rows the worklist route returns —
 // no client-side readiness recompute (30-CONTEXT.md "Reuse that engine; do
-// not rebuild it" + this plan's prohibition). Leadership gets inline
-// quality-review (pass/fail + optional note) and guidance staff-notes
-// controls, POSTing to the leadership-only quality route (30-04); any
-// other staff role (ae/bd/anr) sees the identical rows READ-ONLY — browse,
-// not curate (30-CONTEXT.md access decision). All classes are `.fncon`
-// CSS-variable tokens, mirroring SyncLibraryAdmin.tsx's token vocabulary —
-// never .fnbl/bg-ink/text-lav here.
+// not rebuild it" + this plan's prohibition). `canReviewQuality` (leadership
+// + anr) gets inline quality-review (pass/fail + optional note) and
+// guidance staff-notes controls, POSTing to the quality route (30-04,
+// widened to leadership + anr by OWNER DECISION 2026-10-04 — "Quality
+// review is part of A&R's job."); this flag mirrors that route's own
+// requireStaff(['leadership','anr']) exactly. Any other staff role
+// (ae/bd) sees the identical rows READ-ONLY — browse, not curate
+// (30-CONTEXT.md access decision). isLeadership does NOT gate anything in
+// this component — see SyncLibraryAdmin.tsx for the ONE remaining use of
+// isLeadership (Remove). All classes are `.fncon` CSS-variable tokens,
+// mirroring SyncLibraryAdmin.tsx's token vocabulary — never
+// .fnbl/bg-ink/text-lav here.
 
 const CHIP_BASE = 'rounded-full border px-2.5 py-1 text-[11px] font-medium transition'
 
@@ -80,10 +85,10 @@ function qualityBadge(qualityOk: boolean | null): { label: string; className: st
 
 export function SyncReadinessWorklist({
   rows: initialRows,
-  isLeadership,
+  canReviewQuality,
 }: {
   rows: WorklistRow[]
-  isLeadership: boolean
+  canReviewQuality: boolean
 }) {
   const [rows, setRows] = useState<WorklistRow[]>(initialRows)
   const [pendingId, setPendingId] = useState<string | null>(null)
@@ -211,7 +216,7 @@ export function SyncReadinessWorklist({
                 </div>
               )}
 
-              {isLeadership ? (
+              {canReviewQuality ? (
                 <div className="mt-3 flex flex-col gap-2 border-t border-[color:var(--border)] pt-3">
                   <div>
                     <label className="mb-1 block text-[11px] font-bold text-[color:var(--ink-2)]">
