@@ -137,3 +137,74 @@ room (large enough to want its own phase, not a quick task).
 
 **Still open:** question 2's catalogue-size bands in the Team-tier questionnaire — the owner has
 not set them, and the todo is explicit that only he can.
+
+---
+
+## 4. The submission flow, end to end (DECIDED, owner 2026-10-04)
+
+### Artist side
+
+1. Marketing page → **"Submit a song"**, relabelled so it is true while Funūn is invite-only.
+2. Invite-only gate → a waitlist that **carries the arrival intent**, or straight through if invited.
+3. Signup → first-run. **Arrival origin is captured here** — see the provenance trap above.
+4. **The song uploads first.** Nothing is asked before it is in.
+5. Questionnaire; every question skippable.
+6. Summary: where the song lives, what it is missing, Crate eligibility — **all four doors on screen**.
+
+Only two things then make a song visible to staff, and **both are opt-in**:
+
+- **Explicit submit** — the existing deliberate action.
+- **"I'd like this looked at"** — a lighter signal, new, still to be designed and named.
+
+### Funūn Team Member side
+
+7. The submission lands on **The Crate Submissions Screen**.
+8. **Accept or decline** — the intake decision.
+9. Accepted submissions enter the **review process**.
+10. A positive outcome **advances the song into The Crate**.
+
+### Ownership: shared pool, claim to review
+
+Everyone with access sees everything; claiming a submission marks it yours so two people do not
+review the same song. **The claim is the assignment** — no routing step to stall on, and it scales
+without anyone administering a queue.
+
+### What the artist hears: acknowledge now, outcome when there is one
+
+They see that the song was received and is awaiting review, and they hear when a decision lands —
+**including a no**. The status lives on the song, where they will look for it.
+
+Rejected: acknowledging receipt and keeping outcomes internal, and deferring artist-facing status
+entirely. A product that takes something from people and then tells them nothing is hard to walk
+back, and silence is the thing this product exists to replace.
+
+### Step 10 is rights-bearing — enforce at the moment, do not trust the reviewer
+
+Advancing into The Crate makes a song **visible to buyers and licensable**. Eligibility
+(`resolveCrateConsequence` — AI provenance, independent of readiness), splits state, and sample
+clearance (`sampleBlock`, which gates `canContinue`) must be **correct at that instant, not
+approximately correct**. The advance action enforces them; it does not assume the reviewer checked.
+
+### The consent gap between the two intake doors — RESOLVED
+
+The two doors carry **different consent**, and conflating them would license a song on a permission
+the artist never gave:
+
+| Arrived via | Consented to | May be advanced? |
+|---|---|---|
+| Explicit submit | Crate consideration | **Yes** — it is what they asked for |
+| "I'd like this looked at" | Being *reviewed* | **No, not directly** |
+
+**Decided:** a song from the lighter door can be accepted, reviewed and loved, but advancing stops
+there. The artist is told *"we want this in The Crate — submit it and it's in"* and makes the
+licensing decision themselves, because it is theirs to make.
+
+Rejected: folding Crate consent into the lighter signal (which would collapse the two doors and
+destroy the point of a lighter one), and letting staff advance anything regardless of origin
+(which licenses a song on absent consent, in a product whose pitch is that the artist keeps the
+record).
+
+**This is the third consent-or-visibility defect caught in one day** — after #139's service-role
+idea exposure and the submissions-room intake question. The pattern is consistent enough to state
+plainly: whenever a surface shows one person's material to someone else, establish who consented
+to what *before* the surface exists, because afterwards it looks like working software.
