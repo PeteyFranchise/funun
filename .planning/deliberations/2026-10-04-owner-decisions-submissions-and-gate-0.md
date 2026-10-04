@@ -669,3 +669,17 @@ music; the Selects catalogue shows only tracks already **admitted** to the Crate
 - **There is no way to browse public music.** No discovery surface exists; a staff member would
   have to already be on that artist's profile. "Comes across music shared publicly" is currently
   a matter of stumbling onto it, so a browse surface would be **new work**, not a wiring job.
+
+### Settled 2026-10-04
+
+- **The invite door ships now and works from an artist's public profile page** — the one place a
+  Funūn Team Member can actually find shared music today. A browse/discovery surface is roadmapped
+  separately (`2026-10-04-staff-discovery-of-public-music.md`); the invite does not wait for it.
+- **SMS and iMessage are roadmapped** (`2026-10-04-sms-and-imessage-outbound.md`). Note they are
+  **not one job**: SMS is an ordinary vendor integration; iMessage runs through Apple Messages for
+  Business, needs Apple's approval, and is **inbound-initiated by design** — a business cannot
+  cold-text someone into it, which rules it out for sending an invite and leaves it suited to
+  replies about an existing submission.
+- **Invite non-expiry is intentional for now**, owner-confirmed. The existing sync-library
+  capability grant has no TTL in schema or code. Recorded as a deliberate choice rather than an
+  oversight, so a later reader does not "fix" it.
