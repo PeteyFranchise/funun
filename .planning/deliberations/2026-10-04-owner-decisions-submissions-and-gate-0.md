@@ -561,3 +561,55 @@ So the hatch is not a politeness — it is the §11 path staying open while the 
 
 **Still open:** whether in-flight submissions complete when the valve closes. They must —
 **closing the door cannot strand someone mid-upload.**
+
+---
+
+## 13. A third door: a Crate-submission invite (DECIDED, owner 2026-10-04)
+
+**Correction first.** The existing staff invite (`app/api/sync-library/invite/route.ts`) invites
+someone to make a **general Funūn account**. It is not a Crate invitation, and treating it as one
+would have built the wrong thing.
+
+**What the owner is describing is a distinct object:** an invite that says *submit this to The
+Crate*, and that **explains what The Crate is, how it works, and what happens if a song is
+accepted**. The person then enters Funūn **through the submission door** rather than arriving at a
+generic signup.
+
+Two shapes:
+
+- **(a)** A Funūn Team Member finds music an artist chose to share **publicly** on their Funūn
+  account and invites them to submit it.
+- **(b)** A Funūn Team Member has an artist's email (or phone) and sends them a link explaining
+  how to submit.
+
+So there are now **two routes through the submit door**: anyone may walk up (§12), or a Funūn Team
+Member brings them.
+
+### Decided
+
+**Invites always work, even when the valve is shut.** The valve (§12) throttles *strangers walking
+up*; it was never meant to stop the team bringing someone in. An A&R who personally chased an
+artist should not find their invite silently dead because the general queue is busy — and the
+invited artist would have no way to understand why. Same reasoning as §12's catalogue hatch: the
+valve closes one path, not every path.
+
+Rejected: one switch with no exceptions (an invite that stops working is a bad look for whoever
+sent it), and two separate switches (someone then has to track the state of both, and the second
+would rarely be the right tool).
+
+**The queue shows who invited them, and why.** A submission carries *"invited by [name]"* plus the
+note they sent. Someone on the team already decided this artist was worth hearing, and that is
+exactly the context a reviewer wants. It also makes the inviter **accountable for the invite**.
+
+Rejected: prioritising invited songs (two tiers of waiting, with an unsolicited gem queued behind
+a colleague's favour), and hiding provenance entirely (it discards real context, and the system
+records how a song arrived regardless).
+
+### Open
+
+- **Phone may not be possible.** Email runs through Resend; no SMS capability has been confirmed
+  anywhere in the codebase. If none exists, phone means a new vendor, not a new feature.
+- **`entry_source` currently has only two values** (`admin_invited`, `self_applied`), and
+  `admin_invited` already means something else — a staff-granted `sync_library` capability. A
+  Crate-submission invite is a third thing and must not be quietly folded into an existing value
+  whose meaning differs.
