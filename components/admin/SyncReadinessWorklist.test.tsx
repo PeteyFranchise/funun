@@ -36,7 +36,7 @@ const INELIGIBLE_REASON =
 describe('SyncReadinessWorklist', () => {
   it('renders an ELIGIBLE, checklist-complete pending_admit row as "Ready to admit"', () => {
     const html = renderToStaticMarkup(
-      <SyncReadinessWorklist rows={[BASE_ROW]} isLeadership={false} />
+      <SyncReadinessWorklist rows={[BASE_ROW]} canReviewQuality={false} />
     )
     expect(html).toContain('Ready to admit')
     expect(html).toContain('Checklist complete')
@@ -49,7 +49,7 @@ describe('SyncReadinessWorklist', () => {
     const html = renderToStaticMarkup(
       <SyncReadinessWorklist
         rows={[{ ...BASE_ROW, syncEligible: false, ineligibleReason: INELIGIBLE_REASON }]}
-        isLeadership={false}
+        canReviewQuality={false}
       />
     )
     expect(html).not.toContain('Ready to admit')
@@ -62,7 +62,7 @@ describe('SyncReadinessWorklist', () => {
     const html = renderToStaticMarkup(
       <SyncReadinessWorklist
         rows={[{ ...BASE_ROW, syncEligible: false, ineligibleReason: INELIGIBLE_REASON }]}
-        isLeadership={false}
+        canReviewQuality={false}
       />
     )
     // The submission is still visible — a live listing awaiting a human
@@ -71,5 +71,35 @@ describe('SyncReadinessWorklist', () => {
     expect(html).not.toContain('Nothing on the worklist')
     expect(html).toContain('snippet')
     expect(html).toContain('finished recordings')
+  })
+
+  // OWNER DECISION 2026-10-04 ("Quality review is part of A&R's job."):
+  // the quality-review controls now gate on `canReviewQuality` (mirroring
+  // the quality route's own requireStaff(['leadership','anr'])), NOT on
+  // leadership status alone. These two tests pin that the prop — not a
+  // leadership flag — is what drives the controls, so a future reversion
+  // back to an isLeadership-shaped gate fails here.
+  it('renders the quality-review controls (Pass/Fail) when canReviewQuality is true — the anr case', () => {
+    const html = renderToStaticMarkup(
+      <SyncReadinessWorklist rows={[BASE_ROW]} canReviewQuality={true} />
+    )
+    expect(html).toContain('Quality review')
+    expect(html).toContain('Pass')
+    expect(html).toContain('Fail')
+    expect(html).toContain('Guidance notes for the artist team')
+  })
+
+  it('hides the quality-review controls and shows read-only guidance when canReviewQuality is false — the ae/bd case', () => {
+    const html = renderToStaticMarkup(
+      <SyncReadinessWorklist
+        rows={[{ ...BASE_ROW, staffNotes: 'Re-master before resubmitting' }]}
+        canReviewQuality={false}
+      />
+    )
+    expect(html).not.toContain('Quality review')
+    expect(html).not.toContain('>Pass<')
+    expect(html).not.toContain('>Fail<')
+    expect(html).toContain('Guidance:')
+    expect(html).toContain('Re-master before resubmitting')
   })
 })

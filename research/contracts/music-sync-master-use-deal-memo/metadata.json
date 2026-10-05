@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "id": "music-sync-master-use-deal-memo",
+  "title": "Music Synchronization & Master Use Deal Memo",
+  "documentType": "combined_sync_and_master_use_deal_memo",
+  "status": "research_only",
+  "source": {
+    "kind": "user_supplied_draft",
+    "receivedOn": "2026-10-04",
+    "receivedVia": "Codex conversation",
+    "sourceFile": "source.md",
+    "substantiveEditsMade": false
+  },
+  "review": {
+    "legalReviewStatus": "not_reviewed",
+    "reviewer": null,
+    "reviewedOn": null,
+    "jurisdictions": [],
+    "nextReviewDue": null
+  },
+  "eligibility": {
+    "generatorEligible": false,
+    "esignEligible": false,
+    "contractLockerEligible": false,
+    "reason": "Research source only; binding effect, rights ownership assumptions, option mechanics, payment terms, remedies, and missing boilerplate require product decisions and music/IP counsel review."
+  },
+  "promotionGates": [
+    "confirm whether the instrument is binding or non-binding",
+    "music/IP counsel approves the exact language and supported jurisdictions",
+    "define single-licensor and split-rights-holder variants",
+    "define protected clauses and editable business fields",
+    "define option exercise, notice, payment, expiry, and credit mechanics",
+    "approve signer roles, disclosures, and e-signature field placement",
+    "assign immutable version and review provenance",
+    "implement and test generation, authorization, audit, and storage behavior"
+  ],
+  "security": {
+    "containsLiveCredentials": false,
+    "containsLivePartyData": false,
+    "allowsExecutedAgreements": false
+  },
+  "notesFile": "intake-audit.md"
+}
+

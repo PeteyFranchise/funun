@@ -24,11 +24,22 @@ import type { VaultProjectType } from '@/types'
 // app/api/capabilities/approve/[grantId]/route.ts's staff-gate-first +
 // DB-loaded-target + double-decide doctrine exactly.
 //
-// T-30-06 (Elevation of Privilege): requireStaff(['leadership']) is the
-// FIRST statement, before any DB read — LEADERSHIP-ONLY (30-CONTEXT.md
-// access decision, tightened from the Phase 26 leadership+ae grant; AE
-// keeps browse & pull only, no curation writes). This route now matches
-// the REMOVAL route's (already leadership-only) access level.
+// T-30-06 (Elevation of Privilege): requireStaff([...]) is the FIRST
+// statement, before any DB read. Leadership + ae was the Phase 26 grant;
+// 30-CONTEXT.md tightened it to leadership-only (AE keeps browse & pull
+// only, no curation writes) — this route matched the REMOVAL route's
+// (leadership-only) access level at that point.
+//
+// OWNER DECISION 2026-10-04 ("They should be able to admit, that is part
+// of their job."): widened to leadership + anr. A&R curating the sync
+// catalogue is exactly their job description — this is a DIFFERENT
+// decision from the Phase 30 AE tightening above, not a reversal of it.
+// AE still has no curation write here. The REMOVAL route
+// (.../remove/route.ts) deliberately stays leadership-only — admitting a
+// new submission and taking down an already-live catalogue song are
+// different-weight actions (admit creates the licensable listing;
+// removal un-does one already relied on by buyers), so this route's
+// allowlist now DIFFERS from remove's, on purpose.
 //
 // Gate precondition (30-04): admitting ADDITIONALLY requires
 // evaluateInclusionGate() (lib/sync-library/gate.ts) to return
@@ -122,8 +133,9 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ listingId: string }> }
 ) {
-  // T-30-06: staff-gate-first, leadership-only — precedes any DB read.
-  const auth = await requireStaff(['leadership'])
+  // T-30-06: staff-gate-first — precedes any DB read. leadership + anr
+  // (OWNER DECISION 2026-10-04 — see header note above).
+  const auth = await requireStaff(['leadership', 'anr'])
   if ('error' in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Research-only discovery index. Production code must not import this catalog.",
+  "items": [
+    {
+      "id": "music-sync-master-use-deal-memo",
+      "title": "Music Synchronization & Master Use Deal Memo",
+      "documentType": "combined_sync_and_master_use_deal_memo",
+      "status": "research_only",
+      "path": "music-sync-master-use-deal-memo/metadata.json",
+      "legalReviewStatus": "not_reviewed",
+      "generatorEligible": false,
+      "esignEligible": false,
+      "contractLockerEligible": false
+    }
+  ]
+}
+

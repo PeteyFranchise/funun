@@ -4,12 +4,12 @@ milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
-status: Phases 39 and 40 SHIPPED. Migration ceiling 227 applied. Phase 41 roadmapped, not yet planned
-stopped_at: Nothing mid-flight. Next action is /gsd-plan-phase 41, or a deferred item
-last_updated: "2026-10-04T05:09:32.983Z"
-last_activity: 2026-09-13
+status: Phases 39 and 40 SHIPPED. Migration ceiling 229 applied (230's code merged via PR #151, migration itself still unapplied, external to any roadmapped phase). Phase 41 roadmapped, not yet planned. Phase 50 (The Crate Submissions Door) RE-PLANNED 2026-10-04 after an adversarial review returned NO-GO on the first pass; not yet discussed or planned at the PLAN.md level
+stopped_at: Nothing mid-flight. Next action is /gsd-plan-phase 41, /gsd-discuss-phase 50, or a deferred item
+last_updated: "2026-10-05T01:51:41.372Z"
+last_activity: 2026-10-05
 progress:
-  total_phases: 49
+  total_phases: 50
   completed_phases: 39
   total_plans: 341
   completed_plans: 338
@@ -31,6 +31,79 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 > this paragraph remains the explicit Phase 31.2 record until its own completion pass occurs.
 
 ## Current Position
+
+### UPDATE 2026-10-04 (later same day) — Phase 50 RE-PLANNED after adversarial NO-GO
+
+**The slice breakdown this file's prior entry (below) described was rejected.** An independent
+adversarial review returned NO-GO
+(`.planning/deliberations/2026-10-04-phase-50-adversarial-review-corrections.md`, 18 findings, two
+ratified owner contradictions). Not rejected for omissions -- for two reinterpretations that
+survived as sentences while losing their meaning:
+
+1. **The valve was built as an account-creation gate** (read inside `handle_new_user()`). The
+   owner asked to stop *submissions*; an account created while the valve was open kept submitting
+   forever after it closed, since the cap is per-submission, never per-lifetime. **Corrected: the
+   valve now lives in application code, consulted fresh at every submission-creation attempt,
+   with a durable expiring grant honoring work already begun.** Account creation is unconditional
+   and never reads the valve at all.
+2. **"Accepted but not rights-ready" was a display badge, not a lifecycle.** Verified directly
+   this pass: `evaluateInclusionGate()` still requires `rightsClear` to admit at all
+   (`lib/sync-library/gate.ts:35-38`, `isSyncRightsClear`, `app/api/sync-library/admin/[listingId]/
+   route.ts:283-302`) -- meaning nothing could ever be admitted with incomplete splits, which made
+   the owner's "visible and pitchable, routed to contact" decision structurally impossible under
+   the gate the rejected plan left unchanged. **Corrected: four distinct things now modeled --
+   intake acceptance, review outcome, catalogue admission, licensing readiness -- with
+   `rightsClear` removed as an admission precondition and AI-provenance folded into the existing
+   `rightsBadge()` tri-state instead of a parallel check.**
+
+**Also corrected:** eligibility enforcement reordered to be a prerequisite ahead of every
+intake-expanding slice (A&R admit access, #147, is already MERGED and live -- the exposure is
+today's, not a future one); the Selects admission gap is CLOSED (#148, MERGED -- the old "Slice 9"
+is pre-satisfied); the `handle_new_user()` baseline is migration 214's live body, not 098's or
+099's; six requirements (CSUB-06, 07, 11, 12, 13, 14) rewritten in REQUIREMENTS.md, three new ones
+added (CSUB-19/20/21); a stale Phase 42 sequencing sentence ("the tabs are a bench invention")
+corrected in ROADMAP.md, since PRs #141-#144 built them; owner-decisions §1's deferred
+split-document-upload build filed as its own todo
+(`.planning/todos/pending/2026-10-04-split-document-upload-build.md`).
+
+**Migration ceiling corrected: 229 applied** (`229_team_tier_leads.sql`, #146) — this file
+previously carried a stale "227 applied" line from the 2026-09-19 entry below, which predates
+#146. **230's code is now MERGED to `main`** (PR #151, quick task `261004-wtl`) **but the
+migration remains unapplied** — external to this phase, consumed by Phase 50's
+eligibility-enforcement slice, not built there.
+
+**Nothing executed this pass either. No code or migration written** — corrected roadmap,
+requirements, and slice-breakdown planning artifacts only, on branch `phase-50-replan-261004`
+(pushed, no PR opened per instruction).
+
+### UPDATE 2026-10-04 — Phase 50 roadmapped (not yet discussed or planned)
+
+**The Crate Submissions Door (valve, invites, rights-enforced advance)** added to
+`.planning/ROADMAP.md` as Phase 50, from a completed, owner-ratified 16-section deliberation
+(`.planning/deliberations/2026-10-04-owner-decisions-submissions-and-gate-0.md`) and its companion
+work→track eligibility deliberation. Extends the existing `/admin/sync-library` staff queue (Phase
+26/30) — opens a public no-invite submission door behind a leadership-only valve, adds a Funūn
+Team Member invite door that bypasses the valve, enforces AI-provenance eligibility at the moment
+a song advances into The Crate, and adds a staff-only multi-reviewer collaborative surface.
+
+Ten slices pre-identified (not yet discussed/planned) in
+`.planning/phases/50-crate-submissions-door-valve-rights-enforcement/50-SLICES.md`: the valve must
+ship before the public door (hard ordering, not reorderable — the door's migration edits the live
+`handle_new_user()` trigger and reads the valve's table); eligibility enforcement (Slice 6) has a
+hard external dependency on migration 230, planned but unpushed via quick task `261004-wtl`; the
+same slice also touches the same admit route as the unmerged `anr-sync-library-visibility` branch.
+18 requirements registered (CSUB-01..CSUB-18) in REQUIREMENTS.md.
+
+**A pre-existing, phase-independent exposure was found while grounding this roadmap pass:**
+`addSelectsTrack()` (`lib/selects/persistence.ts:196-235`) and its route
+(`app/api/admin/selects/[id]/tracks/route.ts`) perform no server-side check that a track is
+admitted to The Crate before adding it to a Selects — any current `ae`/`bd`/`leadership` staff
+member can already add an unadmitted track today, reachable via the public `/selects/[token]`
+player. Recorded as Slice 9 in the breakdown; does not depend on the rest of Phase 50 and could
+ship as its own quick task immediately.
+
+**Nothing executed. No code or migration written this pass** — roadmap, requirements, and the
+slice-breakdown planning artifact only.
 
 ### UPDATE 2026-09-19 — Phases 39 and 40 shipped; nothing mid-flight
 
@@ -68,7 +141,24 @@ segment, which is an account id for `{userId}/...` uploads but a **work** id for
 and handoffs, a **room** id for playbook media, a **track** id for stream previews. Verified
 against production: 6 of 8 UUID segments were not accounts. The cron no longer repeats the claim
 and a caller-lock test stops a second consumer picking it up quietly, but **any direct caller still
-gets work ids labelled as owners.** The fix is migration 228, deliberately deferred.
+gets work ids labelled as owners.** The fix was intended to be migration 228, deliberately
+deferred.
+
+**CORRECTED 2026-10-04 (found while re-planning Phase 50) — the paragraph above is now stale
+about the number, not the plan.** `228_split_sheet_party_identity_provenance.sql` exists on disk
+and is a DIFFERENT migration entirely (split-sheet party identity provenance, quick task
+`260926-v1w`) — the M-01 `owner_segment` fix described above was never actually assigned that
+number; this file's own narrative drifted from the real migration file. **The M-01
+`owner_segment` fix remains unbuilt and unnumbered.** 228's own application status is NOT
+independently confirmed by this pass — its file is human-gated-push like every migration here,
+and this correction only establishes that the NUMBER does not mean what this section's prose
+implied, not that it has been pushed. **229 (`229_team_tier_leads.sql`, #146) IS confirmed
+applied** as of this pass, moving the confirmed ceiling to (at least) 229 — the "Production
+migration ceiling: 227" heading above predates it and is itself stale. Do not claim a number
+below 231 for any new migration regardless (230's code is merged, PR #151, but still
+unapplied -- external) —
+re-verify both 228's and 229's actual applied status against the live database before relying on
+either for a plan, rather than trusting this file's narrative a third time.
 
 ### The M-01 session, 2026-09-19
 
@@ -796,6 +886,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 36]: 36-07: migration 134 writes to NO row. Its planned fixture sweep was removed after the owner deleted the five fixture accounts outright — the remaining handle-less rows are three real people, and generating handles for them would violate D-09's prompted-never-assigned rule.
 - [Phase 37]: Test-only injectable props (isTypeSupported, initialError, initialResult) drive HumCaptureButton/AiEntryFlow states unreachable via renderToStaticMarkup alone, since this repo has no jsdom/testing-library — Mirrors pickSupportedMimeType()'s own injectable-predicate convention rather than inventing a new test mechanism; documented inline as never set by a production caller.
 - [Phase 38.0.1]: 38.0.1-13: the Member consent surface renders relationship-wide asks only, and omits the attached-agreement link and the per-grant date because plan 12's payload carries neither; inventing either on a consent screen would misstate what is being granted. All three are carried to 38.1.
+- [Phase 261004-wlk]: Trigger-based tracks.work_id lockdown (migration 231), not migration 040's table-revoke-then-column-allowlist pattern — tracks has grown its column list four times with zero grant bookkeeping; a trigger's protection does not depend on the table's grant state and cannot rot the way migration 230's column REVOKE already did
+- [Phase 261004-wlk]: Guard checks (SELECT auth.role()) = 'service_role' (or NULL), never current_user — SECURITY DEFINER changes current_user to the function owner during the call, which would make a current_user-based guard blind to graduate_song_passport_to_release()'s real caller; auth.role() reads the connection's JWT claim and survives the identity switch -- matches migration 209's already-shipped idiom
 
 ### Pending Todos
 
@@ -836,6 +928,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 
 | Date | Slug | Result |
 |---|---|---|
+| 2026-10-05 | 261004-wlk-work-id-write-lockdown | Migration 230's `REVOKE INSERT (work_id), UPDATE (work_id) ON public.tracks FROM authenticated, anon` was a silent no-op: `tracks` has carried Supabase's ambient table-level INSERT/UPDATE grant to authenticated/anon since migration 001, and a column-level REVOKE cannot override a live table grant — confirmed against production's `information_schema` (8 rows of column_privileges, 4 rows of table-level grants, unchanged by 230). Migration 231 (authored, text-tested, committed — NOT applied) replaces it with a `BEFORE INSERT OR UPDATE` trigger (`tracks_guard_work_id_write`) whose protection does not depend on `tracks`' grant state at all, so it cannot rot the way the column-REVOKE already did. Guard checks `(SELECT auth.role()) = 'service_role'` (or NULL for a direct DB session), never `current_user` — `SECURITY DEFINER` would make the latter blind to `graduate_song_passport_to_release()`'s real caller; matches migration 209's already-shipped idiom (209:254,301,320) verbatim. Jest test (12 assertions, explicitly scoped in its own header as proving SQL-text correctness only, never enforcement) plus a standing corpus invariant guarding against a future migration silently dropping the trigger. One self-correction: the migration's own `COMMENT ON FUNCTION` text initially quoted 230's broken REVOKE verbatim, which its own text-lock test correctly flagged as indistinguishable from reissuing it — rephrased to describe rather than reproduce. Owner-run behavioral verification (information_schema re-check + a BEGIN/SAVEPOINT/ROLLBACK impersonation probe proving authenticated is rejected with 42501 and service_role still succeeds) embedded verbatim in the migration's trailing comment, tracked as a todo — no database connection was reachable from this session. Full Verification Gate green (650 suites / 8137 tests). Branch pushed, PR left for the orchestrator |
 | 2026-10-04 | 261004-290-correct-the-sample-flag-label-integrity | A label-integrity fix of the exact `label-integrity-funun` shape, description-only: `SampleFlagToggle`'s header claimed flagging a sample "creates a required Sample Clearance requirement and caps the readiness score", and `DocumentStage` told the artist "An uncleared sample is capping your readiness." The requirement is real; the cap is not. Nothing reads `has_sample` when the score is computed - `lib/vault/readiness.ts` never mentions it and its per-track input type declares no such field. What is gated is PROGRESSION: `sampleBlock` is a separate conjunct of `canContinue` (stage3.ts:330,338), so an uncleared sample holds the project at Stage 3 at whatever score it honestly earned. Found the root cause, which was not in the brief: migration 005 DID cap at 70, and the split-sheet-coverage rewrite that became 068/070 dropped the branch - 070 is the final definition (nothing after it redefines the function; tree is at 228) and ends `RETURN LEAST(score, 100)` with no sample logic. So the wording outlived its mechanism by ~160 migrations. That also CLOSES migration 109's own deferred question (109:22-29 flagged the readiness function as "a SEPARATE investigation... confirm separately if needed") - confirmed: no sample branch on the remote. Behaviour deliberately unchanged per the owner's instruction (stage3.ts, readiness.ts and every migration show an empty diff) - capping the score would be a product change, not a fix. Test was the real gap: the pre-existing assertion only checked canContinue at score 100, so it would have stayed green if someone ADDED a cap, which is why it never caught this. Added the other half - `readinessItemsForProject` must return a deep-equal checklist (statuses AND points) for a sampled vs identical clean track - and proved BOTH directions bite by mutation rather than assuming: downgrading an item on `has_sample` fails one, removing `!sampleBlock` fails the other. Also corrected two pending todos, one of which quoted the false header verbatim as its supporting evidence; left the completed 260927-s1x PLAN.md and migrations 005/109 alone on purpose (shipped records of what was believed then, not live guidance). Not browser-verified - the banner needs auth plus a flagged uncleared sample, stated rather than claimed. OPEN FOR THE OWNER: whether dropping 005's cap was intended, since 068 was about split sheets, not samples. Full validate gate green (640 suites / 8029 tests, lint 0 warnings, audit:gate clean) |
 | 2026-10-04 | 261004-snk-studio-notes-scope-by-kind | Implemented the owner's ratified routing decision: Studio Notes now lists and counts song-kind threads only, with every unresolved audio/lyric thread the old aggregate count covered kept visible on the surface that now owns it. `lib/catalogue/studio-notes.ts` gained four pure selectors (`selectSongStudioNotes`, `countUnresolvedAudioNotes(ByVersion)`, `countUnresolvedLyricNotesByBlock`, `resolveLyricNoteDeepLink`) over the UNNARROWED `presentStudioNotes` facade — narrowing the facade itself would have stranded its other two callers (server page, API route). Versions description now names unresolved audio comments across active AND archived takes (allowlist = every take the module renders); archived rows, which have no player, gained their own per-take number. Lyric blocks gained an unresolved-count marker on the existing Comments button, mirroring `suggestionCount`'s precedent exactly. Removed the Studio Notes composer's audio/lyric creation paths (duplicate routes to results the scoped module would never show again) — both already exist at their real anchors. Verification pass found a real consumer that would have broken: a historical lyric-kind `?studioNote=` mention-notification link, now routed via `resolveLyricNoteDeepLink` to the block's own comments panel instead of landing on an empty highlight, with zero API/route change. `presentStudioNotes`, the studio-notes API route, the tab/module structure, `roomModules`, and `WorkPage`'s composition all confirmed unchanged. Recorded (not fixed, pre-existing, out of scope): the dead `#lyric-{blockId}` anchor; whether a repeat block can hold its own unresolved comment rows is UNVERIFIABLE from app code alone, though no marker can attach regardless since the Comments button is gated `!isRepeat`. Full validate gate green (641 suites / 8030 tests); `npm audit --audit-level=high`'s 7 findings are the pre-existing devDependency `braces` chain, covered by the existing tracked `audit:gate` deferral (expiry 2026-11-02), unrelated to this task |
 | 2026-10-04 | 261004-wrr-writers-room-restyle-part1 | Part 1 of a deliberate split. The bench redraws the work page as seven peer tabs, which would REVERSE Phase 37 decision 001 (owner-ratified 2026-08-30, "the diary is the canvas", LyricsPad.tsx:101 "modules placed between lyric blocks"). Shipping that as "a restyle" would have changed the information architecture silently, so only three genuinely cosmetic components moved: WorkHeader (title row, room pill, chips onto money tokens), WorkRoster (34px avatars, pending state now dims the avatar, row hover), GuidingLine (opaque brand gradient -> tinted-border secondary). LyricsPad and WorkPage have a ZERO-line diff, asserted. Planner found GuidingLine was already breaking its own documented rule -- its header and ComposerCard.tsx:118-122 both reserve the full gradient for the composer empty state, yet the button painted from-brandindigo to-brandfuchsia, and its guard test named "never spends the full bg-grad gradient" only grepped the literal class bg-grad, so it was green for the component's entire life. Tightened to reject the opaque pair while permitting the /10 wash, and proven to fail against the old markup. Also found the bench's CSS text is still on the RETIRED lavender palette -- it renders correctly only because data-ground='neutral' overrides variables, which does not reach hardcoded rgba(199,203,247) literals -- so everything was translated by token name and all three test files now assert that literal never appears. Before-state is UNVERIFIED: the shipped page is behind auth and could not be reached, stated rather than claimed. Provenance row cut from scope -- not cosmetic, the work has no reverse link to its idea (ideas.promotedWorkId points the other way); captured as its own todo. Part 2 written up as a deliberation: the sort is per-block vs whole-song, with Studio Notes flagged as the open question. Full gate green (641 suites / 8011 tests) |
@@ -922,7 +1015,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-10-04T05:09:32.950Z
+Last session: 2026-10-05T01:50:42.146Z
 Stopped at: Phase 40 context continued — 14 decisions
 Resume file: 
 None

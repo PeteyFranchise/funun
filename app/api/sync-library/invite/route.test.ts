@@ -29,6 +29,7 @@ jest.mock('@/lib/notifications', () => ({
 const LEADERSHIP_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
 const AE_UUID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
 const ARTIST_UUID = 'cccccccc-cccc-cccc-cccc-cccccccccccc'
+const ANR_UUID = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
 
 function jsonRequest(body: unknown) {
   return new Request('http://t.local/api/sync-library/invite', {
@@ -84,12 +85,13 @@ describe('POST /api/sync-library/invite', () => {
     expect(createServiceClient).not.toHaveBeenCalled()
   })
 
-  it('returns 403 for staff outside leadership/ae (e.g. bd)', async () => {
+  it('returns 403 for staff outside leadership/ae/anr (e.g. bd)', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ error: 'Forbidden', status: 403 })
 
     const res = await POST(jsonRequest({ profileId: ARTIST_UUID }))
 
     expect(res.status).toBe(403)
+    expect(requireStaff).toHaveBeenCalledWith(['leadership', 'ae', 'anr'])
     expect(createServiceClient).not.toHaveBeenCalled()
   })
 
@@ -171,7 +173,40 @@ describe('POST /api/sync-library/invite', () => {
     const res = await POST(jsonRequest({ profileId: ARTIST_UUID }))
 
     expect(res.status).toBe(201)
-    expect(requireStaff).toHaveBeenCalledWith(['leadership', 'ae'])
+    expect(requireStaff).toHaveBeenCalledWith(['leadership', 'ae', 'anr'])
+  })
+
+  // OWNER DECISION 2026-10-04 ("A&R gets artist invite capabilities from
+  // here on out."): pinned here with a real anr actor exercising the full
+  // invite path, not just a mocked requireStaff return, so a future
+  // accidental narrowing back to leadership+ae fails this test for the
+  // right reason.
+  it('allows an anr to invite (role set is leadership+ae+anr)', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: ANR_UUID }, staffRole: 'anr' })
+    const service = mockService({
+      user_profiles: [{ data: { id: ARTIST_UUID, member_type: 'artist' }, error: null }],
+      capability_grants: [
+        { data: null, error: null },
+        { data: { id: 'grant-3', status: 'approved' }, error: null },
+      ],
+    })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await POST(jsonRequest({ profileId: ARTIST_UUID }))
+
+    expect(res.status).toBe(201)
+    expect(requireStaff).toHaveBeenCalledWith(['leadership', 'ae', 'anr'])
+    const insertBuilder = service.builders.capability_grants[1]
+    expect(insertBuilder.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ profile_id: ARTIST_UUID, decided_by: ANR_UUID })
+    )
+    expect(logStaffAction).toHaveBeenCalledWith(service, {
+      actorId: ANR_UUID,
+      action: 'sync_library.invite',
+      targetType: 'capability_grant',
+      targetId: 'grant-3',
+      changes: { profileId: ARTIST_UUID },
+    })
   })
 
   it('is idempotent — an existing active grant is returned without a duplicate insert or notification', async () => {

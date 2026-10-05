@@ -71,6 +71,10 @@ const ITEMS: Item[] = [
   { href: '/admin/esign-usage', label: 'E-Sign Usage', match: '/admin/esign-usage', Icon: ESignIcon, show: isLead },
   { href: '/admin/sync-library', label: 'Sync Library', match: '/admin/sync-library', Icon: SyncIcon, show: r => r === 'leadership' || r === 'ae' },
   { href: '/admin/crate-requests', label: 'Crate Requests', match: '/admin/crate-requests', Icon: CrateIcon, show: notIt },
+  // 261004-ttq — /team-fit questionnaire submissions. Deliberately narrower
+  // than the Client Partners/Crate Requests rows above: sales-sensitive
+  // prospect data for a Member-tier lead, visible to bd+leadership only.
+  { href: '/admin/team-tier-leads', label: 'Team-Tier Leads', match: '/admin/team-tier-leads', Icon: InvitesIcon, show: r => r === 'leadership' || r === 'bd' },
   { href: '/admin/selects', label: 'Selects', match: '/admin/selects', Icon: SelectsIcon, show: notIt },
   // D-31.1-07 — Health Rules is the leadership-only relationship-health
   // config surface (thresholds + keeps-warm toggles + the D-31.1-08
