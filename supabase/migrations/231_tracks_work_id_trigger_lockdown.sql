@@ -182,7 +182,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.tracks_guard_work_id_write() IS
-  'BEFORE INSERT OR UPDATE guard on public.tracks (migration 231) rejecting any client write to work_id unless auth.role() is NULL (direct database session) or ''service_role'' (graduate_song_passport_to_release() via the service client). Replaces migration 230''s column-level REVOKE INSERT (work_id), UPDATE (work_id), which never took effect because public.tracks has carried the ambient Supabase table-level INSERT/UPDATE grant since migration 001 and a column REVOKE cannot override a live table grant. See migration 231''s header for the full mechanism and the auth.role() vs. current_user reasoning.';
+  'BEFORE INSERT OR UPDATE guard on public.tracks (migration 231) rejecting any client write to work_id unless auth.role() is NULL (direct database session) or ''service_role'' (graduate_song_passport_to_release() via the service client). Replaces migration 230''s now-superseded column-privilege lockdown attempt on this same column, which never took effect because public.tracks has carried the ambient Supabase table-level INSERT/UPDATE grant since migration 001 and a column-scoped privilege change cannot override a live table grant. See migration 231''s header for the full mechanism and the auth.role() vs. current_user reasoning.';
 
 -- ─── (2) The trigger ───────────────────────────────────────────────────────
 DROP TRIGGER IF EXISTS tracks_guard_work_id_write ON public.tracks;
