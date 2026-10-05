@@ -11,7 +11,7 @@ const config: Config = {
     extend: {
       colors: {
         ink: '#000000', // page background (pure black, neutral ground)
-        card: '#0a0a0c', // card / panel surface
+        card: '#121214', // card / panel surface
         card2: '#161618', // raised surface (nav active, chips, icon tiles)
         lav: '#d4d4d8', // secondary text (neutral grey)
         lavdim: '#8b8b97', // tertiary / muted / inactive nav
