@@ -364,8 +364,11 @@ export function AiEntryFlow({
     }
   }
 
-  // Already filed — the receipt is what was ACTUALLY stored, rendered in
+  // Already filed — this is the server's own composition, rendered in
   // exactly the same way regardless of which mode got the artist here.
+  // Only its citation line was stored on the row; the other three lines
+  // are transient (see composeReceipt in lib/catalogue/ai-entries.ts), so
+  // this render is the only time the artist ever sees them.
   if (result) {
     return <ReceiptBlock receipt={result.receipt} guidance={result.guidance} />
   }

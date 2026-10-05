@@ -270,12 +270,26 @@ function crateLine(consequence: CrateConsequence): string {
  * level changes it, per CAT-Q1a: AI takes nothing, ever), the release
  * effect, and the Crate consequence.
  *
- * Plan 06's route calls this at WRITE time and stores the resulting
- * strings on the `ai_entries` row — never regenerated at render. What a
- * buyer or a registrar later reads is exactly what the artist was shown
- * when they filed it, not a string a newer version of this module might
- * phrase differently. Do not call this from a render path expecting live
- * copy; it is a write-time snapshot generator.
+ * ONE OF THOSE FOUR LINES IS PERSISTED. Plan 06's route calls this at
+ * WRITE time and stores `receipt.citation`, and only that, on the
+ * `ai_entries` row — the insert names `citation` alone
+ * (app/api/works/[workId]/ai-entries/route.ts), and migration 135 gives
+ * the table no other receipt column. The citation is therefore a true
+ * write-time snapshot: what a buyer or a registrar later reads is exactly
+ * what the artist was shown when they filed it, not a string a newer
+ * version of this module might phrase differently. Do not call this from
+ * a render path expecting live citation copy.
+ *
+ * `splitsEffect`, `releaseEffect` and `crateConsequence` are TRANSIENT.
+ * They go back to the caller in the POST response and are rendered once;
+ * nothing writes them anywhere. There is no stored eligibility verdict to
+ * read back. A prior Crate consequence cannot be recovered from the row —
+ * it can only be RECOMPUTED by calling `resolveCrateConsequence()` again
+ * with the same mode/component/hasHumanSource, and that recomputation
+ * applies TODAY's rules, so it may not match what the artist was shown.
+ * Anything that must act on the verdict the artist actually saw has to
+ * persist an explicit decision of its own; do not assume the row carries
+ * one.
  */
 export function composeReceipt(input: AiEntryInput): Receipt {
   const citationOutcome = resolveCitation(input)
