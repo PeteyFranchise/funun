@@ -52,19 +52,34 @@ function tableBuilder(row: unknown | null) {
   return builder
 }
 
+// C-01: the sync_listings query no longer terminates on
+// .limit(1).maybeSingle() (that only ever proved ANY row exists for the
+// project) — it now returns every admitted row's track_id, so the gate can
+// resolve admission per TRACK. This builder's select/eq chain returns
+// itself and resolves via `.then`, mirroring catalog-query.test.ts's own
+// tableBuilder shape for its (already per-track) sync_listings branch.
+function arrayTableBuilder(rows: unknown[]) {
+  const builder: Record<string, unknown> = {}
+  for (const m of ['select', 'eq']) {
+    builder[m] = jest.fn(() => builder)
+  }
+  builder.then = (resolve: (v: unknown) => void) => resolve({ data: rows, error: null })
+  return builder
+}
+
 function makeService(opts: {
   project?: unknown | null
-  admittedListing?: unknown | null
+  admittedTracks?: { track_id: string }[] | null
   owner?: unknown | null
 }) {
   const project = 'project' in opts ? opts.project : projectRow()
-  const admittedListing = 'admittedListing' in opts ? opts.admittedListing : { id: 'listing-1' }
+  const admittedTracks = 'admittedTracks' in opts ? opts.admittedTracks : [{ track_id: 'track-1' }]
   const owner = 'owner' in opts ? opts.owner : { id: 'owner-1', profile_visibility: 'public' }
 
   return {
     from: jest.fn((table: string) => {
       if (table === 'vault_projects') return tableBuilder(project)
-      if (table === 'sync_listings') return tableBuilder(admittedListing)
+      if (table === 'sync_listings') return arrayTableBuilder(admittedTracks ?? [])
       if (table === 'user_profiles') return tableBuilder(owner)
       return tableBuilder(null)
     }),
@@ -90,7 +105,7 @@ beforeEach(() => {
 
 describe('authorizeRequestTarget — sync-library admission gate', () => {
   it('returns ok:false when the project has no admitted sync listing, even if otherwise ready', async () => {
-    const service = makeService({ admittedListing: null })
+    const service = makeService({ admittedTracks: [] })
 
     const result = await authorizeRequestTarget(service as never, 'buyer-1', 'proj-1')
 
@@ -149,5 +164,31 @@ describe('authorizeRequestTarget — sync-library admission gate', () => {
     const result = await authorizeRequestTarget(service as never, 'buyer-1', 'proj-1')
 
     expect(result).toEqual({ ok: false })
+  })
+})
+
+// ─── C-01: admission is per TRACK, not per PROJECT ───────────────────────
+// .planning/deliberations/2026-10-05-pass-5-rights-eligibility-review.md.
+// This is the shared authority both POST /api/buyer/requests and
+// POST /api/admin/deals consume verbatim (both build their validTrackIds
+// directly from this return value, with no other admission check of their
+// own) — proving track-2 is absent here proves neither route can build a
+// license request naming it.
+describe('authorizeRequestTarget — C-01: project.tracks excludes an unadmitted sibling', () => {
+  it('stays ok:true for a mixed-admission project but returns only the admitted track', async () => {
+    const project = projectRow({
+      tracks: [
+        { id: 'track-1', title: 'Track One' },
+        { id: 'track-2', title: 'Unreviewed Track' },
+      ],
+    })
+    const service = makeService({ project, admittedTracks: [{ track_id: 'track-1' }] })
+
+    const result = await authorizeRequestTarget(service as never, 'buyer-1', 'proj-1')
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.project.tracks.map(t => t.id)).toEqual(['track-1'])
+    }
   })
 })

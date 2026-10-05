@@ -198,7 +198,7 @@ export async function POST(request: Request) {
   const trackIds = Array.from(new Set(input.track_ids))
   if (trackIds.some(trackId => !validTrackIds.has(trackId))) {
     return NextResponse.json(
-      { error: 'One or more selected tracks do not belong to this project.' },
+      { error: 'One or more selected tracks are not available for license requests on this project.' },
       { status: 400 }
     )
   }
