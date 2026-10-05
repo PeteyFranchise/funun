@@ -30,6 +30,21 @@ import { mustBlockActionBetween } from '@/lib/trust-safety/block-check'
 // sync_listings existence lookup (status = 'admitted'), then applies
 // readiness/stage3 (computeStage3().canContinue) and the Phase 13
 // visibility/block gate on top, exactly as before.
+//
+// C-01 (.planning/deliberations/2026-10-05-pass-5-rights-eligibility-
+// review.md): both the admission check AND the returned track list are
+// now resolved per TRACK, not per PROJECT — admission is song-level
+// (26-06), so a project with one admitted track and one never-reviewed
+// sibling must stay requestable (project-level admission unchanged) while
+// the sibling must never appear in `project.tracks`. Four call sites
+// inherit this with no further code change:
+// app/api/buyer/requests/route.ts, app/api/admin/deals/route.ts (staff
+// manual intake — discovered during this fix to share the identical gap
+// via this same function), app/sync/requests/new/page.tsx (via
+// components/buyer/RequestComposer.tsx's track-selection chips), and
+// app/api/buyer/shortlists/route.ts (unaffected in practice — it only
+// reads the `ok` boolean, never `.tracks`, but still routes through the
+// same gate).
 
 export type RequestTargetProject = {
   id: string
@@ -88,20 +103,32 @@ export async function authorizeRequestTarget(
   const project = data as ProjectRow | null
   if (!project) return { ok: false }
 
-  // 26-06: admission is the single gate authority — one sync_listings
-  // existence lookup, then the SAME isAdmittedToSyncLibrary helper
-  // lib/deals/catalog.ts's isRightsReady uses.
-  const { data: admittedListing } = await service
+  // 26-06: admission is the single gate authority — the SAME
+  // isAdmittedToSyncLibrary helper lib/deals/catalog.ts's isRightsReady
+  // uses. C-01: the lookup now selects every admitted row's track_id
+  // (mirrors catalog-query.ts:200-207's existing batched-query shape,
+  // scoped to one project instead of a page of them) instead of a single
+  // existence row — the project-level admission DECISION is unchanged,
+  // only how the per-track ids get collected changes.
+  const { data: admittedRows } = await service
     .from('sync_listings')
-    .select('id')
+    .select('track_id')
     .eq('vault_project_id', project.id)
     .eq('status', 'admitted')
-    .limit(1)
-    .maybeSingle()
-  if (!isAdmittedToSyncLibrary({ has_admitted_sync_listing: admittedListing != null })) {
+  const admittedTrackIds = new Set(
+    ((admittedRows ?? []) as { track_id: string | null }[])
+      .map(r => r.track_id)
+      .filter((id): id is string => id != null)
+  )
+  if (!isAdmittedToSyncLibrary({ has_admitted_sync_listing: admittedTrackIds.size > 0 })) {
     return { ok: false }
   }
 
+  // Stage 3's canContinue answers the artist's own distribution-readiness
+  // question, not the buyer's per-track admission question (same
+  // separation lib/deals/catalog.ts's isRightsReady header comment
+  // documents for a different gate) — it must keep receiving EVERY track,
+  // never just the admitted ones.
   const stage3 = computeStage3(
     project,
     project.tracks ?? [],
@@ -138,7 +165,9 @@ export async function authorizeRequestTarget(
       id: project.id,
       title: project.title,
       user_id: project.user_id,
-      tracks: (project.tracks ?? []).map(t => ({ id: t.id, title: t.title })),
+      tracks: (project.tracks ?? [])
+        .filter(t => admittedTrackIds.has(t.id))
+        .map(t => ({ id: t.id, title: t.title })),
     },
   }
 }

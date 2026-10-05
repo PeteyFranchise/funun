@@ -397,3 +397,65 @@ describe('loadCatalogPage — sync-library admission gate (26-06)', () => {
     expect(result.data.map(c => c.id)).toEqual(['proj-admitted'])
   })
 })
+
+// ─── C-01: admission is per TRACK, not per PROJECT ───────────────────────
+// .planning/deliberations/2026-10-05-pass-5-rights-eligibility-review.md.
+// The describe block above proves PROJECT-level admission still gates
+// visibility correctly. This block proves the narrower claim: a project
+// with ONE admitted track and ONE never-reviewed sibling stays visible
+// (project-level admission unchanged) but `card.tracks` must list ONLY the
+// admitted track. Before this fix, `tracks:` was built from the full
+// `tracks` array, so the unadmitted sibling rode along on its admitted
+// sibling's coattails -- exposed to CatalogBrowser.tsx, the staff Selects
+// search, and the public Suggested Songs widget, none of which apply any
+// filter of their own.
+describe('loadCatalogPage — C-01: card.tracks excludes an unadmitted sibling', () => {
+  // Same metadata shape as ENTRY_COMPLETE_TRACKS[0] (composers present,
+  // split totals 100) -- NOT null. The six-item entry gate's `metadata`
+  // item (lib/vault/readiness.ts:338-341) requires composers on EVERY
+  // fetched project track, a separate, project-level aggregation gap
+  // (readiness-aggregation followup todo, out of scope for this plan).
+  // Giving track-2 complete metadata here isolates the ONE thing this
+  // test proves -- per-track ADMISSION, not per-track metadata -- from
+  // that unrelated, deliberately-deferred gap.
+  const TRACK_2 = {
+    ...ENTRY_COMPLETE_TRACKS[0],
+    id: 'track-2',
+    title: 'Unreviewed B-Side',
+  }
+
+  it('keeps a mixed-admission project visible but lists only its admitted track', async () => {
+    const project = projectRow({ tracks: [...ENTRY_COMPLETE_TRACKS, TRACK_2] })
+    const service = makeService(
+      [project],
+      [{ id: 'owner-1', profile_visibility: 'public' }],
+      [{ id: 'proj-1', trackId: 'track-1' }]
+    )
+
+    const result = await loadCatalogPage(service as never, null, BASE_FILTER, 1)
+
+    // The project stays visible -- project-level admission is unchanged.
+    expect(result.data).toHaveLength(1)
+    // But the never-reviewed sibling must not appear in the track list
+    // every downstream consumer (CatalogBrowser.tsx, the staff Selects
+    // search, the public Suggested Songs widget) reads verbatim.
+    expect(result.data[0].tracks.map(t => t.id)).toEqual(['track-1'])
+  })
+
+  it('still lists every track when every track in the project is admitted (no regression)', async () => {
+    const project = projectRow({ tracks: [...ENTRY_COMPLETE_TRACKS, TRACK_2] })
+    const service = makeService(
+      [project],
+      [{ id: 'owner-1', profile_visibility: 'public' }],
+      [
+        { id: 'proj-1', trackId: 'track-1' },
+        { id: 'proj-1', trackId: 'track-2' },
+      ]
+    )
+
+    const result = await loadCatalogPage(service as never, null, BASE_FILTER, 1)
+
+    expect(result.data).toHaveLength(1)
+    expect(result.data[0].tracks.map(t => t.id).sort()).toEqual(['track-1', 'track-2'])
+  })
+})
