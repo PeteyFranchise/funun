@@ -5,10 +5,7 @@
 **Verdict: Phase 50 is not safe to implement** until the identity trigger is rebased on migration
 214 and several existing database write surfaces are hardened.
 
-> **This record is incomplete.** The reviewer's output was truncated partway through finding H-2
-> (service-role staff reads, four query-scope clusters). Sections A–D of that finding and anything
-> after it are **not captured here**. Re-run or request the remainder before treating this as a
-> complete picture.
+> **Completed 2026-10-05** — the truncated remainder was re-requested and is recorded below.
 
 ---
 
@@ -124,3 +121,139 @@ facts, with the protection asserted in a comment rather than enforced by the dat
 Passport values are service-written or append-only; master designations and release links reject
 UPDATE and DELETE. Three tables was the wrong scope — this is a systemic gap, and the fix is
 applying an existing pattern consistently rather than inventing one.
+
+
+---
+
+# Pass 6, continued — the truncated remainder
+
+## H-2 complete — four service-read clusters with no structural boundary
+
+`createServiceClient()` bypasses RLS. `requireStaff()` establishes a staff *role* but enforces no
+client-book, room, object or self scope. **Every narrower-than-role service read falls into one of
+four clusters, and each is safe only because its predicate is currently correct.**
+
+**A — AE/client-book scope.** `admin/selects/page.tsx:60-70`.
+
+**B — Object-by-URL, then a manual relationship check.** `lib/selects/persistence.ts:47-79`,
+`admin/client-partners/[orgId]/page.tsx:55-75`, `admin/clients/[personId]/page.tsx:56-97`. **The
+row is read through the service client *before* the relationship check runs.** Dropping or
+mistyping the check exposes another Client Partner's organisation record, contact identities,
+relationship notes and game plans, briefs and budgets, Selects contents and commercial status,
+and licence-request activity. `notFound()` prevents an existence leak — but that is entirely
+application-enforced, with no RLS backstop underneath.
+
+**C — Playbook room scope.** Eight pages load all rooms and grants, compute accessible rooms in
+TypeScript, then constrain with `.in('room_id', …)`. A dropped predicate exposes incidents,
+exception requests and rationales, doctrine drafts and revisions, review threads, learning paths
+and completion state, workflow runs, reader feedback, and other departments' operating
+procedures. The later `roomById` mapping sometimes prevents an unauthorised row from *rendering* —
+**but it was already fetched**, and a refactor, count, export, AI prompt or log statement would
+expose it.
+
+**D — Self scope.** Profile, preferences, workflow runs, learning completions, inbox items,
+room-lead resolution — all guarded by a single `.eq('user_id', …)` or equivalent. A dropped
+predicate exposes other staff members' names, titles, phone numbers, preferences, training state
+and assigned operational work.
+
+**The defect is architectural, not a list of bugs.** service_role removes the database boundary,
+so one omitted `.eq()` turns a local query error into a cross-client or cross-department
+disclosure. The recommended direction: scope into narrow SQL functions or repositories, return
+only the columns a surface needs, make unscoped service reads unavailable to general page code,
+and behaviourally test the negative cases — unrelated AE, unrelated room member, non-owner staff,
+guessed object id.
+
+## H-3 — Multi-role staff see weaker controls than the APIs authorise. **CORRECTS PASS 4.**
+
+API gates pass when **any** value in `staff_roles` is allowed. The page reduces the array to **one
+priority-sorted primary role** (`staff-role.ts:65-78`).
+
+- `['bd','anr']` → primary `bd` → **the page redirects**, while the admit/reject and quality APIs
+  authorise the secondary `anr`.
+- `['ae','anr']` → primary `ae` → the page renders but `canAdmit` and `canReviewQuality` are
+  **false**, while both APIs authorise `anr`.
+
+**Pass 4 reported this matrix as clean. It is clean only for single-role staff.** The page
+comments claiming the flags mirror the route allowlists are false for anyone holding two roles.
+
+## M — Selects pages admit roles the mutation APIs refuse
+
+The pages admit every operational role except IT and render create/builder controls; the create,
+update, send and track APIs allow only leadership, AE and BD. Usually masked by an empty
+organisation list — but a non-AE assigned as `ae_user_id` sees actions the server rejects.
+
+## M — Client Partner routing conflates relationship with identity
+
+`postSignInPath()` and the root page send a user to The Crate only when
+`app_metadata.role === 'buyer'`. **An existing Member added to `buyer_members` lands in `/vault`
+instead of the Client Partner workspace** — the relationship is valid, but login routing behaves
+as though it does not exist. Direct `/sync` access works, because that layout correctly queries
+`buyer_members`. Not an authorisation bypass; identity-model conflation in navigation.
+
+## M — Six more cross-subject or system-fact mutations
+
+**`works`** — any work member can rewrite title, primary performer, vocal state and working-version
+selection. **`tool_outputs`** — co-owners/editors can rewrite or delete tool inputs, outputs and
+provenance. **`collaborator_invites`** — the inviter can falsify the invite lifecycle including
+`accepted_user_id` and `accepted_at`. **`pitches`** — the *recipient* can rewrite sender, project
+and message. **`opportunity_matches`** — the subject can rewrite system-computed `match_score` and
+breakdown. **`notifications`** — whole-row update, so notification provenance is not authoritative.
+
+## M, DORMANT — legacy community tables permit impersonation and anonymous deletion
+
+`community_posts`' insert policy checks subscription but **never that `user_id = auth.uid()`** —
+a qualifying user can post as someone else. `community_comments` is an implicit `FOR ALL` with
+`USING (true)`, so **UPDATE can take over any comment** by setting `user_id` to self, and
+**DELETE is open to any role holding table DELETE — including `anon`.** No consumer exists today;
+immediately exploitable if these tables are reused.
+
+## Opening signup — what an attacker could do on day one
+
+Real controls exist: durable IP/email rate limits on invite checks, Turnstile on the waitlist,
+server-side upload admission, MIME allowlists with image magic-byte checks, and per-file size
+caps.
+
+**Missing:** no rate limit or CAPTCHA around the actual `supabase.auth.signUp` call — Turnstile
+protects the waitlist form, not Auth. **Direct authenticated Storage writes bypass upload
+admission entirely** (`002:27-50`, `004:41-64`): the policies require only the caller's user id as
+the first path segment, not that the nested project or track exists or belongs to them. No
+aggregate per-account storage quota. No Member-account suspension workflow — workspace suspension
+does not disable the underlying identity. Orphan cleanup is incomplete in three ways. The storage
+cron is **detection, not prevention**, and says so.
+
+**Day one:** an unauthenticated caller cannot use the authenticated Storage policies, but can
+automate signups. Once disposable accounts exist, they can create unbounded owned rows and upload
+unlimited per-object-valid files straight to Storage, bypassing the server's daily limits.
+
+## `app_metadata` — clean
+
+**No public signup path can set `staff_roles`, `staff_role`, `is_admin` or `role`.** Signup data
+becomes `user_metadata`; staff authority reads only `app_metadata`, written exclusively through
+service-only provisioning. Caveat: staff authorisation trusts the JWT and does not re-confirm a
+`funun_staff` row per request, so it is safe only while every `app_metadata` writer stays
+service-controlled and role removal reliably revokes sessions.
+
+## The RLS mutation census
+
+The reviewer enumerated **every** table by category. **Cross-subject or shared-record mutation
+needing correction:** `collaborators` · `split_sheets` · `collaborator_invites` · `works` ·
+`work_versions` · `lyric_blocks` · `ai_entries` · `tracks` · `vault_assets` · `vault_documents` ·
+`tool_outputs` · `vault_projects` · `pitches` · `opportunity_matches` · `community_posts` ·
+`community_comments` · `notifications`.
+
+**Already hardened and the model to copy:** DMs, `work_diary_events`, `work_members`,
+`project_members`, licence/deal join tables, Ideas and Writer's Room evidence, e-sign envelopes,
+all Song Passport ledgers, workspace grants and agreements, audit and billing events, and
+`sync_listings`.
+
+**Why the hardened ones differ:** they treat the row as **evidence rather than editable content** —
+SELECT-only RLS combined with actual privilege revocation, append-only storage, immutability
+triggers or narrow RPCs. **The unsafe tables kept generic "member/editor manages row" policies
+after identity, authorship, signature, provenance or money-bearing columns were added to them.**
+
+## Live-state limitation
+
+This establishes what the corpus specifies, not that production matches it. Before accepting any
+remediation, inspect production `pg_policies`, `role_table_grants`, `column_privileges` and active
+triggers — then behaviourally attempt each forbidden write as authenticated, anon and service_role.
+**A migration statement's presence is not evidence that the behaviour is blocked.**
