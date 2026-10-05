@@ -2897,12 +2897,22 @@ in `app/globals.css`, leaving **38 hand-fixes across 15 files**: `components/vau
 *(Counts corrected by the Codex verification pass, 2026-09-24 — the original figures under-counted
 by scoping the grep to `app/` and `components/` only.)*
 
-**Status:** Not started. Blocks Phase 42. **Owner decision 2026-10-04 (out of scope for Phase
+**Status:** Resolved 2026-10-05. **Owner decision 2026-10-04 (out of scope for Phase
 50 — unrelated subject, noted here only so it has an explicit home and does not read as an
 orphaned decision): render BOTH grounds as a twelve-card grid on the bench, side by side, and the
 owner picks — rather than testing the single already-chosen neutral-black ground in isolation as
 originally scoped above.** `.planning/deliberations/2026-10-04-owner-decisions-submissions-and-gate-0.md`
 §2.
+
+**Owner picked B, `#121214`, 2026-10-05**, after reviewing three grounds at twelve-up on the
+bench (`private/bench/gate-0-card-ground.html`, gitignored). `--card` / `card` lifted from
+`#0a0a0c` to `#121214` (~7% from the page, up from ~4%) in `tailwind.config.ts` and
+`app/globals.css` — the only two literals. Cards with no cover art (most of a catalogue view —
+a Writer's Room draft has none until late) were the deciding case: at `#0a0a0c` they read as
+rectangles outlined in grey; at `#121214` they read as panels. The stronger `#17171a` candidate
+was rejected because it collides with `card2` (`#161618`) — the raised surface would stop
+reading as raised. `ink` (`#000000`) and `card2` (`#161618`) are unchanged and remain distinct
+from the new `card`. **Phase 42 is unblocked.**
 
 ---
 
