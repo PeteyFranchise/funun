@@ -96,3 +96,112 @@ the point — otherwise the exceptional path does not exist.
 Six requirements are **Missing as decided, missing a mechanism, blocked, or contradictory**:
 CSUB-06, CSUB-07, CSUB-11, CSUB-12, CSUB-13, CSUB-14. Ten more are Partial. One (CSUB-16) is
 present. **Phase 50 must be re-planned before any slice is built.**
+
+---
+
+# Pass 2 — decision-consistency review (2026-10-04)
+
+A second adversarial pass, this time over the **decisions** rather than the plan. It found
+**eight more contradictions** beyond the three already known. All eight are real. Resolutions
+below are owner-ratified where marked.
+
+## 1. The CTA/waitlist path was cancelled by §12
+
+§3/§4 describe the CTA leading to *"a waitlist that carries the arrival intent"* and state
+*"invite-only is unchanged."* §12 then decided **both CTAs lead to the real submission flow** and
+*"invite-only stops being absolute."* They cannot both describe where the button goes.
+
+**RESOLVED: §12 is controlling.** While the valve is open, both CTAs lead to submission-specific
+signup. **The waitlist-intent experience survives only as the closed-valve state.** §§3, 4 and 8's
+CTA language is superseded.
+
+## 2. The catalogue hatch during a closed valve — RATIFIED
+
+§11 says *"take the song, flag the catalogue for a person."* §12's hatch says such a person is
+*"flagged for a human conversation rather than fed through the song queue."* Mutually exclusive
+while the valve is shut.
+
+**RATIFIED (owner, 2026-10-04): contact lead only — no song while the valve is shut.** The hatch
+captures the person, catalogue context, authority status and contact details, and takes no audio.
+
+Rejected: accepting one sample song anyway (a hole in the valve, and *"I have more"* is
+unverifiable at the moment of claiming it) and making it depend on who invited them (a third rule
+on a control whose value is being simple to reason about in a crunch).
+
+## 3. The provenance binary cannot represent the later intake routes
+
+§3 requires showing *"existing Funūn Member versus marketing CTA."* §§13/16 then establish the
+axis as **who initiated** — artist walks up, or a Funūn Team Member invites. These are different
+dimensions, and a submission can be **both** an existing Member *and* staff-invited.
+
+**RESOLVED: four fields, not a binary** — (1) initiator: `self` | `staff_invited`; (2) account
+state at initiation: existing Member | newcomer; (3) entry surface: marketing CTA | in-app |
+public-profile invite | email invite; (4) inviter identity and note, where applicable.
+
+Building the binary would misclassify invited existing Members, erase staff accountability, and
+make acquisition source indistinguishable from invitation provenance.
+
+## 4. "Everyone with access sees everything" versus submission-scoped guests
+
+§4 defines a shared pool where *"everyone with access sees everything."* §15 grants *"a look to
+someone who cannot normally see the queue"* — an A&R sharing one submission with an AE. If that AE
+becomes a person "with access," §4 hands them the entire queue.
+
+**RESOLVED: two access classes.** Queue members (leadership, A&R) see the pool. **Submission guests
+see only what they were specifically granted and gain no queue membership.** Opening a shared
+review must never confer queue-wide access — already required by §15's audit rule.
+
+## 5. The "honest" split reply is also a promise that cannot be kept — RATIFIED
+
+§1 replaced *"bring it in and it rides with the song"* with *"we'll note it on the song so nobody
+asks you twice,"* described as *"true today, no build."*
+
+**It is not true today.** The source todo states plainly: *"No screen, no route, no table."* There
+is no questionnaire and no persistence path. The corrected copy records nothing — **the same
+label-integrity defect §1 exists to fix, in a smaller promise.**
+
+**RATIFIED (owner, 2026-10-04): promise nothing until storage exists.** Ship copy that is true
+with no build — *"Good — that's the hard part done. You'll be able to confirm it with the song
+before submitting."* The "we noted it" line waits until there is somewhere to note it.
+
+## 6. "Submission" means both a three-song batch and exactly one song
+
+§9 says *"up to three per submission"* and *"three songs become three separate review items,"*
+then *"one song, one submission, one set of answers."*
+
+**RESOLVED: different nouns.** An intake **batch** may carry up to three songs and creates one
+independent **submission** per song. Person-level contact is shared across the batch; song-level
+rights answers, decisions, receipts, valve grants and audit history are per submission.
+
+## 7. Invite pre-fill versus the staff-assistance fallbacks
+
+§13 says of an invited artist: *"the artist still answers every rights question themselves… the
+pre-fill is the song, never the answers."* Read across the whole lifecycle that also deletes §5's
+ratified draft-for-confirmation and direct-fill fallbacks for invited submissions.
+
+**RESOLVED: the restriction applies at invitation creation only.** An inviter may pre-fill the
+song and nothing else. Once the submission begins, §5's ordinary hierarchy applies — artist first,
+staff draft exceptionally, gated direct fill only when absolutely necessary.
+
+## 8. "Accepted" names two different events — RATIFIED
+
+§§3/4 separate **acceptance for review** from **advancement into The Crate**. §15 then lists
+*"accepted"* as an outcome alongside *"we want this."* An artist told their song was "accepted"
+may reasonably believe it is in The Crate, buyer-visible and licensable — before review has even
+happened.
+
+**RATIFIED (owner, 2026-10-04): distinct artist-facing names for every state** — received →
+accepted for review → under review → selected for The Crate (licensable, or contact-required) or
+not selected. **Declined at intake is its own state**, separate from not selected after review.
+
+Rejected: telling artists only about final outcomes (a song sits silently for weeks with no signal
+anyone looked) and renaming only the internal stage.
+
+---
+
+## A correction to the brief this pass was given
+
+The pass was told this corrections document was on `main`. **It was not** — it sits on
+`phase-50-review-corrections` (PR #153). The reviewer worked around it and said so, which is the
+correct behaviour and worth recording: a brief's claim about where a file lives is itself a claim
+that can be wrong.
