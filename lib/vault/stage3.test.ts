@@ -21,6 +21,7 @@ import {
   findRequirementByKey,
 } from '@/lib/vault/stage3'
 import { hireCreditsOf } from '@/lib/vault/hire-credits'
+import { readinessItemsForProject } from '@/lib/vault/readiness'
 
 const PROJECT = { id: 'proj-1', title: 'Midnight Run', type: 'single' }
 
@@ -60,6 +61,54 @@ describe('computeStage3 — an uncleared sample still blocks the artist release 
   it('still gates on the readiness threshold for a track with no sample at all', () => {
     expect(computeStage3(PROJECT, [CLEAN_TRACK], [], 59).canContinue).toBe(false)
     expect(computeStage3(PROJECT, [CLEAN_TRACK], [], 60).canContinue).toBe(true)
+  })
+})
+
+// ─── What flagging a sample does, and what it does NOT do ───────────────
+// `SampleFlagToggle`'s header comment claimed until 2026-10-04 that flagging
+// a sample "caps the readiness score until that clearance is signed", and
+// `DocumentStage` told the artist the same thing. Only the requirement and
+// the Stage-3 block were ever real. Migration 005 DID cap an uncleared sample
+// at 70; the split-sheet-coverage rewrite that became migrations 068/070
+// dropped that branch, and the live calculate_vault_readiness() has no sample
+// logic at all — so the wording outlived the mechanism by ~170 migrations.
+//
+// The test above covers only half of this: it would still pass if someone
+// re-introduced a score cap, because it never asserts the score is untouched.
+// These two assertions together are the pair that catches a drift in EITHER
+// direction — a readiness derivation that starts reading `has_sample`, or a
+// sample that stops blocking progression. Keep them together; each alone
+// licenses the other half to rot.
+describe('a flagged sample blocks progression without touching readiness', () => {
+  const READINESS_INPUT = { type: 'single' as const, documents: [], assets: [], tool_outputs: [] }
+
+  it('derives an identical readiness checklist for a sampled and a clean track', () => {
+    // Same track twice, differing ONLY in has_sample / sample_details.
+    const sampled = readinessItemsForProject({ ...READINESS_INPUT, tracks: [SAMPLED_TRACK] })
+    const clean = readinessItemsForProject({ ...READINESS_INPUT, tracks: [CLEAN_TRACK] })
+
+    // Not just the same statuses — the same points, so no cap sneaks in
+    // through the item registry either.
+    expect(sampled).toEqual(clean)
+    expect(sampled.reduce((n, i) => n + i.points, 0)).toBe(
+      clean.reduce((n, i) => n + i.points, 0)
+    )
+  })
+
+  it('blocks canContinue for that same track at the very score it earned', () => {
+    // computeStage3 takes the score as an INPUT and never derates it — the
+    // block is `!sampleBlock`, a separate conjunct from the threshold.
+    const stage3 = computeStage3(PROJECT, [SAMPLED_TRACK], [], 100)
+
+    expect(stage3.sampleBlock).toBe(true)
+    expect(stage3.canContinue).toBe(false)
+    // The requirement is REQUIRED, not merely recommended — that half of the
+    // old comment was always true and must stay true.
+    const req = findRequirementByKey(
+      allStage3Requirements(stage3),
+      sampleClearKey(SAMPLED_TRACK.id)
+    )
+    expect(req?.severity).toBe('required')
   })
 })
 
