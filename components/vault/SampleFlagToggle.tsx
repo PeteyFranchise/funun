@@ -5,9 +5,25 @@ import { useRouter } from 'next/navigation'
 
 // ─── SampleFlagToggle ────────────────────────────────────────────────
 // Per-track control: "This track contains a sample." Flipping it on reveals
-// a free-text field for sample details and PATCHes the track. Flagging a
-// sample creates a required Sample Clearance requirement and caps the
-// readiness score until that clearance is signed.
+// a free-text field for sample details and PATCHes the track.
+//
+// What flagging a sample actually does: `computeStage3` adds a REQUIRED
+// Sample Clearance requirement for that track (lib/vault/stage3.ts:277-299)
+// and raises `sampleBlock` (:330), which holds the artist at Stage 3 —
+// `canContinue: readinessScore >= CONTINUE_THRESHOLD && !sampleBlock` (:338).
+//
+// It does NOT change the readiness score, and this comment used to claim it
+// did. Nothing reads `has_sample` when the score is computed: the TS
+// readiness engine never mentions it (lib/vault/readiness.ts — its per-track
+// input type declares no such field), and the live calculate_vault_readiness()
+// is migration 070's definition, which ends `RETURN LEAST(score, 100)` with no
+// sample branch at all. Migration 005 DID cap an uncleared sample at 70; the
+// split-sheet-coverage rewrite that became 068/070 dropped that branch, which
+// is why the old wording was once true and is not now.
+//
+// So an uncleared sample holds the project from CONTINUING at whatever score
+// it has honestly earned — it does not hold the number down. Do not treat the
+// readiness score as a proxy for clearance state; read `sampleBlock`.
 
 export function SampleFlagToggle({
   projectId,

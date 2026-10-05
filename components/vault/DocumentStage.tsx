@@ -163,7 +163,8 @@ export function DocumentStage({
         {sampleBlock && (
           <p className="mt-3 flex items-start gap-2 text-xs text-rose-300">
             <span className="mt-px">⚠</span>
-            An uncleared sample is capping your readiness. Clear it before release to avoid takedowns.
+            An uncleared sample is holding this project from continuing. Clear it before release to
+            avoid takedowns.
           </p>
         )}
       </div>

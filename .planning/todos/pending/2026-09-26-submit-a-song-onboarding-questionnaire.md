@@ -138,9 +138,16 @@ statement, not an ask — *"It's in your vault. It's private; nobody at Funūn c
    *"This track contains a sample,"* rendered by `DocumentStage` on
    `/vault/[projectId]/documents`. Its own header states the consequence:
 
-   > *"Flipping it on reveals a free-text field for sample details and PATCHes the track. Flagging
-   > a sample **creates a required Sample Clearance requirement and caps the readiness score**
-   > until that clearance is signed."*
+   > *"`computeStage3` adds a REQUIRED Sample Clearance requirement for that track
+   > (lib/vault/stage3.ts:277-299) and raises `sampleBlock` (:330), which holds the artist at
+   > Stage 3 — `canContinue: readinessScore >= CONTINUE_THRESHOLD && !sampleBlock` (:338). It does
+   > NOT change the readiness score."*
+
+   **Quote corrected 2026-10-04.** The header this todo originally quoted claimed flagging a
+   sample *"caps the readiness score"*. It does not, and never did on any code path this todo
+   relies on — the readiness score is computed with no reference to `has_sample`. The consequence
+   is a progression block, which still satisfies the owner's instruction (the question is asked,
+   the answer is recorded, and an uncleared sample stops the release). The header has been fixed.
 
    The full chain, verified:
 
@@ -161,7 +168,7 @@ statement, not an ask — *"It's in your vault. It's private; nobody at Funūn c
    adopted it… Any timeline on the catalogue must come from Funūn's own completed cases."*
 
    **The one real gap:** `SampleFlagToggle` has no reference to SampleClear — grepped, nothing.
-   So an artist flags the sample, gets a requirement and a capped score, and is **not handed the
+   So an artist flags the sample, gets a requirement and a blocked Continue button, and is **not handed the
    tool that drafts the clearance letters.** That is the "let us know if we need to search for
    clearances" half of the ask, and it is a link, not a build. Second, smaller point: the toggle
    lives on the documents page, so you meet the question late — worth considering whether the

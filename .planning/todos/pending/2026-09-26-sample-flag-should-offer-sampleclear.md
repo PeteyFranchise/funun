@@ -12,8 +12,15 @@ let us know if we need to search for clearances."*
 on `/vault/[projectId]/documents`. Flipping it on:
 
 - writes `tracks.has_sample` and `tracks.sample_details`
-- **creates a required Sample Clearance requirement and caps the readiness score** until the
-  clearance is signed (the component's own header states this)
+- **creates a required Sample Clearance requirement and blocks Stage 3 progression** until the
+  clearance is signed — `sampleBlock` is a separate conjunct of `canContinue`
+  (`lib/vault/stage3.ts:330,338`)
+
+  > **Corrected 2026-10-04.** This bullet previously read *"caps the readiness score"*, quoting the
+  > component's own header. Both were wrong. The readiness score never reads `has_sample`:
+  > `lib/vault/readiness.ts` does not mention it, and the live `calculate_vault_readiness()` is
+  > migration 070's definition, with no sample branch. Migration 005 did cap at 70; the
+  > split-sheet-coverage rewrite in 068/070 dropped it. The header has been corrected.
 - feeds `sampleBlock`, which at `lib/sync-library/gate.ts:51` routes a buyer to `'contact'` rather
   than a clean licence, and produces the catalogue label decided 2026-09-09: *"Contains a sample —
   licensing needs clearance first."*
@@ -21,8 +28,8 @@ on `/vault/[projectId]/documents`. Flipping it on:
 So the artist is told they have a problem, and the whole downstream chain reacts correctly.
 
 **They are not told how to solve it.** `SampleFlagToggle` contains no reference to SampleClear —
-grepped, nothing. The artist gets a requirement, a capped score and a buyer-side block, with no
-route to the thing that would clear it.
+grepped, nothing. The artist gets a requirement, a blocked Continue button and a buyer-side block,
+with no route to the thing that would clear it.
 
 ## The tool that should be offered
 
