@@ -3722,7 +3722,8 @@ blanket-agreement wiring already built. A plan that stands up a second submissio
 - **Already live on `main`, not a future dependency:** the Selects admission gap is CLOSED (#148,
   MERGED) — the old "Slice 9" is pre-satisfied; only the broader cross-surface test remains.
 - **External, not built by this phase:** migration 230 (`tracks.work_id` direct link) and
-  `resolveTrackAiProvenance()`, code-complete and open as PR #151, migration unapplied. The
+  `resolveTrackAiProvenance()`, code-complete and MERGED to `main` via PR #151 as of this
+  re-plan pass — the migration itself remains unapplied. The
   eligibility-enforcement slice's code can merge and ship with a safe "unresolved" default before
   this lands; the full benefit (real clean/disqualified verdicts) cannot land before the owner
   pushes it.
@@ -3794,7 +3795,8 @@ by a person in an actual browser, not by a component test.
 
 **Migrations:** Unassigned. This phase's own new migrations start claiming numbers at **231** —
 229 is applied (`261004-ttq`/#146), 230 is claimed-but-unapplied by the external quick task
-`261004-wtl`/PR #151. Re-check `supabase/migrations/` AND every `.claude/worktrees/*/supabase/
+`261004-wtl`/PR #151 (code merged to `main`, migration unapplied). Re-check
+`supabase/migrations/` AND every `.claude/worktrees/*/supabase/
 migrations/` directory immediately before claiming each number — this project has collided on
 migration numbers before. Every migration here is human-gated; an executor must never run
 `supabase db push`. The door-opening slice's trigger edit is reviewed with the same weight this

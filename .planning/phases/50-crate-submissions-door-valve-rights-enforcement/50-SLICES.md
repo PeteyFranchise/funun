@@ -31,7 +31,8 @@ project has multiple parallel sessions in flight):**
   pre-satisfied.** Nothing to build; CSUB-18 below keeps the cross-surface negative test that must
   outlive this one fix.
 - **Migration 230 (`tracks.work_id`) + `resolveTrackAiProvenance()` are CODED, reviewed, open as
-  PR #151 — NOT merged, and the migration is NOT applied.** `lib/catalogue/track-work-link.ts`
+  PR #151 — MERGED to `main` as of this re-plan pass, but the migration is NOT applied.**
+  `lib/catalogue/track-work-link.ts`
   (branch `work-track-direct-link-261004`) is null-safe by construction: a falsy `workId` returns
   `{status:'unresolved'}` before any entry is inspected — proven by test, not by convention. **The
   column does not exist in the database until the owner pushes it.** Treat this as a named,
@@ -312,7 +313,8 @@ query), a small new query module consuming `lib/catalogue/track-work-link.ts`'s
 own documented read path), `SyncReadinessWorklist` display (surface "AI-provenance: cannot
 determine, check by hand" as a worklist item per the existing authority, not a rival list).
 
-**Hard external dependency:** migration 230, owner-pushed, tracked as PR #151 (unmerged). **This
+**Hard external dependency:** migration 230, owner-pushed. PR #151 (the code) is MERGED to
+`main` as of this re-plan pass — re-verify this has not drifted again by plan time. **This
 slice's PR may be reviewed and merged to a feature branch at any time; it must not be merged to
 `main`/deployed to production until the owner confirms migration 230 is live** — merging first
 would not break anything (the introspection check keeps every query safe), but SHIPPING this
@@ -698,7 +700,8 @@ not let the population reaching the unenforced button grow before the button is 
 
 Re-verify at execution time, against `main` AND every active worktree — this project has collided
 on migration numbers before. As of this replanning pass: **229 is applied** (`229_team_tier_leads.sql`,
-#146). **230 is claimed, unmerged, unapplied** — PR #151 / quick task `261004-wtl`
-(`tracks.work_id`), external to this phase, consumed not built here. **This phase's own new
+#146). **230's code is MERGED to `main`** (PR #151 / quick task `261004-wtl`,
+`tracks.work_id`) **but the migration itself remains unapplied** — the owner has not pushed
+it. External to this phase, consumed not built here. **This phase's own new
 migrations (Slices 1, 2, 4, 5, 6, 7, 8, 10) start claiming numbers at 231**, in slice order, each
 re-checked immediately before writing it.

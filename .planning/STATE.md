@@ -4,7 +4,7 @@ milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
-status: Phases 39 and 40 SHIPPED. Migration ceiling 229 applied (230 claimed, unapplied, external to any roadmapped phase -- PR #151). Phase 41 roadmapped, not yet planned. Phase 50 (The Crate Submissions Door) RE-PLANNED 2026-10-04 after an adversarial review returned NO-GO on the first pass; not yet discussed or planned at the PLAN.md level
+status: Phases 39 and 40 SHIPPED. Migration ceiling 229 applied (230's code merged via PR #151, migration itself still unapplied, external to any roadmapped phase). Phase 41 roadmapped, not yet planned. Phase 50 (The Crate Submissions Door) RE-PLANNED 2026-10-04 after an adversarial review returned NO-GO on the first pass; not yet discussed or planned at the PLAN.md level
 stopped_at: Nothing mid-flight. Next action is /gsd-plan-phase 41, /gsd-discuss-phase 50, or a deferred item
 last_updated: "2026-10-04T18:00:00.000Z"
 last_activity: 2026-10-04
@@ -68,8 +68,9 @@ split-document-upload build filed as its own todo
 
 **Migration ceiling corrected: 229 applied** (`229_team_tier_leads.sql`, #146) — this file
 previously carried a stale "227 applied" line from the 2026-09-19 entry below, which predates
-#146. **230 remains claimed-but-unapplied**, external to this phase (PR #151, quick task
-`261004-wtl`), consumed by Phase 50's eligibility-enforcement slice, not built there.
+#146. **230's code is now MERGED to `main`** (PR #151, quick task `261004-wtl`) **but the
+migration remains unapplied** — external to this phase, consumed by Phase 50's
+eligibility-enforcement slice, not built there.
 
 **Nothing executed this pass either. No code or migration written** — corrected roadmap,
 requirements, and slice-breakdown planning artifacts only, on branch `phase-50-replan-261004`
@@ -154,7 +155,8 @@ and this correction only establishes that the NUMBER does not mean what this sec
 implied, not that it has been pushed. **229 (`229_team_tier_leads.sql`, #146) IS confirmed
 applied** as of this pass, moving the confirmed ceiling to (at least) 229 — the "Production
 migration ceiling: 227" heading above predates it and is itself stale. Do not claim a number
-below 231 for any new migration regardless (230 is claimed-but-unapplied, external, PR #151) —
+below 231 for any new migration regardless (230's code is merged, PR #151, but still
+unapplied -- external) —
 re-verify both 228's and 229's actual applied status against the live database before relying on
 either for a plan, rather than trusting this file's narrative a third time.
 
