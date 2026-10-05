@@ -3692,9 +3692,41 @@ separate security-sensitive phase rather than a first-week beta patch.
 
 ### Phase 50: The Crate Submissions Door (valve, invites, rights-enforced advance)
 
-**Status:** RE-PLANNED 2026-10-04 after an adversarial review returned **NO-GO** on the first
-pass (`.planning/deliberations/2026-10-04-phase-50-adversarial-review-corrections.md`). Not yet
-discussed, not yet planned at the PLAN.md level. Full slice breakdown with file-level grounding,
+**Status: NOT READY TO BUILD. Needs further deliberation and a third planning pass**
+(owner, 2026-10-05). Do not execute a slice from the current breakdown.
+
+Re-planned 2026-10-04 after an adversarial review returned **NO-GO** on the first pass
+(`.planning/deliberations/2026-10-04-phase-50-adversarial-review-corrections.md`). Three further
+review passes have since found more, and the re-plan has not absorbed them:
+
+- **Pass 2** (recorded in the corrections document) — **eight more contradictions** between the
+  owner's own decisions, three ratified, five resolved by reading. The four-field provenance
+  model and the two access classes change what the slices must build.
+- **Pass 3** (`2026-10-05-pass-3-claim-verification.md`) — stale citations, the most dangerous
+  being **Slice 1's instruction to modify migration 098's signup trigger when the live definition
+  is 214**. Building from 098 would silently drop provision-intent, handle assignment and
+  token-bound invite-claim hardening on a `SECURITY DEFINER` function.
+- **Pass 4** (`2026-10-05-pass-4-submissions-code-review.md`) — **Slice 3 does not do what it
+  claims.** Dropping `rightsClear` at admit only changes the status; `isRightsReady()` is a
+  second, independent gate that still hides the song from the catalogue. And **"admitted" is a
+  contractual term** in the blanket agreement — redefining it as visibility-only is a question
+  for counsel, not engineering.
+
+**Two blockers that are not engineering decisions:**
+
+1. **Counsel must rule on "admitted."** `lib/sync-library/agreement.ts:71-107` grants Funūn
+   authority to shop, negotiate and execute licences for songs it *"admits into the Sync
+   Library."* Phase 50 proposes that word mean catalogue-visible only. The project's
+   legal-review gate applies.
+2. **Slice 3 needs redesigning**, not patching — around `isRightsReady()`, the catalogue query,
+   `authorizeRequestTarget`, shortlists and Selects, with separate named predicates for
+   catalogue visibility, licensing readiness and execution eligibility.
+
+**Passes 5, 6 and 7 are unrun** (rights/eligibility, identity/access, schema/outbound). Pass 4
+found four live defects in one folder group alone, so expect the remaining passes to change the
+plan further. Running them before the third planning pass avoids revising twice.
+
+Not yet discussed, not yet planned at the PLAN.md level. Full slice breakdown with file-level grounding,
 dependency order, migration flags, and verification notes:
 `.planning/phases/50-crate-submissions-door-valve-rights-enforcement/50-SLICES.md`.
 
