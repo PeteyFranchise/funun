@@ -396,7 +396,21 @@ export async function loadCatalogPage(
       vocal: display.vocal,
       instruments: display.instruments,
       rights: catalogRightsFromStage3(stage3),
-      tracks: tracks.map(t => ({ id: t.id, title: t.title, bpm: t.bpm, keySignature: t.key_signature })),
+      // C-01 (.planning/deliberations/2026-10-05-pass-5-rights-eligibility-
+      // review.md): admission is song-level (26-06), so a card must never
+      // imply a track is licensable just because a project sibling is
+      // admitted. Built from `admittedTracks` (per-track admission,
+      // computed above for the representative-track pick), not the full
+      // `tracks` array -- a never-reviewed sibling must not ride along on
+      // its admitted sibling's coattails. Every downstream consumer
+      // inherits this with no code change of its own:
+      // components/buyer/CatalogBrowser.tsx's card renderer,
+      // app/api/admin/selects/catalog/route.ts's staff search (whose own
+      // header comment already claims "nothing not-admitted can be
+      // searched here at all" -- that claim becomes true only after this
+      // change), app/selects/[token]/page.tsx's public Suggested Songs
+      // widget, and lib/deals/catalog-sample.ts's mapCardsToLightRows.
+      tracks: admittedTracks.map(t => ({ id: t.id, title: t.title, bpm: t.bpm, keySignature: t.key_signature })),
     }
 
     // 30-08: attach the staff-only layer — never for buyers/anon (staffMode
