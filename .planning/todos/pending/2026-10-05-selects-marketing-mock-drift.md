@@ -60,6 +60,15 @@ token.** Gate 0 lifted `--card` from `#0a0a0c` to `#121214` on 2026-10-05, so th
 panels lift with it — including on share links already sent. That is a consequence of a decision
 made about catalogue cards, and it lands whether or not this todo is ever actioned.
 
+**OWNER DECIDED 2026-10-05: let it ride.** *"Let it go along for the ride for now, but we can
+always change it later if we decide to make changes."* The player's panels lift with the app's
+card token, deliberately — this is a ratified choice, **not an oversight to be corrected**. The
+reasoning: the player sits on a very dark ground (`#08070d`), so a lighter panel separates from
+it better, which is the same improvement Gate 0 was chosen for.
+
+If it is ever reversed, the fix is one line — give `theme.ts` its own `--panel` value instead of
+`var(--card)`. Do not do that on the assumption it was missed.
+
 ## If picked up, it is one re-freeze covering
 
 1. resync the four drifted `.selects` values to `theme.ts` (and add the two missing, if used)
