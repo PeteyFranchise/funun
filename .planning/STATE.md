@@ -4,9 +4,9 @@ milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
-status: Phases 39 and 40 SHIPPED. Migration ceiling 227 applied. Phase 41 roadmapped, not yet planned. Phase 50 (The Crate Submissions Door) roadmapped 2026-10-04, not yet discussed or planned
+status: Phases 39 and 40 SHIPPED. Migration ceiling 229 applied (230 claimed, unapplied, external to any roadmapped phase -- PR #151). Phase 41 roadmapped, not yet planned. Phase 50 (The Crate Submissions Door) RE-PLANNED 2026-10-04 after an adversarial review returned NO-GO on the first pass; not yet discussed or planned at the PLAN.md level
 stopped_at: Nothing mid-flight. Next action is /gsd-plan-phase 41, /gsd-discuss-phase 50, or a deferred item
-last_updated: "2026-10-04T12:00:00.000Z"
+last_updated: "2026-10-04T18:00:00.000Z"
 last_activity: 2026-10-04
 progress:
   total_phases: 50
@@ -31,6 +31,49 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 > this paragraph remains the explicit Phase 31.2 record until its own completion pass occurs.
 
 ## Current Position
+
+### UPDATE 2026-10-04 (later same day) — Phase 50 RE-PLANNED after adversarial NO-GO
+
+**The slice breakdown this file's prior entry (below) described was rejected.** An independent
+adversarial review returned NO-GO
+(`.planning/deliberations/2026-10-04-phase-50-adversarial-review-corrections.md`, 18 findings, two
+ratified owner contradictions). Not rejected for omissions -- for two reinterpretations that
+survived as sentences while losing their meaning:
+
+1. **The valve was built as an account-creation gate** (read inside `handle_new_user()`). The
+   owner asked to stop *submissions*; an account created while the valve was open kept submitting
+   forever after it closed, since the cap is per-submission, never per-lifetime. **Corrected: the
+   valve now lives in application code, consulted fresh at every submission-creation attempt,
+   with a durable expiring grant honoring work already begun.** Account creation is unconditional
+   and never reads the valve at all.
+2. **"Accepted but not rights-ready" was a display badge, not a lifecycle.** Verified directly
+   this pass: `evaluateInclusionGate()` still requires `rightsClear` to admit at all
+   (`lib/sync-library/gate.ts:35-38`, `isSyncRightsClear`, `app/api/sync-library/admin/[listingId]/
+   route.ts:283-302`) -- meaning nothing could ever be admitted with incomplete splits, which made
+   the owner's "visible and pitchable, routed to contact" decision structurally impossible under
+   the gate the rejected plan left unchanged. **Corrected: four distinct things now modeled --
+   intake acceptance, review outcome, catalogue admission, licensing readiness -- with
+   `rightsClear` removed as an admission precondition and AI-provenance folded into the existing
+   `rightsBadge()` tri-state instead of a parallel check.**
+
+**Also corrected:** eligibility enforcement reordered to be a prerequisite ahead of every
+intake-expanding slice (A&R admit access, #147, is already MERGED and live -- the exposure is
+today's, not a future one); the Selects admission gap is CLOSED (#148, MERGED -- the old "Slice 9"
+is pre-satisfied); the `handle_new_user()` baseline is migration 214's live body, not 098's or
+099's; six requirements (CSUB-06, 07, 11, 12, 13, 14) rewritten in REQUIREMENTS.md, three new ones
+added (CSUB-19/20/21); a stale Phase 42 sequencing sentence ("the tabs are a bench invention")
+corrected in ROADMAP.md, since PRs #141-#144 built them; owner-decisions §1's deferred
+split-document-upload build filed as its own todo
+(`.planning/todos/pending/2026-10-04-split-document-upload-build.md`).
+
+**Migration ceiling corrected: 229 applied** (`229_team_tier_leads.sql`, #146) — this file
+previously carried a stale "227 applied" line from the 2026-09-19 entry below, which predates
+#146. **230 remains claimed-but-unapplied**, external to this phase (PR #151, quick task
+`261004-wtl`), consumed by Phase 50's eligibility-enforcement slice, not built there.
+
+**Nothing executed this pass either. No code or migration written** — corrected roadmap,
+requirements, and slice-breakdown planning artifacts only, on branch `phase-50-replan-261004`
+(pushed, no PR opened per instruction).
 
 ### UPDATE 2026-10-04 — Phase 50 roadmapped (not yet discussed or planned)
 
@@ -97,7 +140,23 @@ segment, which is an account id for `{userId}/...` uploads but a **work** id for
 and handoffs, a **room** id for playbook media, a **track** id for stream previews. Verified
 against production: 6 of 8 UUID segments were not accounts. The cron no longer repeats the claim
 and a caller-lock test stops a second consumer picking it up quietly, but **any direct caller still
-gets work ids labelled as owners.** The fix is migration 228, deliberately deferred.
+gets work ids labelled as owners.** The fix was intended to be migration 228, deliberately
+deferred.
+
+**CORRECTED 2026-10-04 (found while re-planning Phase 50) — the paragraph above is now stale
+about the number, not the plan.** `228_split_sheet_party_identity_provenance.sql` exists on disk
+and is a DIFFERENT migration entirely (split-sheet party identity provenance, quick task
+`260926-v1w`) — the M-01 `owner_segment` fix described above was never actually assigned that
+number; this file's own narrative drifted from the real migration file. **The M-01
+`owner_segment` fix remains unbuilt and unnumbered.** 228's own application status is NOT
+independently confirmed by this pass — its file is human-gated-push like every migration here,
+and this correction only establishes that the NUMBER does not mean what this section's prose
+implied, not that it has been pushed. **229 (`229_team_tier_leads.sql`, #146) IS confirmed
+applied** as of this pass, moving the confirmed ceiling to (at least) 229 — the "Production
+migration ceiling: 227" heading above predates it and is itself stale. Do not claim a number
+below 231 for any new migration regardless (230 is claimed-but-unapplied, external, PR #151) —
+re-verify both 228's and 229's actual applied status against the live database before relying on
+either for a plan, rather than trusting this file's narrative a third time.
 
 ### The M-01 session, 2026-09-19
 
