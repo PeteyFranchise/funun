@@ -428,9 +428,17 @@ export function descriptorsToDisplay(track: {
 
 // ─── catalogRightsFromStage3 (30-07) ───────────────────────────────────────
 // Maps an already-computed Stage3Result to the catalogue's tri-state rights
-// code via rightsBadge() (lib/sync-library/gate.ts, 30-01) — the SAME rights
-// authority the sync-library gate uses, never a second/hardcoded rights
-// definition (T-30-11). CatalogRightsCode ('ok'|'part'|'req') is imported,
+// code via rightsBadge() (lib/sync-library/gate.ts, 30-01) — the SAME badge
+// function every rights-labelled surface calls, never a second/hardcoded
+// rights definition (T-30-11).
+//
+// NOT the same signal as the staff admit gate's GateSignal.rightsClear,
+// which comes from isSyncRightsClear() and excludes sample clearance (see
+// gate.ts's header note). That divergence is deliberate: rightsBadge() keeps
+// reading sampleBlock precisely so this catalogue code can render "Contains
+// a sample" for a track the admit gate let through.
+//
+// CatalogRightsCode ('ok'|'part'|'req') is imported,
 // not redefined, from gate.ts so CatalogCard.rights and CatalogBrowserLight's
 // CatalogRow.rights ('ok'|'part'|'req', components/buyer/CatalogBrowserLight.tsx)
 // stay structurally the SAME literal union rather than two hand-copied ones.

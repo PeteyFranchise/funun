@@ -6,17 +6,44 @@
 // admit route (30-04) can distinguish "clear to admit" from "route to the
 // Sync Readiness worklist."
 //
-// Pure: no I/O. `rightsClear` is supplied by the caller from
-// computeStage3().canContinue (lib/vault/stage3.ts) — this module never
-// recomputes rights from raw documents (30-RESEARCH.md Pitfall 3: Sync
-// Readiness/the gate FEED isRightsReady's inputs, they are not a fourth,
-// independently-drifting readiness signal). `qualityOk` is the persisted
-// staff quality judgment (sync_listings.quality_ok, wired in 30-04) — v1
-// has no automated audio-quality analysis (30-RESEARCH.md Open Question 2).
+// Pure: no I/O. `rightsClear` is supplied by the caller — this module
+// never recomputes rights from raw documents (30-RESEARCH.md Pitfall 3:
+// Sync Readiness/the gate FEED isRightsReady's inputs, they are not a
+// fourth, independently-drifting readiness signal).
+//
+// ─── rightsClear is NOT computeStage3().canContinue (2026-09-10) ────────
+// This header used to say it was. It is not, and the difference is
+// load-bearing. The only production caller
+// (app/api/sync-library/admin/[listingId]/route.ts) computes ONE
+// syncReadinessForTrack() result and derives `rightsClear` from
+// isSyncRightsClear() over it (lib/sync-library/readiness.ts); it does
+// not call computeStage3() at all, and says so at its own call site.
+//
+// canContinue is `readinessScore >= 60 && !sampleBlock` — the ARTIST's
+// release-pipeline signal, where an uncleared sample MUST keep blocking,
+// because you cannot distribute a track with an uncleared sample. The
+// sync catalogue asks the BUYER's question, and the owner decided on
+// 2026-09-09 that a sampled track IS listed, labelled "Contains a
+// sample". Sample clearance is therefore DELIBERATELY outside this
+// admission check. Re-pointing `rightsClear` at canContinue would
+// silently restore the block this route exists to exclude, and make the
+// shipped "Contains a sample" label unreachable for anything newly
+// reviewed — which is exactly the defect fixed on 2026-09-10. See that
+// route's header note and
+// .planning/deliberations/sync-catalogue-entry-and-samples.md.
+//
+// `qualityOk` is the persisted staff quality judgment
+// (sync_listings.quality_ok, wired in 30-04) — v1 has no automated
+// audio-quality analysis (30-RESEARCH.md Open Question 2).
 import type { Stage3Result } from '@/lib/vault/stage3'
 
 export type GateSignal = {
-  /** From computeStage3(...).canContinue — the existing legal-doc gate. */
+  /**
+   * The sync-specific rights verdict: isSyncRightsClear() over
+   * syncReadinessForTrack()'s output. NOT computeStage3().canContinue —
+   * an uncleared sample does not appear in this signal at all, on
+   * purpose (see the header note).
+   */
   rightsClear: boolean
   /** Manual staff judgment (audio quality + genuine sync fit) for v1. */
   qualityOk: boolean
@@ -41,11 +68,19 @@ export function evaluateInclusionGate(signal: GateSignal): InclusionGateVerdict 
 export type RightsBadge = 'ready' | 'partial' | 'contact'
 
 /**
- * Derives the rights badge from the SAME Stage3Result the gate's
- * rightsClear signal consumes — one definition of "rights standing," not
- * two. 'contact' when nothing required is done yet, or a sample is
- * blocking (a buyer must talk to staff); 'ready' when every required
- * document is signed and the legal gate is open; 'partial' otherwise.
+ * Derives the rights badge from a Stage3Result. 'contact' when nothing
+ * required is done yet, or a sample is blocking (a buyer must talk to
+ * staff); 'ready' when every required document is signed and the legal
+ * gate is open; 'partial' otherwise.
+ *
+ * This reads a DIFFERENT signal from evaluateInclusionGate()'s
+ * `rightsClear`, and that is deliberate, not drift. This badge takes a
+ * Stage3Result (its only production caller is catalogRightsFromStage3(),
+ * lib/deals/catalog.ts); the admit gate's `rightsClear` comes from
+ * isSyncRightsClear() and excludes sample clearance entirely. The badge
+ * must keep seeing `sampleBlock`, because rendering "Contains a sample"
+ * is the entire point of admitting a sampled track. Do not "unify" the
+ * two by feeding this function the gate's signal — the label disappears.
  */
 export function rightsBadge(stage3: Stage3Result): RightsBadge {
   if (stage3.requiredComplete === 0 || stage3.sampleBlock) return 'contact'
