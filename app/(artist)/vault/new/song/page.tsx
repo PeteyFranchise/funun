@@ -58,6 +58,15 @@ export default function SubmitSongPage() {
   // showing it over something that did not happen.
   const [fulfilled, setFulfilled] = useState<string[]>([])
   const [collaborators, setCollaborators] = useState<AddedCollaborator[]>([])
+  // Answers as they arrive, so a question can act on an earlier one. Q4 (ai)
+  // precedes Q5 (vocals), and the fileable combinations need both.
+  const [live, setLive] = useState<Answers>({})
+  // Whether a real ai_entries row now exists for this work. The ledger is what
+  // a future Crate gate reads, and resolveTrackAiProvenance() treats an EMPTY
+  // ledger as 'clear' (track-work-link.ts:60-65) -- so an unrecorded "yes, a
+  // tool was involved" would read as "no AI" by absence. That is the gap Pass 5
+  // and Pass 7 both named.
+  const [aiEntryFiled, setAiEntryFiled] = useState(false)
 
   async function createWork(e: React.FormEvent) {
     e.preventDefault()
@@ -94,6 +103,7 @@ export default function SubmitSongPage() {
           // vocal_state once that is known at this point in the flow.
           hasVocals
           answers={answers}
+          aiEntryFiled={aiEntryFiled}
         />
       </main>
     )
@@ -137,6 +147,47 @@ export default function SubmitSongPage() {
             return memberId
           }}
           onAnswer={async (questionId, values) => {
+            const merged: Answers = { ...live, [questionId]: values }
+            setLive(merged)
+
+            // ── File the AI citation where the answers determine it exactly ──
+            //
+            // The route composes the citation itself and REJECTS a
+            // client-supplied one (.strict()), so the client sends only mode
+            // and component. Two combinations are fully determined by the
+            // answers, and both are the DISQUALIFYING ones -- precisely where a
+            // missing row would make the ledger read 'clear' by absence:
+            //
+            //   ai 'whole'                    -> generate / full
+            //   ai 'partial' + no human take  -> generate / vocal
+            //
+            // Every other AI combination is NOT filed here, deliberately:
+            // 'partial' with a human take needs a humanSourceVersionId
+            // pointing at a real take on this work (ai-entries/route.ts:111-122),
+            // and 'partial' with all-human voices does not say whether the tool
+            // touched an instrument, a melody or a lyric. Guessing either would
+            // be fabricating evidence in the one ledger that exists to be
+            // trustworthy. The summary says a citation is still needed instead.
+            if (workId && !aiEntryFiled) {
+              const ai = merged.ai?.[0]
+              const vocals = merged.vocals?.[0]
+              const determined =
+                ai === 'whole'
+                  ? { mode: 'generate' as const, component: 'full' as const }
+                  : ai === 'partial' && vocals === 'no_human_take'
+                    ? { mode: 'generate' as const, component: 'vocal' as const }
+                    : null
+
+              if (determined) {
+                const res = await fetch(`/api/works/${workId}/ai-entries`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ level: 'work', ...determined }),
+                })
+                if (res.ok) setAiEntryFiled(true)
+              }
+            }
+
             // The only answer that promises a write today. "We'll start a
             // split sheet on this song at even shares" means putting the
             // artist onto the living-draft sheet POST /api/works already

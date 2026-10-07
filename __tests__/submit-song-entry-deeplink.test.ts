@@ -239,3 +239,52 @@ describe('slice 5 — the collaborator path', () => {
     expect(capture).toMatch(/Could not add them/)
   })
 })
+
+describe('slice 6 — the AI ledger matches what the artist told us', () => {
+  const summary = stripComments(
+    fs.readFileSync(path.join(process.cwd(), 'components/onboarding/SubmitSongSummary.tsx'), 'utf8')
+  )
+
+  it('files an entry ONLY for the two combinations the answers fully determine', () => {
+    // ai 'whole' -> generate/full; ai 'partial' + no human take -> generate/vocal.
+    expect(visible).toMatch(/ai === 'whole'/)
+    expect(visible).toMatch(/ai === 'partial' && vocals === 'no_human_take'/)
+    expect(visible).toMatch(/mode: 'generate' as const, component: 'full' as const/)
+    expect(visible).toMatch(/mode: 'generate' as const, component: 'vocal' as const/)
+  })
+
+  it('never guesses a component or a human source', () => {
+    // 'partial' with a human take needs a humanSourceVersionId pointing at a
+    // real take on this work; 'partial' with all-human voices does not say
+    // whether the tool touched an instrument, a melody or a lyric. Guessing
+    // either would be fabricating evidence in the one ledger meant to be
+    // trustworthy.
+    expect(visible).not.toMatch(/humanSourceVersionId/)
+    expect(visible).not.toMatch(/component: 'instrument'|component: 'melody'|component: 'lyric'/)
+    expect(visible).toMatch(/: null\s*\n/)
+  })
+
+  it('sends no citation — the route composes it and rejects a client-supplied one', () => {
+    expect(visible).not.toMatch(/citation:/)
+    expect(visible).toMatch(/JSON\.stringify\(\{ level: 'work', \.\.\.determined \}\)/)
+  })
+
+  it('only records success on a 2xx, and files at most once', () => {
+    expect(visible).toMatch(/if \(res\.ok\) setAiEntryFiled\(true\)/)
+    expect(visible).toMatch(/if \(workId && !aiEntryFiled\)/)
+  })
+
+  it('the summary never claims eligibility the ledger cannot support', () => {
+    // resolveTrackAiProvenance() treats an empty ledger as 'clear'
+    // (track-work-link.ts:60-65), so an unrecorded "a tool was involved" reads
+    // as "no AI" to anything that consults it later.
+    expect(summary).toMatch(/const saidAi = \(answers\.ai\?\.\[0\] \?\? 'none'\) !== 'none'/)
+    expect(summary).toMatch(/const citationStillOwed = saidAi && !aiEntryFiled/)
+    expect(summary).toMatch(/name the tool on the song/)
+  })
+
+  it('says plainly when the citation IS on record — a badge, not a confession', () => {
+    expect(summary).toMatch(/cited, not hidden/)
+    expect(summary).not.toMatch(/violation|non-compliant|flagged|penalis|penaliz/i)
+  })
+})
