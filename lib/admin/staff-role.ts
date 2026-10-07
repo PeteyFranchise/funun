@@ -20,6 +20,32 @@
 //   getStaffRole(user)  → the PRIMARY (highest-priority) role, or null. Kept so
 //                         the many call sites that branch on a single role, and
 //                         the {staffRole} requireStaff returns, are unchanged.
+//   hasStaffRole(user, allowed) → true if ANY held role is allowed. This is the
+//                         one to use for a CAPABILITY check, because it matches
+//                         requireStaff's semantics exactly (gate.ts:48-53).
+//
+// WHICH ONE TO USE — this distinction is load-bearing (Pass 6 H-3)
+//
+// requireStaff() passes when ANY of a member's roles is allowed. A page that
+// asks `getStaffRole(user) === 'anr'` instead asks whether anr is the member's
+// HIGHEST-PRIORITY role, which is a different question. For anyone holding two
+// roles the two answers diverge, and the page ends up stricter than the server:
+//
+//   staff_roles        primary   page says            the API says
+//   ['bd','anr']       bd        no (redirects)       yes, via anr
+//   ['ae','anr']       ae        no (control hidden)  yes, via anr
+//   ['ae','it']        ae        not IT               IT routes accept them
+//
+// The divergence is always in the safe direction — a page flag derived from one
+// role can only ever be a SUBSET of what requireStaff accepts, so this never
+// grants more than the server allows. But it silently takes capability away
+// from exactly the people the multi-role model exists to serve.
+//
+// `getStaffRole(user) === 'leadership'` and `!== 'leadership'` remain correct
+// without change, because 'leadership' is ROLE_PRIORITY[0]: if a member holds
+// it, it is always their primary. That is a property of the ordering, not a
+// coincidence — if ROLE_PRIORITY is ever reordered, those call sites must move
+// to hasStaffRole() too.
 
 export type StaffRole =
   | 'leadership'
@@ -112,6 +138,19 @@ export function getStaffRoles(user: { app_metadata?: unknown }): StaffRole[] {
 // Backward-compatible with every existing single-role caller.
 export function getStaffRole(user: { app_metadata?: unknown }): StaffRole | null {
   return getStaffRoles(user)[0] ?? null
+}
+
+// True when the member holds ANY of `allowed`. Mirrors requireStaff's check
+// (lib/admin/gate.ts:48-53) exactly, so a page gate written with this cannot
+// drift from the route gate it is meant to mirror. Use this for capability
+// decisions; use getStaffRole() only for display or for the leadership case
+// described in the header above.
+export function hasStaffRole(
+  user: { app_metadata?: unknown },
+  allowed: readonly StaffRole[]
+): boolean {
+  const roles = getStaffRoles(user)
+  return roles.some(r => allowed.includes(r))
 }
 
 // The PRIMARY (highest-priority) role of an explicit role SET — used by the
