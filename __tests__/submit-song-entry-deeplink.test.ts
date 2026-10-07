@@ -96,8 +96,11 @@ describe('slice 3 — the three stages, and what the summary promises', () => {
 
   it('a response that promises a write cannot render until the write lands', () => {
     expect(questions).toMatch(/a\.requiresWrite && !fulfilledWrites\.includes\(a\.value\)/)
-    // Nothing is wired yet, so the honest value is empty.
-    expect(visible).toMatch(/fulfilledWrites=\{\[\]\}/)
+    // The guard lives in the component and survives every slice. The value
+    // passed in started as [] (slice 3, nothing wired) and is now state driven
+    // by a real write (slice 4) -- asserted in the slice 4 block below. What
+    // must never change is that the guard exists at all.
+    expect(questions).toMatch(/if \(a\.requiresWrite && !fulfilledWrites\.includes\(a\.value\)\) return null/)
   })
 
   it('every question is skippable, individually and in bulk', () => {
@@ -123,5 +126,51 @@ describe('slice 3 — the three stages, and what the summary promises', () => {
   it('the summary shows the resolver’s own sentence rather than a paraphrase', () => {
     expect(summary).toMatch(/consequence\.note/)
     expect(summary).toMatch(/consequence\.reason/)
+  })
+})
+
+describe('slice 4 — the promised write actually happens', () => {
+  const questions = stripComments(
+    fs.readFileSync(path.join(process.cwd(), 'components/onboarding/SubmitSongQuestions.tsx'), 'utf8')
+  )
+  const worksRoute = stripComments(
+    fs.readFileSync(path.join(process.cwd(), 'app/api/works/route.ts'), 'utf8')
+  )
+
+  it('the splits promise is fulfilled by promoting onto the sheet, not by creating one', () => {
+    // POST /api/works already creates the living-draft sheet, deliberately
+    // empty of parties. The promise is about getting the writers ONTO it.
+    expect(visible).toMatch(/members\/\$\{ownerMemberId\}\/promote/)
+    expect(visible).not.toMatch(/from\('split_sheets'\)|\/api\/split-sheets/)
+  })
+
+  it('only marks the promise fulfilled on a 2xx', () => {
+    expect(visible).toMatch(/if \(res\.ok\) setFulfilled/)
+    // A failed write must leave the response hidden rather than showing a
+    // promise over something that did not happen.
+    expect(visible).not.toMatch(/setFulfilled\(prev => \[\.\.\.prev, 'not_yet'\]\)\s*\n\s*\}\s*\n/)
+  })
+
+  it('fulfilledWrites is now driven by state, not hardcoded empty', () => {
+    expect(visible).toMatch(/fulfilledWrites=\{fulfilled\}/)
+    expect(visible).not.toMatch(/fulfilledWrites=\{\[\]\}/)
+  })
+
+  it('sends no designation — an honest "not stated", never a fabricated role', () => {
+    expect(visible).toMatch(/JSON\.stringify\(\{\}\)/)
+    expect(visible).not.toMatch(/designation:\s*'/)
+  })
+
+  it('the write is attempted at answer time, so the promise can sit beside the answer', () => {
+    expect(questions).toMatch(/onAnswer\?\.\(question\.id, next\)/)
+    // Non-blocking: the artist is never held up by it, in either direction.
+    expect(questions).toMatch(/void onAnswer/)
+  })
+
+  it('POST /api/works returns ownerMemberId additively, breaking no existing caller', () => {
+    expect(worksRoute).toMatch(/ownerMemberId: ownerMember\?\.id \?\? null/)
+    // The work's own fields are still spread at the top level, so every
+    // existing `data.id` reader is untouched.
+    expect(worksRoute).toMatch(/\{ \.\.\.work, ownerMemberId/)
   })
 })

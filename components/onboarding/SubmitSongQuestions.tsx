@@ -37,10 +37,18 @@ type Props = {
   hasVocals: boolean
   /**
    * Values whose promised write has already succeeded. A response flagged
-   * requiresWrite renders ONLY if its value appears here. Empty until the
-   * write path is wired, which is the honest default.
+   * requiresWrite renders ONLY if its value appears here.
    */
   fulfilledWrites?: readonly string[]
+  /**
+   * Called when an answer is chosen, BEFORE the artist advances. Performs any
+   * write that answer promises and resolves to the values now fulfilled.
+   *
+   * This exists because a promised response has to appear next to the answer
+   * that triggered it -- deferring the write to the end of the flow would mean
+   * either showing the promise before it is true, or showing it nowhere.
+   */
+  onAnswer?: (questionId: QuestionId, values: string[]) => Promise<void>
   onFinish: (answers: Answers) => void
 }
 
@@ -48,7 +56,7 @@ function isAsked(q: Question, hasVocals: boolean): boolean {
   return q.conditional !== 'has_vocals' || hasVocals
 }
 
-export function SubmitSongQuestions({ hasVocals, fulfilledWrites = [], onFinish }: Props) {
+export function SubmitSongQuestions({ hasVocals, fulfilledWrites = [], onAnswer, onFinish }: Props) {
   const asked = QUESTIONS.filter(q => isAsked(q, hasVocals))
   const [index, setIndex] = useState(0)
   const [answers, setAnswers] = useState<Answers>({})
@@ -78,16 +86,18 @@ export function SubmitSongQuestions({ hasVocals, fulfilledWrites = [], onFinish 
   const picked = question.answers.filter(a => chosen.includes(a.value))
 
   function choose(value: string) {
-    setAnswers(prev => {
-      const existing = prev[question.id] ?? []
-      if (!question.multi) return { ...prev, [question.id]: [value] }
-      return {
-        ...prev,
-        [question.id]: existing.includes(value)
-          ? existing.filter(v => v !== value)
-          : [...existing, value],
-      }
-    })
+    const existing = answers[question.id] ?? []
+    const next = !question.multi
+      ? [value]
+      : existing.includes(value)
+        ? existing.filter(v => v !== value)
+        : [...existing, value]
+
+    setAnswers(prev => ({ ...prev, [question.id]: next }))
+    // Fire-and-report: a failed write leaves fulfilledWrites unchanged, so the
+    // promised response stays hidden rather than appearing over a write that
+    // did not happen. The artist is never blocked by it either way.
+    void onAnswer?.(question.id, next)
   }
 
   // Skipping advances without clearing anything already chosen, so a change of
