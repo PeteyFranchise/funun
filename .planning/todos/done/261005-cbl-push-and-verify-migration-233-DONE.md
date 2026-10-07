@@ -110,3 +110,21 @@ reachable from this sandbox. Everything below is the owner's step.
       that if the production audit finds any already-forged rows, cleanup of all three
       downstream tables — not just `collaborators.claimed_by` — would be needed. This migration
       does not attempt that cleanup; it is the owner's decision.
+
+---
+
+## DONE 2026-10-06 — applied, FOUND BROKEN, fixed by 234, then verified
+
+Migration 233 applied cleanly and **did not work**. Its guard never fired: an unset GUC made
+`v_write_mode = 'verified_claim'` evaluate to NULL, `NOT NULL` is NULL, and PL/pgSQL skips the
+THEN branch on a NULL condition — so the RAISE was unreachable for every caller it existed to
+stop.
+
+Caught only because the probe asked production to refuse a real forged write. Every structural
+check had passed: trigger attached, `tgenabled='O'`, `tgtype=23`, deployed body byte-identical to
+the migration, `auth.role()` returning `authenticated`.
+
+Fixed in migration **234** (`IS NOT DISTINCT FROM`), then verified with five probes — forged
+UPDATE and INSERT both refused with 42501, and all three legitimate paths still working.
+
+See [[reference_sql_null_comparison_disarms_guard]].
