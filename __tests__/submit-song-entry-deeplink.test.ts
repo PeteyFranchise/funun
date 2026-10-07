@@ -140,15 +140,22 @@ describe('slice 4 — the promised write actually happens', () => {
   it('the splits promise is fulfilled by promoting onto the sheet, not by creating one', () => {
     // POST /api/works already creates the living-draft sheet, deliberately
     // empty of parties. The promise is about getting the writers ONTO it.
-    expect(visible).toMatch(/members\/\$\{ownerMemberId\}\/promote/)
+    // Slice 4 promoted only the artist (`members/${ownerMemberId}/promote`);
+    // slice 5 promotes the artist and every captured collaborator, so the id
+    // is a loop variable now. What must hold either way is that the promise is
+    // kept through the promote ROUTE, never by writing a sheet here.
+    expect(visible).toMatch(/\/members\/\$\{[A-Za-z]+\}\/promote/)
     expect(visible).not.toMatch(/from\('split_sheets'\)|\/api\/split-sheets/)
   })
 
-  it('only marks the promise fulfilled on a 2xx', () => {
-    expect(visible).toMatch(/if \(res\.ok\) setFulfilled/)
-    // A failed write must leave the response hidden rather than showing a
-    // promise over something that did not happen.
-    expect(visible).not.toMatch(/setFulfilled\(prev => \[\.\.\.prev, 'not_yet'\]\)\s*\n\s*\}\s*\n/)
+  it('only marks the promise fulfilled when the write succeeded', () => {
+    // Slice 4 gated on a single `res.ok`. Slice 5 gates on `allOk` across
+    // every writer, which is strictly stronger -- a partial promotion would
+    // make "even shares" describe a sheet missing someone. The invariant is
+    // that setFulfilled is never reached unconditionally.
+    expect(visible).toMatch(/if \((res\.ok|allOk)\) setFulfilled/)
+    const unconditional = /(?<!if \([a-zA-Z.]+\) )setFulfilled\(prev => \(prev\.includes/
+    expect(visible).not.toMatch(unconditional)
   })
 
   it('fulfilledWrites is now driven by state, not hardcoded empty', () => {
@@ -172,5 +179,63 @@ describe('slice 4 — the promised write actually happens', () => {
     // The work's own fields are still spread at the top level, so every
     // existing `data.id` reader is untouched.
     expect(worksRoute).toMatch(/\{ \.\.\.work, ownerMemberId/)
+  })
+})
+
+describe('slice 5 — the collaborator path', () => {
+  const capture = stripComments(
+    fs.readFileSync(path.join(process.cwd(), 'components/onboarding/SubmitSongCollaborators.tsx'), 'utf8')
+  )
+  const questions = stripComments(
+    fs.readFileSync(path.join(process.cwd(), 'components/onboarding/SubmitSongQuestions.tsx'), 'utf8')
+  )
+
+  it('records a collaborator from a NAME ALONE — the unreachable case the copy promises', () => {
+    // Q2's third answer is "tracking them down is the problem" and the reply is
+    // "Add who you remember." The members endpoint's new-collaborator branch
+    // requires an email (members/route.ts:41-46), so capture goes through
+    // /api/collaborators first, whose gate is `if (!update.name)`.
+    expect(visible).toMatch(/'\/api\/collaborators'/)
+    expect(visible).toMatch(/JSON\.stringify\(email \? \{ name, email \} : \{ name \}\)/)
+    expect(capture).toMatch(/Email \(optional\)/)
+    expect(capture).toMatch(/A name is enough/)
+  })
+
+  it('adds everyone as membership only — never straight onto the splits', () => {
+    // Pitfall 3: being on the work and being on the splits are different facts.
+    expect(visible).toMatch(/is_writer: false/)
+    expect(visible).toMatch(/tier: 'contribute'/)
+    expect(visible).not.toMatch(/is_writer: true/)
+  })
+
+  it('offers the capture form only when the caller can actually write', () => {
+    // A form that cannot record is the same class of error as copy promising a
+    // record that never happens.
+    expect(questions).toMatch(/question\.id === 'collaborators' &&\s*\n\s*onAddCollaborator &&/)
+    expect(questions).toMatch(/chosen\.includes\('reachable'\) \|\| chosen\.includes\('unreachable'\)/)
+  })
+
+  it('promotes the artist AND every captured collaborator when splits are not agreed', () => {
+    expect(visible).toMatch(/\[ownerMemberId, \.\.\.collaborators\.map\(c => c\.memberId\)\]/)
+  })
+
+  it('promotes sequentially, because each promotion redrafts the same sheet', () => {
+    // planWriterPromotion reads the sheet, redrafts every party to an equal
+    // share and writes it back. Concurrent promotions would race on those rows.
+    expect(visible).toMatch(/for \(const id of ids\)/)
+    expect(visible).not.toMatch(/Promise\.all\(ids/)
+  })
+
+  it('only claims the sheet is set up if EVERY writer landed on it', () => {
+    // A partial promotion would make "even shares" describe a sheet missing
+    // someone -- a worse lie than saying nothing.
+    expect(visible).toMatch(/let allOk = true/)
+    expect(visible).toMatch(/if \(allOk\) setFulfilled/)
+  })
+
+  it('returns null on a failed add so the UI can say so instead of pretending', () => {
+    expect(visible).toMatch(/if \(!cRes\.ok \|\| !collaboratorId\) return null/)
+    expect(visible).toMatch(/if \(!mRes\.ok \|\| !memberId\) return null/)
+    expect(capture).toMatch(/Could not add them/)
   })
 })

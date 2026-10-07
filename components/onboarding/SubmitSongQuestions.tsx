@@ -23,6 +23,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 import {
+  SubmitSongCollaborators,
+  type AddedCollaborator,
+} from '@/components/onboarding/SubmitSongCollaborators'
+import {
   QUESTIONS,
   SKIP_ALL_LABEL,
   SKIP_LABEL,
@@ -49,6 +53,14 @@ type Props = {
    * either showing the promise before it is true, or showing it nowhere.
    */
   onAnswer?: (questionId: QuestionId, values: string[]) => Promise<void>
+  /**
+   * Records a collaborator on the work. Resolves to the new work_members id,
+   * or null when the add failed. Absent when the caller does not support it,
+   * in which case the capture UI is not offered at all rather than offered and
+   * broken.
+   */
+  onAddCollaborator?: (name: string, email: string | null) => Promise<string | null>
+  addedCollaborators?: readonly AddedCollaborator[]
   onFinish: (answers: Answers) => void
 }
 
@@ -56,7 +68,14 @@ function isAsked(q: Question, hasVocals: boolean): boolean {
   return q.conditional !== 'has_vocals' || hasVocals
 }
 
-export function SubmitSongQuestions({ hasVocals, fulfilledWrites = [], onAnswer, onFinish }: Props) {
+export function SubmitSongQuestions({
+  hasVocals,
+  fulfilledWrites = [],
+  onAnswer,
+  onAddCollaborator,
+  addedCollaborators = [],
+  onFinish,
+}: Props) {
   const asked = QUESTIONS.filter(q => isAsked(q, hasVocals))
   const [index, setIndex] = useState(0)
   const [answers, setAnswers] = useState<Answers>({})
@@ -131,6 +150,16 @@ export function SubmitSongQuestions({ hasVocals, fulfilledWrites = [], onAnswer,
           )
         })}
       </div>
+
+      {/* Capture appears only once the artist has said there ARE other people,
+          and only when the caller can actually record them. Offering a form
+          that cannot write would be the same class of error as copy promising
+          a record that never happens. */}
+      {question.id === 'collaborators' &&
+        onAddCollaborator &&
+        (chosen.includes('reachable') || chosen.includes('unreachable')) && (
+          <SubmitSongCollaborators onAdd={onAddCollaborator} added={addedCollaborators} />
+        )}
 
       {picked.map(a => {
         // The guard. A response that commits the product to a record is held
