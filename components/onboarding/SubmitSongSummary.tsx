@@ -23,9 +23,20 @@ type Props = {
   workId: string
   hasVocals: boolean
   answers: Answers
+  /**
+   * Whether a real ai_entries row now exists for this work.
+   *
+   * This matters because resolveTrackAiProvenance() treats an EMPTY ledger as
+   * 'clear' (track-work-link.ts:60-65). So a song whose artist told us a tool
+   * was involved, but for which no entry was filed, reads as "no AI" to
+   * anything that later consults the ledger. Saying "this can go up for sync"
+   * on top of that would be an answer the record cannot support -- the exact
+   * epistemic gap Passes 5 and 7 both named.
+   */
+  aiEntryFiled: boolean
 }
 
-export function SubmitSongSummary({ workId, hasVocals, answers }: Props) {
+export function SubmitSongSummary({ workId, hasVocals, answers, aiEntryFiled }: Props) {
   const verdict = resolveQuestionnaireVerdict(answers, hasVocals)
 
   const crate =
@@ -52,6 +63,14 @@ export function SubmitSongSummary({ workId, hasVocals, answers }: Props) {
       ? verdict.consequence.fix
       : undefined
 
+  // The artist said a tool was involved, and nothing was recorded. Either the
+  // combination was not determined by their answers (a human take needs
+  // choosing, or we do not know which element the tool touched), or the write
+  // failed. Both cases get the same honest line: the citation is still owed,
+  // and here is where to do it. Never a verdict the ledger cannot support.
+  const saidAi = (answers.ai?.[0] ?? 'none') !== 'none'
+  const citationStillOwed = saidAi && !aiEntryFiled
+
   return (
     <section className="flex flex-col gap-4">
       <div className="rounded-[12px] border border-hair bg-card px-[26px] py-[26px]">
@@ -72,6 +91,23 @@ export function SubmitSongSummary({ workId, hasVocals, answers }: Props) {
         <h2 className="mt-[6px] text-[18px] font-bold leading-snug text-white">{crate.heading}</h2>
         <p className="mt-2 text-[14px] leading-relaxed text-lavdim">{crate.body}</p>
         {detail && <p className="mt-3 text-[13px] leading-relaxed text-lavdim">{detail}</p>}
+        {citationStillOwed && (
+          <p className="mt-3 rounded-lg border border-hair bg-card2 px-3.5 py-3 text-[13px] leading-relaxed text-lavdim">
+            One thing still to do: name the tool on the song, so the record matches what you told
+            us.{' '}
+            <Link
+              href={`/vault/works/${workId}`}
+              className="text-white underline underline-offset-4"
+            >
+              Add the citation
+            </Link>
+          </p>
+        )}
+        {aiEntryFiled && (
+          <p className="mt-3 text-[13px] leading-relaxed text-lavdim">
+            It&rsquo;s on the record for this song — cited, not hidden.
+          </p>
+        )}
         {fix && (
           <p className="mt-2 rounded-lg border border-hair bg-card2 px-3.5 py-3 text-[13px] leading-relaxed text-lavdim">
             {fix}
