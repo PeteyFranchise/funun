@@ -38,6 +38,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { OPENING } from '@/lib/onboarding/submit-song-copy'
+import { SubmitSongQuestions, type Answers } from '@/components/onboarding/SubmitSongQuestions'
+import { SubmitSongSummary } from '@/components/onboarding/SubmitSongSummary'
 
 export default function SubmitSongPage() {
   const router = useRouter()
@@ -45,6 +47,10 @@ export default function SubmitSongPage() {
   const [workId, setWorkId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // 'statement' -> 'questions' -> 'summary'. The statement comes first and asks
+  // nothing: the song is already in before any question appears.
+  const [stage, setStage] = useState<'statement' | 'questions' | 'summary'>('statement')
+  const [answers, setAnswers] = useState<Answers>({})
 
   async function createWork(e: React.FormEvent) {
     e.preventDefault()
@@ -70,6 +76,38 @@ export default function SubmitSongPage() {
     setSubmitting(false)
   }
 
+  if (workId && stage === 'summary') {
+    return (
+      <main className="mx-auto w-full max-w-[560px] px-6 py-14">
+        <SubmitSongSummary
+          workId={workId}
+          // The questionnaire asks the vocal follow-up whenever the song may
+          // have vocals; a future slice can narrow this from the work's own
+          // vocal_state once that is known at this point in the flow.
+          hasVocals
+          answers={answers}
+        />
+      </main>
+    )
+  }
+
+  if (workId && stage === 'questions') {
+    return (
+      <main className="mx-auto w-full max-w-[560px] px-6 py-14">
+        <SubmitSongQuestions
+          hasVocals
+          // Empty on purpose: no promised write has been wired yet, so no
+          // response that promises one may render. Silence is honest.
+          fulfilledWrites={[]}
+          onFinish={next => {
+            setAnswers(next)
+            setStage('summary')
+          }}
+        />
+      </main>
+    )
+  }
+
   if (workId) {
     return (
       <main className="mx-auto w-full max-w-[560px] px-6 py-14">
@@ -84,6 +122,13 @@ export default function SubmitSongPage() {
               className="rounded-lg bg-grad px-4 py-2.5 text-sm font-semibold text-white shadow-cta transition hover:brightness-110"
             >
               Open your song
+            </button>
+            <button
+              type="button"
+              onClick={() => setStage('questions')}
+              className="rounded-lg border border-hair bg-card2 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-white/25"
+            >
+              Answer a few questions first
             </button>
             <Link
               href="/vault"

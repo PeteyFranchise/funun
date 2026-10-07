@@ -43,6 +43,16 @@ export type Answer = {
   label: string
   /** Shown immediately after choosing. Omitted where silence is better. */
   response?: string
+  /**
+   * The response promises something the product must actually DO. A caller may
+   * only render it once that write has succeeded.
+   *
+   * This flag is the structural guard against the Pass 2 failure: copy that
+   * promised a record with no questionnaire, route or table behind it. A nudge
+   * ("let's make it real before it matters") promises nothing and needs no
+   * flag. A commitment ("we'll start a split sheet") does.
+   */
+  requiresWrite?: true
 }
 
 export type Question = {
@@ -110,6 +120,9 @@ export const QUESTIONS: readonly Question[] = [
         response:
           "No stress — we got you. 🤝 We'll start a split sheet on this song at even shares. " +
           "Nothing's locked: you and whoever you wrote it with set the numbers when you're ready.",
+        // Promises a real living-draft sheet at even shares via
+        // planWriterPromotion(). Not renderable until that write lands.
+        requiresWrite: true,
       },
     ],
   },
