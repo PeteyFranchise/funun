@@ -78,3 +78,50 @@ describe('the screen keeps the promises the copy module is tested on', () => {
     expect(visible).not.toMatch(/sync-library\/submit/)
   })
 })
+
+describe('slice 3 — the three stages, and what the summary promises', () => {
+  const questions = stripComments(
+    fs.readFileSync(path.join(process.cwd(), 'components/onboarding/SubmitSongQuestions.tsx'), 'utf8')
+  )
+  const summary = stripComments(
+    fs.readFileSync(path.join(process.cwd(), 'components/onboarding/SubmitSongSummary.tsx'), 'utf8')
+  )
+
+  it('the questions screen is reached only after the song exists', () => {
+    // Both question and summary branches are guarded on workId, so no question
+    // can precede capture.
+    expect(visible).toMatch(/workId && stage === 'questions'/)
+    expect(visible).toMatch(/workId && stage === 'summary'/)
+  })
+
+  it('a response that promises a write cannot render until the write lands', () => {
+    expect(questions).toMatch(/a\.requiresWrite && !fulfilledWrites\.includes\(a\.value\)/)
+    // Nothing is wired yet, so the honest value is empty.
+    expect(visible).toMatch(/fulfilledWrites=\{\[\]\}/)
+  })
+
+  it('every question is skippable, individually and in bulk', () => {
+    expect(questions).toContain('SKIP_LABEL')
+    expect(questions).toContain('SKIP_ALL_LABEL')
+    // Skip advances without clearing what was already chosen.
+    expect(questions).toMatch(/const advance = \(\) => setIndex/)
+  })
+
+  it('the summary renders ALL FOUR doors, not a filtered set', () => {
+    // Decision #10: "the same guidance energy for the artist who never submits
+    // to it." A .filter() here would quietly make the ineligible case a dead
+    // end, which is the exact failure the rule exists to prevent.
+    expect(summary).toMatch(/ALL_DOORS\.map/)
+    expect(summary).not.toMatch(/ALL_DOORS\s*\.\s*filter/)
+  })
+
+  it('the summary computes no eligibility of its own', () => {
+    expect(summary).toContain('resolveQuestionnaireVerdict')
+    expect(summary).not.toMatch(/component === 'full'|hasHumanSource|no_human_take/)
+  })
+
+  it('the summary shows the resolver’s own sentence rather than a paraphrase', () => {
+    expect(summary).toMatch(/consequence\.note/)
+    expect(summary).toMatch(/consequence\.reason/)
+  })
+})

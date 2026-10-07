@@ -144,3 +144,29 @@ describe('the question set itself', () => {
     expect(room.answers.map(a => a.value)).toEqual(['done', 'close', 'writing'])
   })
 })
+
+describe('rule 2, structurally — a promise of a write is flagged as one', () => {
+  const responses = QUESTIONS.flatMap(q => q.answers.filter(a => a.response))
+
+  it('every response that commits the product to a record is marked requiresWrite', () => {
+    // A nudge promises nothing. A commitment does. The distinction is what
+    // stops copy from running ahead of the product again (Pass 2).
+    const commits = /we'll (start|create|file|add|open|record)|we will (start|create|file|add|open|record)/i
+    for (const a of responses) {
+      if (commits.test(a.response!)) {
+        expect(a.requiresWrite).toBe(true)
+      }
+    }
+  })
+
+  it('nothing is flagged that does not actually promise a write', () => {
+    for (const a of responses.filter(a => a.requiresWrite)) {
+      expect(a.response).toMatch(/we'll \w+/i)
+    }
+  })
+
+  it('the splits "not yet" answer is the one flagged today', () => {
+    const flagged = responses.filter(a => a.requiresWrite).map(a => a.value)
+    expect(flagged).toEqual(['not_yet'])
+  })
+})
