@@ -70,3 +70,11 @@ the sandbox. Everything below is the owner's step.
       `information_schema` queries against `user_profiles.stripe_connect_account_id` and paste the
       result back — this would upgrade that confirmation from "read every migration" to "confirmed
       against the live catalog," matching the rigor migration 230 itself was supposed to have.
+
+---
+
+## DONE 2026-10-05 — applied and behaviourally verified
+
+Migration 231's trigger was confirmed against production: the forged `tracks.work_id` write is
+refused, and the legitimate graduation path still succeeds. 231 replaced migration 230's
+column-level REVOKE, which was a silent no-op.

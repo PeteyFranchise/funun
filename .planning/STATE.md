@@ -4,10 +4,10 @@ milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
-status: Phases 39 and 40 SHIPPED. Migration ceiling 229 applied (230's code merged via PR #151, migration itself still unapplied, external to any roadmapped phase). Phase 41 roadmapped, not yet planned. Phase 50 (The Crate Submissions Door) RE-PLANNED 2026-10-04 after an adversarial review returned NO-GO on the first pass; not yet discussed or planned at the PLAN.md level
-stopped_at: Nothing mid-flight. Next action is /gsd-plan-phase 41, /gsd-discuss-phase 50, or a deferred item
-last_updated: "2026-10-05T01:51:41.372Z"
-last_activity: 2026-10-05
+status: Phases 39 and 40 SHIPPED. Migration ceiling 242 applied and behaviourally verified (230-242; 232 is a deliberate gap, never created). Pass 6 RLS mutation census CLOSED except H-2. The submit-a-song onboarding questionnaire shipped in six slices (PRs #177-#182), untested in a browser. Phase 41 roadmapped, not yet planned. Phase 50 (The Crate Submissions Door) RE-PLANNED 2026-10-04 after an adversarial review returned NO-GO; still blocked on counsel and five owner decisions
+stopped_at: Nothing mid-flight. Next action is a browser pass over submit-a-song, a deliberation on Pass 6 H-2, /gsd-plan-phase 41, or /gsd-discuss-phase 50
+last_updated: "2026-10-07T00:00:00.000Z"
+last_activity: 2026-10-07
 progress:
   total_phases: 50
   completed_phases: 39
@@ -23,7 +23,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Nothing mid-flight. Phase 41 (Collaborator Discovery & Mobile Contact Matching) is the next roadmapped phase and has not been planned.
+**Current focus:** Nothing mid-flight. Two days of security hardening closed Pass 6's RLS mutation census (migrations 233-242, all behaviourally probed against production) and the submit-a-song onboarding questionnaire shipped in six slices. The largest open items are Pass 6 H-2 (architectural, wants a deliberation) and a browser pass over submit-a-song, which no human has used. Phase 41 is the next roadmapped phase and has not been planned.
 
 > **Unfinished Phase 31.2 preserved (2026-09-13).** Phase 31.2 remains genuinely unfinished:
 > its owner checkpoint/UAT is deferred to organic beta and is not marked complete by moving the
@@ -31,6 +31,80 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 > this paragraph remains the explicit Phase 31.2 record until its own completion pass occurs.
 
 ## Current Position
+
+### UPDATE 2026-10-07 — Pass 6 census closed; submit-a-song shipped
+
+**Ten migrations applied and behaviourally verified against production over two days.** Every
+one was probed by asking the database to refuse a real write, not by confirming a statement ran.
+
+| migration | what it closed |
+|---|---|
+| 233 | `collaborators.claimed_by` identity forgery (Pass 6 C-1) — **shipped broken** |
+| 234 | 233's guard never fired: NULL `IF` condition |
+| 235 | `tracks` credits, identifiers, split metadata (C-2) |
+| 236 | `vault_documents` signed evidence (C-3) |
+| 237 | `split_sheets` executed immutability (C-4) |
+| 238 | readiness triggers — **a live defect found by probing** |
+| 239 | rights ledger: `ai_entries`, `lyric_blocks`, `work_versions` (Passes 5/7) |
+| 240 | `notifications`, `opportunity_matches`, dormant community tables |
+| 241 | 240's notifications guard covered 4 of 11 columns |
+| 242 | `works` ownership, `tool_outputs`, `collaborator_invites`, `pitches` |
+
+Plus Pass 6 **H-3** (multi-role staff gates) and the Dependabot assessment.
+
+**Migration 232 is a deliberate gap and was never created.** The rights-ledger plan numbered
+itself 232; by the time it was built the sequence had passed it, and a new 232 would have sat
+behind eight applied migrations. It became 239.
+
+### Four defects that passed every structural check
+
+This is the pattern worth remembering, because it recurred four times in two days:
+
+1. **Migration 230's column REVOKE** was a silent no-op — a column revoke cannot remove a
+   table-level grant. Replaced by 231's trigger.
+2. **Migration 233's guard never raised.** An unset GUC made `v_write_mode = 'verified_claim'`
+   evaluate to NULL; `NOT NULL` is NULL; PL/pgSQL skips the THEN branch on NULL. Trigger
+   attached, body byte-identical, `auth.role()` correct — and the forgery still succeeded.
+3. **Migration 070's revoke broke the path it protected.** Its header claimed "every use is
+   trigger-internal, which does not require a role-level EXECUTE grant" — untrue for a SECURITY
+   INVOKER caller. Every authenticated write to `tracks`, `vault_documents`, `vault_assets` and
+   `tool_outputs` had been failing with 42501. Found only because a **must-succeed** probe
+   failed. Fixed in 238, at zero tracks and zero documents — before any artist hit it.
+4. **Migration 240's guard covered 4 of 11 columns**, and its own test could not have caught it:
+   the test restated the author's column list back to him instead of measuring it against the
+   table. 241's test derives the list from the corpus.
+
+**Two reviews were also wrong about their own findings.** Pass 6 reported `works` as "any member
+can rewrite title, primary performer, vocal state" — all three are intended, resolved at the
+`contribute` tier on purpose — and missed that the `WITH CHECK` let any member take **ownership**
+of the work. The rights-ledger plan claimed `detach_lyric_block_with_text()` was the only path
+that rewrites lyric authorship; migration 161 added a second, and building the plan as written
+would have broken accepting a lyric suggestion.
+
+### Submit-a-song onboarding questionnaire — shipped, unexercised
+
+Six slices, PRs #177-#182. Statement -> six skippable questions -> summary. The song is captured
+before any question is asked; the splits promise is kept by a real promotion onto the
+living-draft sheet; the AI citation is filed where the answers determine it and explicitly NOT
+filed where they do not.
+
+**No human has used it.** Unlike the migrations there is no probe step, and app code fails in
+ways unit tests do not see. This is the single most likely thing to embarrass us in front of a
+beta user.
+
+### What is left
+
+- **Pass 6 H-2** — four service-read clusters. `createServiceClient()` bypasses RLS, so the
+  tenant boundary exists only in query construction: one omitted `.eq()` turns a local bug into a
+  cross-client disclosure. Architectural; wants a deliberation, not a migration. **The largest
+  genuinely unresolved security item.**
+- **Browser pass over submit-a-song**, and wiring the marketing CTA to
+  `/signup?next=%2Fvault%2Fnew%2Fsong` (goes through the frozen-artifact re-freeze).
+- **TRUNCATE/TRIGGER sweep** — starts with an owner-run grant census.
+- **Phase 41** — next roadmapped, unplanned.
+- **Phase 50** — blocked on counsel ruling what "admitted" means, plus five owner decisions.
+- **Repo private** — Pro FIRST or www.funun.studio goes down.
+
 
 ### UPDATE 2026-10-04 (later same day) — Phase 50 RE-PLANNED after adversarial NO-GO
 
