@@ -113,13 +113,21 @@ export async function POST(request: Request) {
   // which is what makes every later redraft free.
   const service = createServiceClient()
 
-  const { error: memberError } = await service.from('work_members').insert({
-    work_id: work.id,
-    user_id: user.id,
-    collaborator_id: null,
-    tier: 'administer',
-    added_by: user.id,
-  })
+  // `.select('id').single()` so the owner's member id can be returned below.
+  // The promote route is addressed by member id, and this is the only place
+  // the owner's row is created -- without it a client has no way to promote the
+  // artist onto their own sheet short of a new read endpoint.
+  const { data: ownerMember, error: memberError } = await service
+    .from('work_members')
+    .insert({
+      work_id: work.id,
+      user_id: user.id,
+      collaborator_id: null,
+      tier: 'administer',
+      added_by: user.id,
+    })
+    .select('id')
+    .single()
 
   let sheetError: { message: string } | null = null
   if (!memberError) {
@@ -145,5 +153,10 @@ export async function POST(request: Request) {
     )
   }
 
-  return NextResponse.json({ data: work })
+  // ownerMemberId is ADDITIVE -- every existing caller reads data.id and is
+  // unaffected. It exists so the submit-a-song questionnaire can promote the
+  // artist onto the living-draft sheet this route just created, which is empty
+  // of parties on purpose (Pitfall 3: membership and splits are different
+  // facts, and nobody is on the splits until promoted).
+  return NextResponse.json({ data: { ...work, ownerMemberId: ownerMember?.id ?? null } })
 }

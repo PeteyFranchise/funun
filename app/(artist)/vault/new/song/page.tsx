@@ -45,12 +45,17 @@ export default function SubmitSongPage() {
   const router = useRouter()
   const [title, setTitle] = useState('')
   const [workId, setWorkId] = useState<string | null>(null)
+  const [ownerMemberId, setOwnerMemberId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // 'statement' -> 'questions' -> 'summary'. The statement comes first and asks
   // nothing: the song is already in before any question appears.
   const [stage, setStage] = useState<'statement' | 'questions' | 'summary'>('statement')
   const [answers, setAnswers] = useState<Answers>({})
+  // Values whose promised write has actually landed. Starts empty and only
+  // grows on a 2xx -- a failed write leaves the promise unrendered rather than
+  // showing it over something that did not happen.
+  const [fulfilled, setFulfilled] = useState<string[]>([])
 
   async function createWork(e: React.FormEvent) {
     e.preventDefault()
@@ -73,6 +78,7 @@ export default function SubmitSongPage() {
       return
     }
     setWorkId(json.data.id as string)
+    setOwnerMemberId((json.data.ownerMemberId as string | null) ?? null)
     setSubmitting(false)
   }
 
@@ -96,9 +102,28 @@ export default function SubmitSongPage() {
       <main className="mx-auto w-full max-w-[560px] px-6 py-14">
         <SubmitSongQuestions
           hasVocals
-          // Empty on purpose: no promised write has been wired yet, so no
-          // response that promises one may render. Silence is honest.
-          fulfilledWrites={[]}
+          fulfilledWrites={fulfilled}
+          onAnswer={async (questionId, values) => {
+            // The only answer that promises a write today. "We'll start a
+            // split sheet on this song at even shares" means putting the
+            // artist onto the living-draft sheet POST /api/works already
+            // created empty of parties -- Pitfall 3: the sheet existing and
+            // someone being ON it are different facts, and only an explicit
+            // promotion bridges them.
+            if (questionId !== 'splits' || !values.includes('not_yet')) return
+            if (!workId || !ownerMemberId) return
+            const res = await fetch(
+              `/api/works/${workId}/members/${ownerMemberId}/promote`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                // No designation: an honest "not stated" rather than a
+                // fabricated DDEX/PRO role the artist never gave us.
+                body: JSON.stringify({}),
+              }
+            )
+            if (res.ok) setFulfilled(prev => (prev.includes('not_yet') ? prev : [...prev, 'not_yet']))
+          }}
           onFinish={next => {
             setAnswers(next)
             setStage('summary')
