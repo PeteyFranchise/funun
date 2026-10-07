@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
-import { getStaffRole } from '@/lib/admin/gate'
+import { hasStaffRole } from '@/lib/admin/gate'
 import { attachUserEmails } from '@/lib/admin/user-emails'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { SyncLibraryAdmin } from '@/components/admin/SyncLibraryAdmin'
@@ -79,23 +79,29 @@ export default async function AdminSyncLibraryPage() {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect('/signin')
-  const role = getStaffRole(user)
-  if (role !== 'leadership' && role !== 'ae' && role !== 'anr') redirect('/')
-  // The ONE remaining use of isLeadership on this page — gates Remove
+  // hasStaffRole, not getStaffRole — these gates MUST use the same ANY-of-roles
+  // semantics as the routes they mirror (requireStaff, lib/admin/gate.ts:48-53).
+  // Asking `getStaffRole(user) === 'anr'` asks whether anr is the member's
+  // HIGHEST-PRIORITY role, which for ['bd','anr'] or ['ae','anr'] is false
+  // while the admit and quality routes both accept them. That mismatch is
+  // Pass 6 H-3: it took capability away from multi-role A&R staff and made the
+  // "mirrors that allowlist" claims in the comments above untrue for them.
+  if (!hasStaffRole(user, ['leadership', 'ae', 'anr'])) redirect('/')
+  // The ONE remaining use of leadership on this page — gates Remove
   // only (SyncLibraryAdmin.tsx), a different-weight action from admit or
   // quality review that stays leadership-only (unchanged by 2026-10-04).
-  const isLeadership = role === 'leadership'
+  const isLeadership = hasStaffRole(user, ['leadership'])
   // Mirrors the admit/reject route's own allowlist
   // (requireStaff(['leadership','anr'])) — OWNER DECISION 2026-10-04.
-  const canAdmit = role === 'leadership' || role === 'anr'
+  const canAdmit = hasStaffRole(user, ['leadership', 'anr'])
   // Mirrors the quality-review route's own allowlist
   // (requireStaff(['leadership','anr'])) — OWNER DECISION 2026-10-04
   // ("Quality review is part of A&R's job.").
-  const canReviewQuality = role === 'leadership' || role === 'anr'
+  const canReviewQuality = hasStaffRole(user, ['leadership', 'anr'])
   // Mirrors the invite route's own allowlist
   // (requireStaff(['leadership','ae','anr'])) — OWNER DECISION 2026-10-04
   // ("A&R gets artist invite capabilities from here on out.").
-  const canInvite = role === 'leadership' || role === 'ae' || role === 'anr'
+  const canInvite = hasStaffRole(user, ['leadership', 'ae', 'anr'])
 
   const service = createServiceClient()
 

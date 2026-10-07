@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
-import { getStaffRole } from '@/lib/admin/gate'
+import { hasStaffRole } from '@/lib/admin/gate'
 
 // The Playbook index (Phase 33, 33-05, PLAYBOOK-03, CONTEXT.md "Claude's
 // Discretion" URL structure) — sends authorized staff (leadership/it)
@@ -15,9 +15,11 @@ export default async function PlaybookIndexPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  const role = user ? getStaffRole(user) : null
-
-  if (role === 'leadership' || role === 'it') {
+  // hasStaffRole, not getStaffRole: 'it' is LAST in ROLE_PRIORITY, so an IT
+  // staffer who also holds any other role has that other role as their primary
+  // and would never reach the IT dashboard. Same Pass 6 H-3 mismatch as the
+  // sync-library page — the IT routes accept them, this page did not.
+  if (user && hasStaffRole(user, ['leadership', 'it'])) {
     redirect('/admin/playbook/it/dashboard')
   }
 
