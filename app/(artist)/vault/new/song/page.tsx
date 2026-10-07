@@ -39,6 +39,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { OPENING } from '@/lib/onboarding/submit-song-copy'
 import { SubmitSongQuestions, type Answers } from '@/components/onboarding/SubmitSongQuestions'
+import type { AddedCollaborator } from '@/components/onboarding/SubmitSongCollaborators'
 import { SubmitSongSummary } from '@/components/onboarding/SubmitSongSummary'
 
 export default function SubmitSongPage() {
@@ -56,6 +57,7 @@ export default function SubmitSongPage() {
   // grows on a 2xx -- a failed write leaves the promise unrendered rather than
   // showing it over something that did not happen.
   const [fulfilled, setFulfilled] = useState<string[]>([])
+  const [collaborators, setCollaborators] = useState<AddedCollaborator[]>([])
 
   async function createWork(e: React.FormEvent) {
     e.preventDefault()
@@ -103,6 +105,37 @@ export default function SubmitSongPage() {
         <SubmitSongQuestions
           hasVocals
           fulfilledWrites={fulfilled}
+          addedCollaborators={collaborators}
+          onAddCollaborator={async (name, email) => {
+            if (!workId) return null
+            // Two calls on purpose. A collaborator needs only a name
+            // (collaborators/route.ts gates on `if (!update.name)`), while the
+            // members endpoint's new-collaborator branch requires an email --
+            // so going through the roster first is what lets "add who you
+            // remember" be true for someone unreachable.
+            const cRes = await fetch('/api/collaborators', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(email ? { name, email } : { name }),
+            })
+            const cJson = await cRes.json().catch(() => ({}))
+            const collaboratorId = cJson.data?.id as string | undefined
+            if (!cRes.ok || !collaboratorId) return null
+
+            const mRes = await fetch(`/api/works/${workId}/members`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              // is_writer FALSE: membership and splits are different facts
+              // (Pitfall 3). Promotion happens only if Q3 says "not yet".
+              body: JSON.stringify({ collaborator_id: collaboratorId, tier: 'contribute', is_writer: false }),
+            })
+            const mJson = await mRes.json().catch(() => ({}))
+            const memberId = mJson.data?.member?.id as string | undefined
+            if (!mRes.ok || !memberId) return null
+
+            setCollaborators(prev => [...prev, { name, memberId }])
+            return memberId
+          }}
           onAnswer={async (questionId, values) => {
             // The only answer that promises a write today. "We'll start a
             // split sheet on this song at even shares" means putting the
@@ -112,17 +145,28 @@ export default function SubmitSongPage() {
             // promotion bridges them.
             if (questionId !== 'splits' || !values.includes('not_yet')) return
             if (!workId || !ownerMemberId) return
-            const res = await fetch(
-              `/api/works/${workId}/members/${ownerMemberId}/promote`,
-              {
+            // The artist plus everyone Q2 captured. planWriterPromotion
+            // redrafts EVERY party to an equal share on each promotion, so the
+            // sheet ends up even across all of them whatever order these land
+            // in. Sequential rather than parallel: each call reads the sheet,
+            // redrafts it and writes it back, so concurrent promotions would
+            // race on the same rows.
+            const ids = [ownerMemberId, ...collaborators.map(c => c.memberId)]
+            let allOk = true
+            for (const id of ids) {
+              const res = await fetch(`/api/works/${workId}/members/${id}/promote`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 // No designation: an honest "not stated" rather than a
                 // fabricated DDEX/PRO role the artist never gave us.
                 body: JSON.stringify({}),
-              }
-            )
-            if (res.ok) setFulfilled(prev => (prev.includes('not_yet') ? prev : [...prev, 'not_yet']))
+              })
+              if (!res.ok) allOk = false
+            }
+            // Only claim the sheet is set up if every writer actually landed on
+            // it. A partial promotion would make "even shares" describe a sheet
+            // that is missing someone.
+            if (allOk) setFulfilled(prev => (prev.includes('not_yet') ? prev : [...prev, 'not_yet']))
           }}
           onFinish={next => {
             setAnswers(next)
