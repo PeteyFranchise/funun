@@ -15,7 +15,7 @@ import {
   isSyncRightsClear,
   syncIneligibleTypeReason,
 } from '@/lib/sync-library/readiness'
-import { syncExposureVerdict } from '@/lib/deals/catalog'
+import { syncReadinessCoverage } from '@/lib/deals/catalog'
 import { readinessItemsForProject } from '@/lib/vault/readiness'
 import type { VaultProjectType } from '@/types'
 
@@ -336,7 +336,7 @@ export async function POST(
     // way: the question is "if I admit this now, will the buyer gate render
     // it?" Reading the project's real current admission state would ask a
     // different and useless question, since it is false by definition here.
-    const exposure = syncExposureVerdict(
+    const exposure = syncReadinessCoverage(
       { has_admitted_sync_listing: true, type: project.type },
       buyerSideItems
     )

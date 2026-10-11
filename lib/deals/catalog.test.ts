@@ -1,7 +1,7 @@
 import {
   isRightsReady,
-  syncExposureVerdict,
-  type SyncExposureVerdict,
+  syncReadinessCoverage,
+  type SyncReadinessCoverage,
   isAdmittedToSyncLibrary,
   normalizeKeySignature,
   buildCatalogFilter,
@@ -701,22 +701,22 @@ describe('catalogRightsFromStage3', () => {
   })
 })
 
-// ─── syncExposureVerdict: the same decision, with its reason named ───────
+// ─── syncReadinessCoverage: the same decision, with its reason named ───────
 // Plan 50-01. Every case here asserts the VERDICT and the BOOLEAN together,
 // so the two can never disagree — which is the whole point of reimplementing
 // isRightsReady over this rather than beside it.
-describe('syncExposureVerdict — five named states, and isRightsReady agreeing with all of them', () => {
+describe('syncReadinessCoverage — five named states, and isRightsReady agreeing with all of them', () => {
   const ADMITTED: CatalogProjectLike = { has_admitted_sync_listing: true, type: 'single' }
 
   it('ready: eligible, admitted, all six keys complete', () => {
     const items = entryGateItems()
-    expect(syncExposureVerdict(ADMITTED, items)).toEqual({ status: 'ready' })
+    expect(syncReadinessCoverage(ADMITTED, items)).toEqual({ status: 'ready' })
     expect(isRightsReady(ADMITTED, items)).toBe(true)
   })
 
   it('incomplete: all six keys present, one not complete — and it names which', () => {
     const items = entryGateItemsWith('copyright', 'missing')
-    const verdict = syncExposureVerdict(ADMITTED, items)
+    const verdict = syncReadinessCoverage(ADMITTED, items)
     expect(verdict.status).toBe('incomplete')
     expect(verdict.status === 'incomplete' && verdict.incompleteKeys).toContain('copyright')
     expect(isRightsReady(ADMITTED, items)).toBe(false)
@@ -725,7 +725,7 @@ describe('syncExposureVerdict — five named states, and isRightsReady agreeing 
   it('type_ineligible: a snippet is refused on type, and never reports a coverage problem', () => {
     const snippet: CatalogProjectLike = { has_admitted_sync_listing: true, type: 'snippet' }
     // Hand it a COMPLETE six-key list, so the only possible refusal is the type.
-    const verdict = syncExposureVerdict(snippet, entryGateItems())
+    const verdict = syncReadinessCoverage(snippet, entryGateItems())
     expect(verdict).toEqual({ status: 'type_ineligible', type: 'snippet' })
     expect(isRightsReady(snippet, entryGateItems())).toBe(false)
   })
@@ -733,7 +733,7 @@ describe('syncExposureVerdict — five named states, and isRightsReady agreeing 
   it('not_admitted: eligible type, complete keys, no admitted listing', () => {
     for (const flag of [null, false] as const) {
       const project: CatalogProjectLike = { has_admitted_sync_listing: flag, type: 'single' }
-      expect(syncExposureVerdict(project, entryGateItems())).toEqual({ status: 'not_admitted' })
+      expect(syncReadinessCoverage(project, entryGateItems())).toEqual({ status: 'not_admitted' })
       expect(isRightsReady(project, entryGateItems())).toBe(false)
     }
   })
@@ -747,7 +747,7 @@ describe('syncExposureVerdict — five named states, and isRightsReady agreeing 
     const unreleased: CatalogProjectLike = { has_admitted_sync_listing: true, type: 'unreleased' }
     const appliesToFiltered = entryGateItems({ type: 'unreleased' })
 
-    const verdict = syncExposureVerdict(unreleased, appliesToFiltered)
+    const verdict = syncReadinessCoverage(unreleased, appliesToFiltered)
     expect(verdict.status).toBe('indeterminate')
     const missing = verdict.status === 'indeterminate' ? verdict.missingKeys : []
     expect([...missing].sort()).toEqual(['copyright', 'hire_right', 'metadata', 'visual_asset'])
@@ -757,7 +757,7 @@ describe('syncExposureVerdict — five named states, and isRightsReady agreeing 
   })
 
   it('indeterminate: an empty item list names all six keys and is never ready', () => {
-    const verdict = syncExposureVerdict(ADMITTED, [])
+    const verdict = syncReadinessCoverage(ADMITTED, [])
     expect(verdict.status).toBe('indeterminate')
     const missing = verdict.status === 'indeterminate' ? [...verdict.missingKeys].sort() : []
     expect(missing).toEqual([...SYNC_READINESS_KEYS].sort())
@@ -781,16 +781,16 @@ describe('syncExposureVerdict — five named states, and isRightsReady agreeing 
         { type: 'split_sheet', status: 'signed' },
       ],
     })
-    expect(syncExposureVerdict(unreleased, sixKeys).status).not.toBe('indeterminate')
+    expect(syncReadinessCoverage(unreleased, sixKeys).status).not.toBe('indeterminate')
   })
 
   it('every state is reachable, so no arm of the union is dead', () => {
-    const seen = new Set<SyncExposureVerdict['status']>()
-    seen.add(syncExposureVerdict(ADMITTED, entryGateItems()).status)
-    seen.add(syncExposureVerdict(ADMITTED, entryGateItemsWith('metadata', 'warning')).status)
-    seen.add(syncExposureVerdict({ has_admitted_sync_listing: true, type: 'snippet' }, entryGateItems()).status)
-    seen.add(syncExposureVerdict({ has_admitted_sync_listing: null, type: 'single' }, entryGateItems()).status)
-    seen.add(syncExposureVerdict(ADMITTED, []).status)
+    const seen = new Set<SyncReadinessCoverage['status']>()
+    seen.add(syncReadinessCoverage(ADMITTED, entryGateItems()).status)
+    seen.add(syncReadinessCoverage(ADMITTED, entryGateItemsWith('metadata', 'warning')).status)
+    seen.add(syncReadinessCoverage({ has_admitted_sync_listing: true, type: 'snippet' }, entryGateItems()).status)
+    seen.add(syncReadinessCoverage({ has_admitted_sync_listing: null, type: 'single' }, entryGateItems()).status)
+    seen.add(syncReadinessCoverage(ADMITTED, []).status)
     // Sorted, so 'incomplete' precedes 'indeterminate' — "inc" < "ind".
     expect([...seen].sort()).toEqual([
       'incomplete', 'indeterminate', 'not_admitted', 'ready', 'type_ineligible',

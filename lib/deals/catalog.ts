@@ -185,7 +185,13 @@ export type CatalogProjectLike = {
 // Stage3Result — document assembly over every vault_document on the project
 // — SOLELY to feed this parameter, so removing it deleted real dead work
 // rather than just shortening an argument list.
-// ─── syncExposureVerdict — the same decision, with its reason named ──────
+// ─── syncReadinessCoverage — the six-key question, with its reason named ─
+// RENAMED 2026-10-11 from syncExposureVerdict, per owner decision D-11. The
+// logic is unchanged and still correct; the old NAME was not. D-11 made the six
+// sync-readiness keys a CLEARANCE question rather than an exposure one —
+// exposure is now decided per track by lib/sync-library/track-exposure.ts from
+// the track's own admitted listing and a bound master. This function is consumed
+// by lib/sync-library/track-clearance.ts, which is where its answer belongs.
 // isRightsReady answered one question with one bit, so a refusal could not
 // say WHY. That mattered once 'unreleased' became sync-eligible (owner
 // reversal 2026-09-26, lib/sync-library/readiness.ts:63-73): the type check
@@ -206,17 +212,17 @@ export type CatalogProjectLike = {
 // user could finish, because under-coverage is not something an artist can
 // fix — S5b fixes it at the five call sites. And nothing here blames a
 // project's type for a coverage failure (owner decision D-5).
-export type SyncExposureVerdict =
+export type SyncReadinessCoverage =
   | { status: 'type_ineligible'; type: VaultProjectType }
   | { status: 'not_admitted' }
   | { status: 'indeterminate'; missingKeys: readonly string[] }
   | { status: 'incomplete'; incompleteKeys: readonly string[] }
   | { status: 'ready' }
 
-export function syncExposureVerdict(
+export function syncReadinessCoverage(
   project: CatalogProjectLike,
   readinessItems: ReadinessItem[]
-): SyncExposureVerdict {
+): SyncReadinessCoverage {
   // Order is isRightsReady's original order, preserved exactly so the
   // boolean below cannot drift from what it returned before this existed.
   // Type first, so an ineligible type never reports a coverage problem.
@@ -266,12 +272,12 @@ export function syncExposureVerdict(
 // parameter order and boolean return — because changing the signature would
 // force edits at five call sites, two of them Selects files that the Pass 6
 // H-2 workstream owns while it is in flight. Recorded as legacy naming debt:
-// do not copy this name into a new API; prefer syncExposureVerdict.
+// do not copy this name into a new API; prefer syncReadinessCoverage.
 export function isRightsReady(
   project: CatalogProjectLike,
   readinessItems: ReadinessItem[]
 ): boolean {
-  return syncExposureVerdict(project, readinessItems).status === 'ready'
+  return syncReadinessCoverage(project, readinessItems).status === 'ready'
 }
 
 // ─── normalizeKeySignature (D-16b) ────────────────────────────────────────

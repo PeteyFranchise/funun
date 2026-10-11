@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from 'fs'
 import path from 'path'
 import { stripComments } from './storage-usage-rpc-caller-lock.test'
-import { syncExposureVerdict } from '@/lib/deals/catalog'
+import { syncReadinessCoverage } from '@/lib/deals/catalog'
 import { SYNC_READINESS_KEYS } from '@/lib/sync-library/readiness'
 import type { CatalogProjectLike } from '@/lib/deals/catalog'
 
@@ -116,7 +116,7 @@ describe('the coverage check reads the shared constant, not a local copy', () =>
     // Asserted by IMPORTING both and comparing, never by scanning text: a
     // duplicated local list would still satisfy a grep for the identifier.
     const project: CatalogProjectLike = { has_admitted_sync_listing: true, type: 'single' }
-    const verdict = syncExposureVerdict(project, [])
+    const verdict = syncReadinessCoverage(project, [])
     expect(verdict.status).toBe('indeterminate')
     const missing = verdict.status === 'indeterminate' ? [...verdict.missingKeys].sort() : []
     expect(missing).toEqual([...SYNC_READINESS_KEYS].sort())
