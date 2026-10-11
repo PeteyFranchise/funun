@@ -1,5 +1,4 @@
 import { authorizeRequestTarget } from './request-target'
-import { computeStage3 } from '@/lib/vault/stage3'
 import { isProfileVisibleTo } from '@/lib/trust-safety/contracts'
 import { mustBlockActionBetween } from '@/lib/trust-safety/block-check'
 
@@ -8,12 +7,9 @@ import { mustBlockActionBetween } from '@/lib/trust-safety/block-check'
 // admitted-row lookup routed through the SAME isAdmittedToSyncLibrary
 // helper lib/deals/catalog.ts's isRightsReady uses (T-26-24 — no drift
 // between the two gates). Everything downstream of the admission gate
-// (Stage 3, visibility, block-check) is mocked here so this test isolates
-// the gate itself.
+// (visibility, block-check) is mocked here so this test isolates the gate
+// itself. Stage 3 was mocked here too until D-11 removed it from this module.
 
-jest.mock('@/lib/vault/stage3', () => ({
-  computeStage3: jest.fn(),
-}))
 jest.mock('@/lib/trust-safety/contracts', () => ({
   isProfileVisibleTo: jest.fn(),
 }))
@@ -21,7 +17,6 @@ jest.mock('@/lib/trust-safety/block-check', () => ({
   mustBlockActionBetween: jest.fn(),
 }))
 
-const mockedComputeStage3 = computeStage3 as jest.MockedFunction<typeof computeStage3>
 const mockedIsProfileVisibleTo = isProfileVisibleTo as jest.MockedFunction<typeof isProfileVisibleTo>
 const mockedMustBlockActionBetween = mustBlockActionBetween as jest.MockedFunction<typeof mustBlockActionBetween>
 
@@ -35,7 +30,12 @@ function projectRow(overrides: Record<string, unknown> = {}) {
     vault_readiness_score: 100,
     content_id_registered: false,
     content_id_dismissed_until: null,
-    tracks: [{ id: 'track-1', title: 'Track One' }],
+    // 2026-10-11 (D-11): trackExposure requires a BOUND audio object. Note
+    // what omitting it did while this file was being updated — the Stage-3 test
+    // below kept PASSING after the gate it asserts was deleted, because
+    // 'no_playable_master' refused the request for an unrelated reason. A
+    // fixture gap can keep a test green over a behaviour it no longer covers.
+    tracks: [{ id: 'track-1', title: 'Track One', audio_file_url: 'track-audio/o/1.wav' }],
     vault_documents: [],
     ...overrides,
   }
@@ -67,19 +67,30 @@ function arrayTableBuilder(rows: unknown[]) {
   return builder
 }
 
+// 2026-10-11 (D-11): the sync_listings query no longer filters on
+// status='admitted' — trackExposure's contract covers the terminal states and
+// ranks them above everything, so the caller must pass every row for the track
+// and let resolveListingStatus pick the one that describes it now. A fixture row
+// therefore carries a status; it defaults to 'admitted' so existing cases read
+// unchanged.
 function makeService(opts: {
   project?: unknown | null
-  admittedTracks?: { track_id: string }[] | null
+  admittedTracks?: { track_id: string; status?: string; created_at?: string }[] | null
   owner?: unknown | null
 }) {
   const project = 'project' in opts ? opts.project : projectRow()
-  const admittedTracks = 'admittedTracks' in opts ? opts.admittedTracks : [{ track_id: 'track-1' }]
+  const admittedTracks = ('admittedTracks' in opts ? opts.admittedTracks : [{ track_id: 'track-1' }]) ?? []
+  const listingRows = admittedTracks.map(r => ({
+    track_id: r.track_id,
+    status: r.status ?? 'admitted',
+    created_at: r.created_at ?? '2026-10-01T00:00:00Z',
+  }))
   const owner = 'owner' in opts ? opts.owner : { id: 'owner-1', profile_visibility: 'public' }
 
   return {
     from: jest.fn((table: string) => {
       if (table === 'vault_projects') return tableBuilder(project)
-      if (table === 'sync_listings') return arrayTableBuilder(admittedTracks ?? [])
+      if (table === 'sync_listings') return arrayTableBuilder(listingRows)
       if (table === 'user_profiles') return tableBuilder(owner)
       return tableBuilder(null)
     }),
@@ -87,18 +98,8 @@ function makeService(opts: {
 }
 
 beforeEach(() => {
-  mockedComputeStage3.mockReset()
   mockedIsProfileVisibleTo.mockReset()
   mockedMustBlockActionBetween.mockReset()
-  mockedComputeStage3.mockReturnValue({
-    required: [],
-    recommended: [],
-    complete: [],
-    requiredComplete: 0,
-    requiredTotal: 0,
-    canContinue: true,
-    sampleBlock: false,
-  })
   mockedIsProfileVisibleTo.mockReturnValue(true)
   mockedMustBlockActionBetween.mockResolvedValue(false)
 })
@@ -149,21 +150,66 @@ describe('authorizeRequestTarget — sync-library admission gate', () => {
     expect(result).toEqual({ ok: false })
   })
 
-  it('still applies the Stage 3 gate on top of admission (unchanged behavior)', async () => {
-    const service = makeService({})
-    mockedComputeStage3.mockReturnValue({
-      required: [],
-      recommended: [],
-      complete: [],
-      requiredComplete: 0,
-      requiredTotal: 1,
-      canContinue: false,
-      sampleBlock: false,
+  // ─── REVERSED 2026-10-11 by owner decision D-11 ───────────────────────
+  // This case used to assert ok:FALSE when computeStage3().canContinue was
+  // false, i.e. when required rights documents were unsigned or a sample was
+  // flagged. D-11: "Interest and request intake may proceed for a
+  // clearance-required track; licence execution and delivery stay gated." A
+  // supervisor asking about a song whose split sheet is not yet signed is the
+  // ordinary case the product exists to serve.
+  //
+  // The gate is not merely unread — computeStage3 is no longer called from this
+  // module at all, which is why its mock is gone from this file. An unread gate
+  // left in the signature is the same bug with a comment on it.
+  //
+  // Rewritten as the positive assertion, so the removal is pinned rather than
+  // just absent: a project with NOTHING signed is still requestable.
+  it('ADMITS a request for a track with outstanding clearance work (D-11)', async () => {
+    const service = makeService({ project: projectRow({ vault_documents: [], vault_readiness_score: 0 }) })
+
+    const result = await authorizeRequestTarget(service as never, 'buyer-1', 'proj-1')
+
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.project.tracks.map(t => t.id)).toEqual(['track-1'])
+  })
+
+  // The negative controls that keep the case above from being satisfied by a
+  // function that approves everything. Each is a reason the track is genuinely
+  // UNAVAILABLE rather than merely uncleared.
+  it('refuses a withdrawn listing — terminal state outranks everything', async () => {
+    const service = makeService({ admittedTracks: [{ track_id: 'track-1', status: 'withdrawn' }] })
+
+    const result = await authorizeRequestTarget(service as never, 'buyer-1', 'proj-1')
+
+    expect(result).toEqual({ ok: false })
+  })
+
+  it('refuses a track with no playable master, however complete its paperwork', async () => {
+    const service = makeService({
+      project: projectRow({ tracks: [{ id: 'track-1', title: 'Track One', audio_file_url: null }] }),
     })
 
     const result = await authorizeRequestTarget(service as never, 'buyer-1', 'proj-1')
 
     expect(result).toEqual({ ok: false })
+  })
+
+  it('refuses a project type the catalogue would never have shown', async () => {
+    // This function previously had NO type check, so a buyer could request a
+    // project the catalogue refused to list. The two surfaces now agree.
+    const service = makeService({ project: projectRow({ type: 'snippet' }) })
+
+    const result = await authorizeRequestTarget(service as never, 'buyer-1', 'proj-1')
+
+    expect(result).toEqual({ ok: false })
+  })
+
+  it("does NOT refuse a truthful 'unreleased' project — the label is inside the eligible set", async () => {
+    const service = makeService({ project: projectRow({ type: 'unreleased' }) })
+
+    const result = await authorizeRequestTarget(service as never, 'buyer-1', 'proj-1')
+
+    expect(result.ok).toBe(true)
   })
 })
 
@@ -178,8 +224,8 @@ describe('authorizeRequestTarget — C-01: project.tracks excludes an unadmitted
   it('stays ok:true for a mixed-admission project but returns only the admitted track', async () => {
     const project = projectRow({
       tracks: [
-        { id: 'track-1', title: 'Track One' },
-        { id: 'track-2', title: 'Unreviewed Track' },
+        { id: 'track-1', title: 'Track One', audio_file_url: 'track-audio/o/1.wav' },
+        { id: 'track-2', title: 'Unreviewed Track', audio_file_url: 'track-audio/o/2.wav' },
       ],
     })
     const service = makeService({ project, admittedTracks: [{ track_id: 'track-1' }] })

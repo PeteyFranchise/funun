@@ -88,3 +88,56 @@ export function trackExposure(input: TrackExposureInput): TrackExposure {
 export function isTrackExposed(input: TrackExposureInput): boolean {
   return trackExposure(input).status === 'exposed'
 }
+
+// ─── resolveListingStatus — WHICH listing row describes this track now ───
+//
+// trackExposure takes ONE status and ranks terminal first, which is correct for
+// a single row and wrong if the caller hands it history. Terminal rows
+// accumulate on purpose: `sync_listings_active_track_uniq`
+// (supabase/migrations/096_sync_library.sql:63) is a PARTIAL unique index over
+// the five ACTIVE statuses only, and its own comment states that re-submission
+// after any terminal outcome is deliberately allowed without cleanup. So a
+// track may hold a withdrawn row from last month AND an admitted row now.
+//
+// The active row therefore WINS; terminal rows are history. A terminal row
+// describes the track's current state only when no active row exists. Without
+// this, a withdrawn-then-re-admitted track would read 'unavailable' forever.
+//
+// Lives here rather than at each call site because three query modules need the
+// same precedence, and a subtle rule copied three times drifts.
+
+/** The five statuses the partial unique index treats as live. */
+const ACTIVE: readonly SyncListingStatus[] = [
+  'applied',
+  'invited',
+  'agreement_pending',
+  'pending_admit',
+  'admitted',
+]
+
+export type ListingStatusRow = { status: SyncListingStatus; created_at?: string | null }
+
+/**
+ * Picks the row that describes the track now: the single active row if there is
+ * one, else the most recently created terminal row, else null for a track that
+ * has never been listed. Rows may arrive in any order.
+ */
+export function resolveListingStatus(rows: readonly ListingStatusRow[]): SyncListingStatus | null {
+  if (rows.length === 0) return null
+  const active = rows.find(r => ACTIVE.includes(r.status))
+  if (active) return active.status
+  // No active row: the latest terminal outcome stands. Ties and missing
+  // created_at fall back to document order, which is stable enough for a
+  // signal that only distinguishes one refusal reason from another.
+  let latest: ListingStatusRow | null = null
+  for (const row of rows) {
+    if (latest === null) {
+      latest = row
+      continue
+    }
+    const a = row.created_at ?? ''
+    const b = latest.created_at ?? ''
+    if (a > b) latest = row
+  }
+  return latest?.status ?? null
+}

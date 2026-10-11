@@ -50,6 +50,12 @@ const ENTRY_COMPLETE_TRACKS = [
     title: 'Test Track',
     bpm: null,
     key_signature: null,
+    // 2026-10-11 (D-11): trackExposure requires a BOUND audio object, not just
+    // a tracks row. Without this every fixture track reads
+    // 'no_playable_master' and every assertion below sees an empty catalogue —
+    // the fail-CLOSED direction, which is why adding it is a fixture fix and
+    // not a loosening.
+    audio_file_url: 'track-audio/owner-1/track-1.wav',
     metadata: {
       composers: [{ name: 'Jane Writer', role: 'composer_lyricist', pro: 'ascap', split: 100 }],
     },
@@ -95,19 +101,50 @@ function projectRow(overrides: Record<string, unknown> = {}) {
 // 2026-09-10: a caller may pass `{ id, trackId }` instead of a bare project
 // id, because the admitted-listings query now also selects `track_id` —
 // admission is SONG-level, and the card must describe the admitted song.
-// A bare id still yields `track_id: null`, which is exactly the "no admitted
-// track resolves" shape the fallback path handles.
-function makeService(
-  projects: unknown[],
-  ownerRows: unknown[],
-  admittedProjectIds?: (string | { id: string; trackId: string })[]
-) {
-  const admitted = (
-    admittedProjectIds ?? (projects as { id: string }[]).map(p => p.id)
-  ).map(entry =>
-    typeof entry === 'string'
-      ? { vault_project_id: entry, track_id: null }
-      : { vault_project_id: entry.id, track_id: entry.trackId }
+//
+// 2026-10-11 (D-11, plan 50-05 Task 3) — TWO changes, both forced by the
+// production query rather than chosen here:
+//
+//  1. Every row now carries a `status` and a `created_at`, because the query
+//     stopped filtering `.eq('status', 'admitted')`. Exposure is decided per
+//     track by trackExposure, whose contract covers the TERMINAL states too, so
+//     handing it a pre-filtered admitted-only view would let it answer
+//     'not_admitted' where the truth is 'unavailable'. Pass
+//     `{ id, trackId, status }` to exercise a non-admitted or terminal row.
+//  2. A BARE project id now expands to one admitted row PER TRACK on that
+//     project, instead of a single row with `track_id: null`. That is what the
+//     tests using a bare id have always meant by "this project is admitted",
+//     and it is now the only way to say it: under per-track exposure, a listing
+//     with no track_id exposes no track at all. Pass `{ id, trackId: null }` to
+//     construct that row deliberately.
+type ListingSpec =
+  | string
+  | { id: string; trackId: string | null; status?: string }
+
+function makeService(projects: unknown[], ownerRows: unknown[], admittedProjectIds?: ListingSpec[]) {
+  const projectsById = new Map(
+    (projects as { id: string; tracks?: { id: string }[] }[]).map(p => [p.id, p])
+  )
+  const admitted = (admittedProjectIds ?? (projects as { id: string }[]).map(p => p.id)).flatMap(
+    (entry): { vault_project_id: string; track_id: string | null; status: string; created_at: string }[] => {
+      if (typeof entry === 'string') {
+        const tracks = projectsById.get(entry)?.tracks ?? []
+        return tracks.map(t => ({
+          vault_project_id: entry,
+          track_id: t.id,
+          status: 'admitted',
+          created_at: '2026-10-01T00:00:00Z',
+        }))
+      }
+      return [
+        {
+          vault_project_id: entry.id,
+          track_id: entry.trackId,
+          status: entry.status ?? 'admitted',
+          created_at: '2026-10-01T00:00:00Z',
+        },
+      ]
+    }
   )
 
   return {
@@ -236,16 +273,35 @@ describe('loadCatalogPage — the six-item entry gate, not the aggregate score',
     expect(project.tracks.every(t => t.isrc == null && t.iswc == null)).toBe(true)
   })
 
-  it('EXCLUDES a high-scoring project that is missing cover art — the real behaviour change', async () => {
+  // ─── SUPERSEDED DOCTRINE, REWRITTEN RATHER THAN DELETED ───────────────
+  // The two cases below used to assert `result.data` was EMPTY: a missing
+  // cover-art asset or an unsigned split sheet removed the song from the
+  // catalogue. Owner decision D-11 (2026-10-11) reverses that direction —
+  // clearance work in progress changes a BADGE and routes the buyer to Funūn;
+  // it never hides an admitted track. The old assertion is therefore wrong
+  // doctrine, not a wrong implementation.
+  //
+  // They are kept as INCLUDE cases on exactly the same fixtures rather than
+  // removed, because the thing the comment above this describe block cares
+  // about is still load-bearing: these are the only tests proving
+  // PROJECT_COLUMNS really selects vault_assets and tracks.metadata. A unit
+  // test on the predicates alone would pass even if this query stopped
+  // fetching them. Each one now also asserts the badge, so an implementation
+  // that listed everything and called it all cleared would still fail.
+  it('LISTS a high-scoring project that is missing cover art, with a contact badge (D-11)', async () => {
     const project = projectRow({ vault_readiness_score: 100, vault_assets: [] })
     const service = makeService([project], [{ id: 'owner-1', profile_visibility: 'public' }])
 
     const result = await loadCatalogPage(service as never, null, BASE_FILTER, 1)
 
-    expect(result.data).toEqual([])
+    expect(result.data.map(c => c.id)).toEqual(['proj-1'])
+    expect(result.data[0].rights).toBe('req')
+    expect(result.data[0].tracks.map(t => t.clearance)).toEqual(['clearance_required'])
+    // The fixture really is missing the asset — otherwise this asserts nothing.
+    expect(project.vault_assets).toEqual([])
   })
 
-  it('EXCLUDES a high-scoring project whose split sheet is unsigned', async () => {
+  it('LISTS a high-scoring project whose split sheet is unsigned, with a contact badge (D-11)', async () => {
     const project = projectRow({
       vault_readiness_score: 100,
       vault_documents: [
@@ -255,6 +311,36 @@ describe('loadCatalogPage — the six-item entry gate, not the aggregate score',
       ],
     })
     const service = makeService([project], [{ id: 'owner-1', profile_visibility: 'public' }])
+
+    const result = await loadCatalogPage(service as never, null, BASE_FILTER, 1)
+
+    expect(result.data.map(c => c.id)).toEqual(['proj-1'])
+    expect(result.data[0].rights).toBe('req')
+    expect(project.vault_documents.find(d => d.type === 'split_sheet')?.status).toBe('pending')
+  })
+
+  // The negative control for the two above: inclusion must still be refusable.
+  // Without this, an implementation that returned every project unconditionally
+  // would pass both rewritten tests.
+  it('still EXCLUDES a project with no playable master, however complete its paperwork', async () => {
+    const project = projectRow({
+      vault_readiness_score: 100,
+      tracks: [{ ...ENTRY_COMPLETE_TRACKS[0], audio_file_url: null }],
+    })
+    const service = makeService([project], [{ id: 'owner-1', profile_visibility: 'public' }])
+
+    const result = await loadCatalogPage(service as never, null, BASE_FILTER, 1)
+
+    expect(result.data).toEqual([])
+  })
+
+  it('still EXCLUDES a track whose listing was WITHDRAWN, even with a bound master', async () => {
+    const project = projectRow({ vault_readiness_score: 100 })
+    const service = makeService(
+      [project],
+      [{ id: 'owner-1', profile_visibility: 'public' }],
+      [{ id: 'proj-1', trackId: 'track-1', status: 'withdrawn' }]
+    )
 
     const result = await loadCatalogPage(service as never, null, BASE_FILTER, 1)
 
@@ -350,22 +436,47 @@ describe('loadCatalogPage — the card describes the ADMITTED track', () => {
     expect(result.data[0].energy).toBe('')
   })
 
-  it('falls back to the first tagged track when NO admitted track id resolves', async () => {
-    // A listing whose track_id is null, or whose track has since been
-    // deleted from the project. The gate has already established the
-    // project IS admitted, so the card still renders — hiding a listed song
-    // over a display detail would be worse than the old behaviour.
+  // ─── REPLACED 2026-10-11 (D-11): the third fallback is gone ───────────
+  // This case used to assert the opposite: a listing whose track_id was null
+  // (or whose track had since been deleted) still produced a card, falling back
+  // to the first TAGGED track on the project. That was defensible under the old
+  // project-level gate, which had already established the PROJECT was admitted
+  // — hiding a listed song over a display detail would have been worse.
+  //
+  // Under per-track exposure the premise is gone. A listing that names no track
+  // admits no track, so there is nothing to show, and reaching for an arbitrary
+  // sibling would describe the card with a song no buyer may license. The
+  // project is now skipped entirely. Rewritten rather than deleted: the
+  // null-track_id row is still a real shape the query can receive, and
+  // something has to pin what happens to it.
+  it('omits the project entirely when a listing names NO track — no sibling fallback', async () => {
     const project = projectRow({ tracks: [TRACK_A, TRACK_B] })
     const service = makeService(
       [project],
       [{ id: 'owner-1', profile_visibility: 'public' }],
-      ['proj-1'] // bare id -> track_id null
+      [{ id: 'proj-1', trackId: null }]
+    )
+
+    const result = await loadCatalogPage(service as never, null, BASE_FILTER, 1)
+
+    expect(result.data).toEqual([])
+  })
+
+  // Positive control for the case above, so it cannot pass against an
+  // implementation that simply never returns anything: the SAME two-track
+  // project, with the listing naming track-b, still exposes exactly track-b.
+  it('exposes only the named track when one of two siblings is listed', async () => {
+    const project = projectRow({ tracks: [TRACK_A, TRACK_B] })
+    const service = makeService(
+      [project],
+      [{ id: 'owner-1', profile_visibility: 'public' }],
+      [{ id: 'proj-1', trackId: 'track-b' }]
     )
 
     const result = await loadCatalogPage(service as never, null, BASE_FILTER, 1)
 
     expect(result.data).toHaveLength(1)
-    expect(result.data[0].mood).toBe('Peaceful')
+    expect(result.data[0].tracks.map(t => t.id)).toEqual(['track-b'])
   })
 })
 

@@ -68,15 +68,29 @@ export function ShortlistPanel({ initialEntries }: { initialEntries: ShortlistEn
                 </p>
               )}
             </div>
-            {!entry.stillRightsReady && (
+            {/* 2026-10-11 (owner decision D-11): the badge used to read "No
+                longer rights-ready" and was driven by rights paperwork, which
+                disabled the Request licence link for a song whose clearance was
+                merely still in progress. Under D-11 outstanding clearance work
+                never removes a track from The Crate and never blocks request
+                intake, so this now reports AVAILABILITY — the track's listing
+                was withdrawn/removed/rejected, its master is gone, or the
+                project went private. A clearance-required entry stays
+                requestable and says so below. */}
+            {!entry.stillAvailable && (
               <span className="rounded-full border border-[color:var(--req-line)] bg-[var(--req-bg)] px-2.5 py-0.5 text-[11px] font-semibold text-[color:var(--req-fg)]">
-                No longer rights-ready
+                No longer available
+              </span>
+            )}
+            {entry.stillAvailable && entry.clearance === 'clearance_required' && (
+              <span className="rounded-full border border-[color:var(--line)] bg-[var(--wash-2)] px-2.5 py-0.5 text-[11px] font-semibold text-[color:var(--ink-3)]">
+                Contact Funūn to clear
               </span>
             )}
           </div>
 
           <div className="mt-4 flex items-center gap-2">
-            {entry.stillRightsReady ? (
+            {entry.stillAvailable ? (
               <Link
                 href={`/sync/requests/new?project=${entry.vaultProjectId}`}
                 className="rounded-lg border border-[color:var(--line)] bg-[var(--wash-2)] px-2.5 py-1.5 text-[11px] font-semibold text-[color:var(--indigo)] transition hover:bg-[var(--wash)]"

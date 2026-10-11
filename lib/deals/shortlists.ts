@@ -1,13 +1,38 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { VaultProjectType } from '@/types'
+import type { VaultProjectType, SyncListingStatus } from '@/types'
+import { computeStage3 } from '@/lib/vault/stage3'
 import { readinessItemsForProject } from '@/lib/vault/readiness'
-import { isRightsReady } from '@/lib/deals/catalog'
+import { isSyncEligibleProjectType } from '@/lib/sync-library/readiness'
+import {
+  trackExposure,
+  resolveListingStatus,
+  type ListingStatusRow,
+} from '@/lib/sync-library/track-exposure'
+import { trackClearance, type TrackClearance } from '@/lib/sync-library/track-clearance'
 
 // ─── loadShortlistEntries (D-14c) ──────────────────────────────────────────
-// Re-evaluates rights-readiness at READ time (not save time) — a project
-// that has since gone private or fallen below the readiness threshold is
-// marked stillRightsReady: false, never silently dropped from the list
-// (a stale entry must degrade loudly).
+// Re-evaluates availability at READ time (not save time) — a project that has
+// since gone private, had its listing withdrawn, or lost its master is marked
+// stillAvailable: false, never silently dropped from the list (a stale entry
+// must degrade loudly).
+//
+// 2026-10-11 (owner decision D-11, plan 50-05 Task 3) — the field was called
+// `stillRightsReady` and was computed by isRightsReady, i.e. from rights
+// paperwork. Two things were wrong with that under D-11, and the RENAME is the
+// substantive half of this change rather than cosmetic:
+//
+//   - It asked the wrong question. Outstanding clearance work no longer removes
+//     a track from the catalogue, so a saved entry whose split sheet is still
+//     unsigned is availabe and requestable — it used to render "No longer
+//     rights-ready" and have its Request licence link disabled.
+//   - The name asserted more than the data carried. It now means "is any track
+//     on this project still exposed in The Crate", which is availability, not
+//     rights standing. Leaving the old name on the new meaning is precisely the
+//     label-integrity defect this repo keeps a skill for — the UI copy in
+//     components/buyer/ShortlistPanel.tsx was changed with it.
+//
+// `clearance` is carried alongside so a surface can say "contact Funūn" without
+// re-deriving it; the two answers stay separate, as D-11 requires.
 //
 // Lives in lib/ (not the route.ts file) because Next.js route modules may
 // only export HTTP method handlers plus a small route-config set — any
@@ -24,7 +49,10 @@ export type ShortlistEntry = {
   projectTitle: string
   savedBy: string | null
   savedAt: string
-  stillRightsReady: boolean
+  /** Is ANY track on this project still exposed in The Crate? */
+  stillAvailable: boolean
+  /** The representative exposed track's clearance; null when none is exposed. */
+  clearance: TrackClearance['status'] | null
 }
 
 type ShortlistProjectRow = {
@@ -37,6 +65,8 @@ type ShortlistProjectRow = {
   tracks: {
     id: string
     title: string | null
+    /** D-11's proof of a playable master; required by trackExposure. */
+    audio_file_url: string | null
     metadata: Record<string, unknown> | null
     writers: string[] | null
     producers: string[] | null
@@ -75,7 +105,7 @@ export async function loadShortlistEntries(service: SupabaseClient, orgId: strin
     .select(
       `
       id, title, type, vault_readiness_score, content_id_registered, content_id_dismissed_until,
-      tracks (id, title, metadata, writers, producers, mixing_engineer, mastering_engineer, has_sample, sample_details),
+      tracks (id, title, audio_file_url, metadata, writers, producers, mixing_engineer, mastering_engineer, has_sample, sample_details),
       vault_documents (id, type, status, track_id, document_data),
       vault_assets (id, type)
       `
@@ -83,19 +113,36 @@ export async function loadShortlistEntries(service: SupabaseClient, orgId: strin
     .in('id', projectIds)
   const projectById = new Map(((projectRows ?? []) as ShortlistProjectRow[]).map(p => [p.id, p]))
 
-  // 26-06: isRightsReady's admission signal — one batched sync_listings
-  // lookup (SAME status='admitted' authority lib/deals/catalog-query.ts
-  // and lib/deals/request-target.ts use), so a saved shortlist entry does
-  // not silently fail closed on every read (T-26-24 — single admission
-  // authority, no drift).
-  const { data: admittedRows } = await service
+  // ONE batched sync_listings lookup — the SAME shape and the same per-track
+  // precedence lib/deals/catalog-query.ts uses, so the two surfaces cannot
+  // disagree about what is in The Crate (T-26-24 — single admission authority,
+  // no drift).
+  //
+  // 2026-10-11 (D-11): no longer `.eq('status','admitted')` and no longer
+  // project-level. Exposure is per track and trackExposure's contract covers
+  // the terminal states, so the query must hand it every row for the track and
+  // let resolveListingStatus pick the one that describes it now. Keyed by
+  // project AND track for the same reason catalog-query.ts is: a lookup that is
+  // correct only because track ids happen to be globally unique is the shape of
+  // a cross-project leak.
+  const { data: listingRows } = await service
     .from('sync_listings')
-    .select('vault_project_id')
-    .eq('status', 'admitted')
+    .select('vault_project_id, track_id, status, created_at')
     .in('vault_project_id', projectIds)
-  const admittedProjectIds = new Set(
-    ((admittedRows ?? []) as { vault_project_id: string }[]).map(r => r.vault_project_id)
-  )
+  const listingRowsByTrack = new Map<string, ListingStatusRow[]>()
+  const listingKey = (projectId: string, trackId: string) => `${projectId}:${trackId}`
+  for (const r of (listingRows ?? []) as {
+    vault_project_id: string
+    track_id: string | null
+    status: SyncListingStatus
+    created_at: string | null
+  }[]) {
+    if (!r.track_id) continue
+    const key = listingKey(r.vault_project_id, r.track_id)
+    const rows = listingRowsByTrack.get(key) ?? []
+    rows.push({ status: r.status, created_at: r.created_at })
+    listingRowsByTrack.set(key, rows)
+  }
 
   const saverIds = Array.from(new Set(rows.map(r => r.created_by)))
   const saverNameById = new Map<string, string | null>()
@@ -115,38 +162,69 @@ export async function loadShortlistEntries(service: SupabaseClient, orgId: strin
 
   return rows.map(r => {
     const project = projectById.get(r.vault_project_id)
-    let stillRightsReady = false
+    let stillAvailable = false
+    let clearance: TrackClearance['status'] | null = null
     let projectTitle = 'Unknown project'
     if (project) {
       projectTitle = project.title
-      // 2026-09-10 (third pass): the computeStage3() call that used to sit
-      // here is GONE, not merely unused. isRightsReady stopped consuming
-      // canContinue (see lib/deals/catalog.ts) so that a track with an
-      // uncleared sample is listed-and-labelled rather than hidden, and
-      // this read path never wanted a Stage3Result for anything else — a
-      // shortlist row shows stillRightsReady, not a rights badge. Assembling
-      // one per project was pure dead work.
-      //
-      // vault_projects.type is TEXT in the row shape; narrowed ONCE and
-      // reused by both the readiness engine and the isRightsReady gate.
+      // vault_projects.type is TEXT in the row shape; narrowed ONCE and reused
+      // by the eligibility check, the readiness engine and the clearance
+      // evaluator.
       const projectType = project.type as VaultProjectType
-      const readinessItems = readinessItemsForProject({
-        type: projectType,
-        tracks: project.tracks ?? [],
-        assets: project.vault_assets ?? [],
-        documents: project.vault_documents ?? [],
-      })
-      // `type` passed EXPLICITLY after the spread — the row shape types it
-      // as string, and isRightsReady requires the narrowed VaultProjectType
-      // for its SYNC_ELIGIBLE_PROJECT_TYPES check.
-      stillRightsReady = isRightsReady(
-        {
-          ...project,
-          has_admitted_sync_listing: admittedProjectIds.has(project.id),
+      const tracks = project.tracks ?? []
+
+      // Project type is an ADMISSION precondition re-checked here as defence in
+      // depth, exactly as in loadCatalogPage — never as part of exposure, which
+      // cannot express it.
+      const exposedTracks = isSyncEligibleProjectType(projectType)
+        ? tracks.filter(
+            t =>
+              trackExposure({
+                trackId: t.id,
+                audioFileUrl: t.audio_file_url,
+                listingStatus: resolveListingStatus(
+                  listingRowsByTrack.get(listingKey(project.id, t.id)) ?? []
+                ),
+              }).status === 'exposed'
+          )
+        : []
+
+      stillAvailable = exposedTracks.length > 0
+
+      // The Stage3Result is computed ONLY when there is something to label —
+      // the 2026-09-10 note that used to live here was right that assembling
+      // one unconditionally was dead work, and that stays true: a shortlist row
+      // for an unavailable project needs no clearance answer.
+      const representative = exposedTracks[0]
+      if (representative) {
+        const stage3 = computeStage3(
+          project,
+          tracks,
+          project.vault_documents ?? [],
+          project.vault_readiness_score ?? 0
+        )
+        const readinessItems = readinessItemsForProject({
           type: projectType,
-        },
-        readinessItems
-      )
+          tracks,
+          assets: project.vault_assets ?? [],
+          documents: project.vault_documents ?? [],
+        })
+        clearance = trackClearance({
+          exposure: {
+            trackId: representative.id,
+            audioFileUrl: representative.audio_file_url,
+            listingStatus: resolveListingStatus(
+              listingRowsByTrack.get(listingKey(project.id, representative.id)) ?? []
+            ),
+          },
+          project: { has_admitted_sync_listing: true, type: projectType },
+          readinessItems,
+          stage3,
+          // Interim until plan 50-02 lands — null is treated as unresolved and
+          // can never reach 'rights_ready'. See loadCatalogPage's note.
+          aiProvenance: null,
+        }).status
+      }
     }
     return {
       id: r.id,
@@ -154,7 +232,8 @@ export async function loadShortlistEntries(service: SupabaseClient, orgId: strin
       projectTitle,
       savedBy: saverNameById.get(r.created_by) ?? null,
       savedAt: r.created_at,
-      stillRightsReady,
+      stillAvailable,
+      clearance,
     }
   })
 }

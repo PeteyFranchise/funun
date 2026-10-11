@@ -1,4 +1,4 @@
-import { rightsBadge } from '@/lib/sync-library/gate'
+import { rightsBadge, type CatalogRightsCode } from '@/lib/sync-library/gate'
 import { syncReadinessCoverage, type CatalogProjectLike } from '@/lib/deals/catalog'
 import type { Stage3Result } from '@/lib/vault/stage3'
 import type { TrackAiProvenanceVerdict } from '@/lib/catalogue/track-work-link'
@@ -135,4 +135,22 @@ export function trackClearance(input: TrackClearanceInput): TrackClearance {
     status: outstanding.length === 0 ? 'rights_ready' : 'clearance_required',
     outstanding,
   }
+}
+
+// ─── clearanceToCatalogRights — the one mapping to the buyer's badge code ─
+// D-11 makes the buyer-facing answer binary: rights ready, or contact Funūn.
+// So this maps onto the EXISTING CatalogRightsCode union
+// (RIGHTS_BADGE_TO_CATALOG_RIGHTS, lib/sync-library/gate.ts) rather than
+// inventing a parallel code — 'part' simply stops being produced, and the
+// distinction it drew survives itemised in TrackClearance.outstanding.
+//
+// 'unavailable' maps to 'req' rather than to a fourth code on purpose: an
+// unavailable track is never reachable through an exposure-filtered surface in
+// the first place, so a code for it would be unreachable UI. The undefined case
+// fails closed to 'req' for the same reason every other gate here does — a
+// missing answer must never read as "cleared".
+export function clearanceToCatalogRights(
+  status: TrackClearance['status'] | undefined
+): CatalogRightsCode {
+  return status === 'rights_ready' ? 'ok' : 'req'
 }

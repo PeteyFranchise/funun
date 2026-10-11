@@ -1,4 +1,9 @@
-import { trackExposure, isTrackExposed, type TrackExposureInput } from '@/lib/sync-library/track-exposure'
+import {
+  trackExposure,
+  isTrackExposed,
+  resolveListingStatus,
+  type TrackExposureInput,
+} from '@/lib/sync-library/track-exposure'
 
 const base: TrackExposureInput = {
   trackId: 't1',
@@ -58,5 +63,76 @@ describe('trackExposure — D-11 track-level discoverability', () => {
     // The guard is the TYPE, so this test documents the guarantee and fails
     // loudly if the input ever widens to accept a clearance fact.
     expect(Object.keys(base).sort()).toEqual(['audioFileUrl', 'listingStatus', 'trackId'])
+  })
+})
+
+// ─── resolveListingStatus ─────────────────────────────────────────────────
+// Terminal rows accumulate by design: sync_listings_active_track_uniq
+// (096_sync_library.sql:63) is a PARTIAL unique index over the five active
+// statuses, and re-submission after a terminal outcome is explicitly allowed.
+// So history can sit beside the present, and trackExposure's terminal-first
+// ranking would read the history if the caller handed it over.
+describe('resolveListingStatus — the active row wins, terminal rows are history', () => {
+  it('returns null for a track that has never been listed', () => {
+    expect(resolveListingStatus([])).toBeNull()
+  })
+
+  it('returns the only status when there is one row', () => {
+    expect(resolveListingStatus([{ status: 'admitted' }])).toBe('admitted')
+  })
+
+  it('prefers the ACTIVE row over an older terminal row — the re-admission case', () => {
+    // Withdrawn last month, re-applied and admitted since. Reading the
+    // withdrawal would hide a live track forever, which is the bug this
+    // function exists to prevent.
+    const resolved = resolveListingStatus([
+      { status: 'withdrawn', created_at: '2026-09-01T00:00:00Z' },
+      { status: 'admitted', created_at: '2026-10-01T00:00:00Z' },
+    ])
+    expect(resolved).toBe('admitted')
+    expect(trackExposure({ ...base, listingStatus: resolved })).toEqual({ status: 'exposed' })
+  })
+
+  it('prefers the active row even when the terminal row is NEWER', () => {
+    // Order and recency are both irrelevant against an active row: the partial
+    // unique index guarantees at most one, so its existence is the answer.
+    expect(
+      resolveListingStatus([
+        { status: 'admitted', created_at: '2026-09-01T00:00:00Z' },
+        { status: 'rejected', created_at: '2026-10-01T00:00:00Z' },
+      ])
+    ).toBe('admitted')
+  })
+
+  it('falls back to the LATEST terminal row when no active row exists', () => {
+    const resolved = resolveListingStatus([
+      { status: 'rejected', created_at: '2026-08-01T00:00:00Z' },
+      { status: 'withdrawn', created_at: '2026-09-01T00:00:00Z' },
+    ])
+    expect(resolved).toBe('withdrawn')
+    expect(trackExposure({ ...base, listingStatus: resolved })).toEqual({
+      status: 'unavailable',
+      reason: 'withdrawn',
+    })
+  })
+
+  it('is independent of row order', () => {
+    const rows = [
+      { status: 'withdrawn' as const, created_at: '2026-09-01T00:00:00Z' },
+      { status: 'rejected' as const, created_at: '2026-08-01T00:00:00Z' },
+    ]
+    expect(resolveListingStatus(rows)).toBe('withdrawn')
+    expect(resolveListingStatus([...rows].reverse())).toBe('withdrawn')
+  })
+
+  it('recognises every pre-admission active status, not just admitted', () => {
+    for (const status of ['applied', 'invited', 'agreement_pending', 'pending_admit'] as const) {
+      expect(resolveListingStatus([{ status: 'removed', created_at: '2026-10-05T00:00:00Z' }, { status }])).toBe(
+        status
+      )
+      // Active-but-not-admitted is still not exposed — that is trackExposure's
+      // job, and this function must not quietly answer it.
+      expect(trackExposure({ ...base, listingStatus: status })).toEqual({ status: 'not_admitted' })
+    }
   })
 })

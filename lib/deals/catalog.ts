@@ -20,6 +20,11 @@ import {
   SYNC_READINESS_KEYS,
 } from '@/lib/sync-library/readiness'
 import type { ReadinessItem, VaultProjectType } from '@/types'
+// Type-only, so nothing is emitted and there is no runtime cycle with
+// track-clearance.ts (which imports syncReadinessCoverage from this module).
+// The union lives beside the function that produces it rather than being
+// restated here.
+import type { TrackClearance } from '@/lib/sync-library/track-clearance'
 
 // ─── isAdmittedToSyncLibrary (26-06) ──────────────────────────────────────
 // The SINGLE admission-authority predicate for buyer-catalogue membership,
@@ -532,5 +537,15 @@ export type CatalogCard = {
   vocal: string
   instruments: string[]
   rights: CatalogRightsCode
-  tracks: { id: string; title: string | null; bpm: number | null; keySignature: string | null }[]
+  // 2026-10-11 (owner decision D-11): `clearance` is carried PER TRACK because
+  // clearance is a per-track answer, and because the two Selects surfaces that
+  // flatten this array into track rows must read the right one without either
+  // file changing. Additive — existing consumers ignore it.
+  tracks: {
+    id: string
+    title: string | null
+    bpm: number | null
+    keySignature: string | null
+    clearance: TrackClearance['status']
+  }[]
 }

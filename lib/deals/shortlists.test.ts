@@ -55,6 +55,10 @@ function projectRow(overrides: Record<string, unknown> = {}) {
       {
         id: 'track-1',
         title: 'Test Track',
+        // 2026-10-11 (D-11): trackExposure requires a BOUND audio object.
+        // Without it the fixture reads 'no_playable_master' and every
+        // availability assertion below sees false — fail-closed, but wrong.
+        audio_file_url: 'track-audio/owner-1/track-1.wav',
         metadata: {
           composers: [{ name: 'Jane Writer', role: 'composer_lyricist', pro: 'ascap', split: 100 }],
         },
@@ -76,8 +80,37 @@ function projectRow(overrides: Record<string, unknown> = {}) {
   }
 }
 
-function makeService(opts: { shortlists: unknown[]; projects: unknown[]; admittedProjectIds: string[] }) {
-  const admitted = opts.admittedProjectIds.map(id => ({ vault_project_id: id }))
+// 2026-10-11 (D-11): the query stopped filtering `.eq('status','admitted')`
+// and resolves exposure PER TRACK, so a fixture listing row now needs a
+// track_id, a status and a created_at. A bare project id expands to one admitted
+// row per track on that project — which is what `admittedProjectIds` always
+// meant here. Pass `{ id, trackId, status }` to exercise a terminal row.
+function makeService(opts: {
+  shortlists: unknown[]
+  projects: unknown[]
+  admittedProjectIds: (string | { id: string; trackId: string; status?: string })[]
+}) {
+  const projectsById = new Map(
+    (opts.projects as { id: string; tracks?: { id: string }[] }[]).map(p => [p.id, p])
+  )
+  const admitted = opts.admittedProjectIds.flatMap(entry => {
+    if (typeof entry === 'string') {
+      return (projectsById.get(entry)?.tracks ?? []).map(t => ({
+        vault_project_id: entry,
+        track_id: t.id,
+        status: 'admitted',
+        created_at: '2026-10-01T00:00:00Z',
+      }))
+    }
+    return [
+      {
+        vault_project_id: entry.id,
+        track_id: entry.trackId,
+        status: entry.status ?? 'admitted',
+        created_at: '2026-10-01T00:00:00Z',
+      },
+    ]
+  })
   return {
     from: jest.fn((table: string) => {
       if (table === 'buyer_shortlists') return tableBuilder(opts.shortlists)
@@ -107,7 +140,7 @@ beforeEach(() => {
 })
 
 describe('loadShortlistEntries — sync-library admission gate', () => {
-  it('marks stillRightsReady true for a saved project with an admitted sync listing', async () => {
+  it('marks stillAvailable true for a saved project with an admitted, playable track', async () => {
     const service = makeService({
       shortlists: [shortlistRow()],
       projects: [projectRow()],
@@ -117,10 +150,10 @@ describe('loadShortlistEntries — sync-library admission gate', () => {
     const result = await loadShortlistEntries(service as never, 'org-1')
 
     expect(result).toHaveLength(1)
-    expect(result[0].stillRightsReady).toBe(true)
+    expect(result[0].stillAvailable).toBe(true)
   })
 
-  it('marks stillRightsReady false when the project has no admitted sync listing, even if otherwise ready', async () => {
+  it('marks stillAvailable false when no track on the project is admitted', async () => {
     const service = makeService({
       shortlists: [shortlistRow()],
       projects: [projectRow()],
@@ -130,6 +163,79 @@ describe('loadShortlistEntries — sync-library admission gate', () => {
     const result = await loadShortlistEntries(service as never, 'org-1')
 
     expect(result).toHaveLength(1)
-    expect(result[0].stillRightsReady).toBe(false)
+    expect(result[0].stillAvailable).toBe(false)
+    // Nothing exposed means no clearance answer to give, rather than a
+    // confident "cleared" over an empty set.
+    expect(result[0].clearance).toBeNull()
+  })
+})
+
+// ─── D-11: availability and clearance are separate answers ───────────────
+// What changed here is the QUESTION, not the implementation. The field used to
+// be stillRightsReady and came from isRightsReady, so a saved entry whose
+// paperwork was incomplete rendered "No longer rights-ready" and had its
+// Request licence link disabled. Under D-11 clearance work in progress never
+// removes a track from The Crate and never blocks request intake.
+describe('loadShortlistEntries — D-11: clearance work does not make an entry unavailable', () => {
+  it('stays AVAILABLE when a required document is unsigned, and reports clearance_required', async () => {
+    const project = projectRow({
+      vault_documents: [
+        { id: 'doc-1', type: 'copyright_registration', status: 'signed', track_id: null, document_data: null },
+        { id: 'doc-2', type: 'hire_right', status: 'signed', track_id: null, document_data: null },
+        { id: 'doc-3', type: 'split_sheet', status: 'pending', track_id: null, document_data: null },
+      ],
+    })
+    const service = makeService({
+      shortlists: [shortlistRow()],
+      projects: [project],
+      admittedProjectIds: ['proj-1'],
+    })
+
+    const result = await loadShortlistEntries(service as never, 'org-1')
+
+    expect(result[0].stillAvailable).toBe(true)
+    expect(result[0].clearance).toBe('clearance_required')
+  })
+
+  it('goes UNAVAILABLE when the listing was withdrawn — the thing that really does remove it', async () => {
+    const service = makeService({
+      shortlists: [shortlistRow()],
+      projects: [projectRow()],
+      admittedProjectIds: [{ id: 'proj-1', trackId: 'track-1', status: 'withdrawn' }],
+    })
+
+    const result = await loadShortlistEntries(service as never, 'org-1')
+
+    expect(result[0].stillAvailable).toBe(false)
+  })
+
+  it('goes UNAVAILABLE when the master is gone, however complete the paperwork', async () => {
+    const project = projectRow({
+      tracks: [
+        {
+          id: 'track-1',
+          title: 'Test Track',
+          audio_file_url: null,
+          metadata: {
+            composers: [{ name: 'Jane Writer', role: 'composer_lyricist', pro: 'ascap', split: 100 }],
+          },
+          writers: null,
+          producers: null,
+          mixing_engineer: null,
+          mastering_engineer: null,
+          has_sample: false,
+          sample_details: null,
+        },
+      ],
+    })
+    const service = makeService({
+      shortlists: [shortlistRow()],
+      projects: [project],
+      admittedProjectIds: ['proj-1'],
+    })
+
+    const result = await loadShortlistEntries(service as never, 'org-1')
+
+    expect(result[0].stillAvailable).toBe(false)
   })
 })
