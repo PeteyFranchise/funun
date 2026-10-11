@@ -15,6 +15,8 @@ import {
   isSyncRightsClear,
   syncIneligibleTypeReason,
 } from '@/lib/sync-library/readiness'
+import { syncExposureVerdict } from '@/lib/deals/catalog'
+import { readinessItemsForProject } from '@/lib/vault/readiness'
 import type { VaultProjectType } from '@/types'
 
 // ─── POST /api/sync-library/admin/[listingId] ──────────────────────────
@@ -224,7 +226,9 @@ export async function POST(
     // ─── The project-TYPE gate, FIRST and deliberately so ────────────────
     // (2026-09-10, .planning/todos "Enforce the sync project-type rule at
     // the staff surfaces".) The sync catalogue licenses released-format
-    // recordings — SYNC_ELIGIBLE_PROJECT_TYPES, 'single' | 'ep' | 'album'.
+    // recordings — SYNC_ELIGIBLE_PROJECT_TYPES, which has held FOUR values
+    // since the owner's 2026-09-26 reversal: 'single' | 'ep' | 'album' |
+    // 'unreleased'. 'snippet' is the one ineligible type.
     // isRightsReady() (lib/deals/catalog.ts) has enforced that at the BUYER
     // gate since ca919cf2; this route did not, so a 'snippet' or
     // 'unreleased' project could be admitted and then never render to a
@@ -238,10 +242,18 @@ export async function POST(
     // refusal reads "needs to finish the Sync Readiness checklist" — a
     // checklist that can never be finished, sending staff hunting for a
     // missing item that does not exist. That accidental coupling is exactly
-    // what SYNC_ELIGIBLE_PROJECT_TYPES was added to replace, and it would
-    // vanish the moment anyone added 'unreleased' to that applies_to list
-    // for an unrelated release-readiness reason. This check is independent
-    // of the readiness registry entirely.
+    // what SYNC_ELIGIBLE_PROJECT_TYPES was added to replace. This check is
+    // independent of the readiness registry entirely.
+    //
+    // CORRECTED 2026-10-11: this comment used to warn that the accidental
+    // coupling would vanish if anyone added 'unreleased' to a readiness
+    // applies_to list. The INVERSE happened — 'unreleased' was added to the
+    // ELIGIBLE list (2026-09-26 reversal), not to applies_to. So the type
+    // gate now PASSES it while the buyer side's applies_to coupling remains,
+    // which is precisely how an admitted song became invisible. The two
+    // halves of that divergence are 50-RESEARCH.md §7 and
+    // lib/sync-library/readiness.ts:101-103, and the exposure-agreement
+    // check further down is what stops it reaching a buyer surface.
     //
     // Same discipline as the gate refusal below: 409, and the listing's
     // status is left UNTOUCHED — refusing to admit is not rejecting. Staff
@@ -301,8 +313,78 @@ export async function POST(
       )
     }
 
+    // ─── EXPOSURE AGREEMENT: do not admit what no buyer can be shown ─────
+    // The admit gate above asks for the six sync items BY NAME, via
+    // syncReadinessForTrack's `onlyKeys: SYNC_READINESS_KEYS`. The buyer
+    // surfaces do not: all five isRightsReady call sites build their lists
+    // from the release-oriented applies_to registry, which emits only
+    // audio_files and split_sheets for 'unreleased'. So the two gates can
+    // disagree, and when they do the artist is notified of an admission no
+    // buyer can ever see (50-RESEARCH.md §7).
+    //
+    // This asks the BUYER's question with the BUYER's inputs — same call
+    // shape as lib/deals/catalog-query.ts:323-328, deliberately WITHOUT
+    // onlyKeys. PROJECT_GATE_COLUMNS already selects everything it needs, so
+    // this adds no query and no service read.
+    const buyerSideItems = readinessItemsForProject({
+      type: project.type,
+      tracks: project.tracks ?? [],
+      assets: project.vault_assets ?? [],
+      documents: project.vault_documents ?? [],
+    })
+    // `has_admitted_sync_listing: true` is COUNTERFACTUAL and must stay that
+    // way: the question is "if I admit this now, will the buyer gate render
+    // it?" Reading the project's real current admission state would ask a
+    // different and useless question, since it is false by definition here.
+    const exposure = syncExposureVerdict(
+      { has_admitted_sync_listing: true, type: project.type },
+      buyerSideItems
+    )
+    // ONLY 'indeterminate' is refused. 'incomplete' means the paperwork is
+    // unfinished, which evaluateInclusionGate above already owns and which
+    // CSUB-13 may later stop blocking — this must never become a second
+    // rights gate. 'indeterminate' is different in kind: the registry cannot
+    // answer the six-key question for this project at all.
+    if (exposure.status === 'indeterminate') {
+      const missing = [...exposure.missingKeys].sort().join(', ')
+      return NextResponse.json(
+        {
+          // Names the MISSING EVALUATION INPUTS as the cause. Never the
+          // project type: unreleased songs are welcome in The Crate and
+          // potentially exclusive to it (owner decision D-5); what is refused
+          // is a song that SOUNDS unfinished, which is a staff quality
+          // judgment with its own mechanism (quality_ok). Telling staff a
+          // truthful type must change would pressure them to relabel an
+          // honest 'unreleased' as a released format to work around an
+          // implementation gap — the label-integrity failure fence
+          // constraints 10 and 11 exist to prevent. Nor is this a checklist
+          // anyone can finish; S5b fixes it at the five call sites.
+          error:
+            `Buyer exposure cannot currently evaluate this listing: the catalogue read paths did not ` +
+            `receive the sync-specific requirement keys ${missing}. The listing was not admitted. ` +
+            `Its project type remains valid — S5b corrects the catalogue input.`,
+          data: {
+            listingId,
+            status: row.status,
+            exposure: { status: exposure.status, missingKeys: exposure.missingKeys },
+          },
+        },
+        { status: 409 }
+      )
+    }
+
     // T-26-20: fixed allowlisted column set — never spread the request body.
-    const { error: updateError } = await service
+    //
+    // COMPARE-AND-SET (Pass 4 M-04, this route only). The predicate carries
+    // `row.status` — the status read at the top of the request and validated
+    // by isValidTransition — so two concurrent decisions on one listing cannot
+    // both commit. Using the VALIDATED status rather than a hardcoded literal
+    // is what makes one shape correct for both paths: admit legally comes only
+    // from 'pending_admit', while reject legally comes from any of four, and a
+    // hardcoded predicate would break reject. `.select('id')` is required
+    // because a Supabase update returns no rows unless asked, and without rows
+    // the count is unobservable.
+    const { data: updatedRows, error: updateError } = await service
       .from('sync_listings')
       .update({
         status: 'admitted',
@@ -312,8 +394,25 @@ export async function POST(
         updated_at: nowIso,
       })
       .eq('id', listingId)
+      .eq('status', row.status)
+      .select('id')
     if (updateError) {
       return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
+    }
+    // Zero rows is a CONFLICT, not a server fault, and must return before the
+    // notification recount and the staff audit entry below. Today a decision
+    // landing on an already-decided row still reports success and can still
+    // notify an artist about an admission it did not make.
+    if (((updatedRows ?? []) as { id: string }[]).length === 0) {
+      return NextResponse.json(
+        {
+          error:
+            'This listing changed while the decision was being made, so the decision was not applied. ' +
+            'Reload and decide against its current state.',
+          data: { listingId, expectedStatus: row.status },
+        },
+        { status: 409 }
+      )
     }
 
     // SYNCLIB-14: the new-feature-highlight fires ONLY on the artist's
@@ -352,8 +451,10 @@ export async function POST(
     return NextResponse.json({ data: { listingId, status: 'admitted' as const } })
   }
 
-  // Reject path.
-  const { error: rejectError } = await service
+  // Reject path. Same compare-and-set discipline as the admit write above,
+  // and the same reason: `row.status` is the validated status, which here may
+  // legally be any of four.
+  const { data: rejectedRows, error: rejectError } = await service
     .from('sync_listings')
     .update({
       status: 'rejected',
@@ -363,8 +464,21 @@ export async function POST(
       updated_at: nowIso,
     })
     .eq('id', listingId)
+    .eq('status', row.status)
+    .select('id')
   if (rejectError) {
     return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
+  }
+  if (((rejectedRows ?? []) as { id: string }[]).length === 0) {
+    return NextResponse.json(
+      {
+        error:
+        'This listing changed while the decision was being made, so the decision was not applied. ' +
+        'Reload and decide against its current state.',
+        data: { listingId, expectedStatus: row.status },
+      },
+      { status: 409 }
+    )
   }
 
   try {

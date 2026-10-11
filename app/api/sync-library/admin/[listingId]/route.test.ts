@@ -226,7 +226,7 @@ describe('POST /api/sync-library/admin/[listingId]', () => {
     const service = mockService({
       sync_listings: [
         { data: PENDING_ADMIT_ROW, error: null },
-        { data: null, error: null },
+        { data: [{ id: LISTING_UUID }], error: null }, // the decision write: ONE row changed (plan 50-03 compare-and-set)
         { data: [{ id: LISTING_UUID }], error: null },
       ],
       tracks: [{ data: { title: 'Midnight Run' }, error: null }],
@@ -254,7 +254,7 @@ describe('POST /api/sync-library/admin/[listingId]', () => {
     const service = mockService({
       sync_listings: [
         { data: { ...PENDING_ADMIT_ROW, status: 'applied' }, error: null },
-        { data: null, error: null },
+        { data: [{ id: LISTING_UUID }], error: null }, // the decision write: ONE row changed (plan 50-03 compare-and-set)
       ],
       tracks: [{ data: { title: 'Golden Hour' }, error: null }],
     })
@@ -321,7 +321,7 @@ describe('POST /api/sync-library/admin/[listingId]', () => {
     const service = mockService({
       sync_listings: [
         { data: PENDING_ADMIT_ROW, error: null }, // load
-        { data: null, error: null }, // update
+        { data: [{ id: LISTING_UUID }], error: null }, // the decision write: ONE row changed (plan 50-03 compare-and-set)
         { data: [{ id: LISTING_UUID }], error: null }, // admitted-count recheck — exactly 1
       ],
       tracks: [{ data: { title: 'Midnight Run' }, error: null }],
@@ -363,7 +363,7 @@ describe('POST /api/sync-library/admin/[listingId]', () => {
     const service = mockService({
       sync_listings: [
         { data: PENDING_ADMIT_ROW, error: null },
-        { data: null, error: null },
+        { data: [{ id: LISTING_UUID }], error: null }, // the decision write: ONE row changed (plan 50-03 compare-and-set)
         { data: [{ id: 'other-listing' }, { id: LISTING_UUID }], error: null }, // count === 2
       ],
       tracks: [{ data: { title: 'Midnight Run' }, error: null }],
@@ -473,7 +473,7 @@ describe('POST /api/sync-library/admin/[listingId]', () => {
       const service = mockService({
         sync_listings: [
           { data: PENDING_ADMIT_ROW, error: null },
-          { data: null, error: null },
+          { data: [{ id: LISTING_UUID }], error: null }, // the decision write: ONE row changed (plan 50-03 compare-and-set)
         ],
         tracks: [{ data: { title: 'Midnight Run' }, error: null }],
         vault_projects: [{ data: entryCompleteProjectOfType(type), error: null }],
@@ -494,7 +494,7 @@ describe('POST /api/sync-library/admin/[listingId]', () => {
     const service = mockService({
       sync_listings: [
         { data: PENDING_ADMIT_ROW, error: null },
-        { data: null, error: null },
+        { data: [{ id: LISTING_UUID }], error: null }, // the decision write: ONE row changed (plan 50-03 compare-and-set)
         { data: [{ id: LISTING_UUID }], error: null },
       ],
       tracks: [{ data: { title: 'Midnight Run' }, error: null }],
@@ -555,7 +555,7 @@ describe('POST /api/sync-library/admin/[listingId]', () => {
       const service = mockService({
         sync_listings: [
           { data: PENDING_ADMIT_ROW, error: null },
-          { data: null, error: null },
+          { data: [{ id: LISTING_UUID }], error: null }, // the decision write: ONE row changed (plan 50-03 compare-and-set)
           { data: [{ id: LISTING_UUID }], error: null },
         ],
         tracks: [{ data: { title: 'Midnight Run' }, error: null }],
@@ -621,7 +621,7 @@ describe('POST /api/sync-library/admin/[listingId]', () => {
     const service = mockService({
       sync_listings: [
         { data: { ...PENDING_ADMIT_ROW, status: 'applied' }, error: null },
-        { data: null, error: null },
+        { data: [{ id: LISTING_UUID }], error: null }, // the decision write: ONE row changed (plan 50-03 compare-and-set)
       ],
       tracks: [{ data: { title: 'Golden Hour' }, error: null }],
     })
@@ -660,7 +660,7 @@ describe('POST /api/sync-library/admin/[listingId]', () => {
     const service = mockService({
       sync_listings: [
         { data: { ...PENDING_ADMIT_ROW, status: 'invited' }, error: null },
-        { data: null, error: null },
+        { data: [{ id: LISTING_UUID }], error: null }, // the decision write: ONE row changed (plan 50-03 compare-and-set)
       ],
       tracks: [{ data: { title: 'Golden Hour' }, error: null }],
     })
