@@ -1,14 +1,29 @@
-// Buyer-facing rights states: three → two (quick 260910).
+// Buyer-facing rights states: three → two (quick 260910), with the REASON
+// replaced on 2026-10-11 by owner decision D-11.
 //
-// The catalogue is an UNLOCK-then-ADMIT gate, not a labelled browse: a track
-// only reaches a buyer after every required document is signed, every owner
-// has authorized licensing, and a Funūn team member has admitted it to The
-// Crate. That makes rightsBadge()'s 'partial' UNREACHABLE for a buyer — not
-// wrong. See .planning/deliberations/sync-catalogue-entry-and-samples.md.
+// WHAT THIS FILE USED TO SAY, and why it is recorded rather than quietly
+// edited: "The catalogue is an UNLOCK-then-ADMIT gate, not a labelled browse: a
+// track only reaches a buyer after every required document is signed, every
+// owner has authorized licensing, and a Funūn team member has admitted it to
+// The Crate." D-11 overturned exactly that premise. An admitted, musically
+// complete track with a playable finished master stays discoverable WHILE
+// clearance work continues, so a buyer routinely sees a track whose paperwork
+// is open. 'Clearance required' is now the ordinary state, not the exception.
+//
+// 'partial' remains unreachable for a buyer, but for a DIFFERENT reason:
+// clearanceToCatalogRights (lib/sync-library/track-clearance.ts) maps every
+// non-ready clearance to 'req' and never emits 'part'. The old reason was
+// "nothing part-way gets admitted"; the new one is "the buyer answer is binary".
+// Same assertion, different mechanism — worth knowing when this next changes.
 //
 // So this file guards a two-sided contract:
 //   - the BUYER surfaces stop advertising 'partial'
 //   - the ENGINE keeps computing it, because staff Crate review needs it
+// and, since D-11, a third thing: the buyer-facing label for 'req' must not
+// name a cause the data does not establish (review finding F2).
+//
+// See .planning/deliberations/2026-10-10-owner-decisions-phase-50-rescope.md
+// (D-11) and 50-REVIEWS.md F2.
 import { readFileSync } from 'fs'
 import path from 'path'
 import type { Stage3Result } from '@/lib/vault/stage3'
@@ -31,6 +46,15 @@ function stage3(overrides: Partial<Stage3Result> = {}): Stage3Result {
     sampleBlock: false,
     ...overrides,
   }
+}
+
+// The `label:` string of a BADGES entry, by its `cls` code. Added 2026-10-11:
+// F2 was a defect in the LABEL, which no assertion in this file could see.
+function badgeLabel(cls: string): string | null {
+  const entry = helpPage.split('\n').find(line => line.includes(`cls: '${cls}'`))
+  if (!entry) return null
+  const m = entry.match(/label:\s*'((?:[^'\\]|\\.)*)'/)
+  return m ? m[1] : null
 }
 
 // The `d:` string of a BADGES entry, by its `cls` code.
@@ -57,10 +81,42 @@ describe('help page publishes two buyer rights states', () => {
     expect(clsCount).toBe(2)
   })
 
-  it('describes the "Contains a sample" state as a sample that needs clearing', () => {
-    const copy = badgeCopy('req') as string
-    expect(copy.toLowerCase()).toContain('sample')
-    expect(copy.toLowerCase()).toContain('clear')
+  // ─── REPLACED 2026-10-11 (owner decision D-11, review finding F2) ───────
+  // This asserted the 'req' state was "a sample that needs clearing". Under
+  // D-11 the `req` code is reached by ANY open clearance item — unsigned
+  // splits, missing copyright evidence, an unconfirmed hire credit, unresolved
+  // AI provenance — so naming a sample stated a specific and usually false
+  // cause, on a public page, about a song's legal status.
+  //
+  // NOTE WHY IT HAD TO BE REPLACED RATHER THAN LEFT: the new generic copy still
+  // mentions a sample as ONE cause, so the old assertions both still passed.
+  // A test that keeps passing over behaviour it no longer describes is the
+  // trap this repo has been bitten by repeatedly — see
+  // [[reference_fixture_gap_masks_removed_gate]].
+  it('describes the req state as clearance generally, naming no single cause as THE cause', () => {
+    const label = badgeLabel('req') as string
+    const copy = (badgeCopy('req') as string).toLowerCase()
+
+    // The label must not assert a cause at all.
+    expect(label.toLowerCase()).toContain('clearance')
+    expect(label.toLowerCase()).not.toContain('sample')
+
+    // The copy must still explain that something needs clearing...
+    expect(copy).toContain('clear')
+    // ...and must name MORE THAN ONE possible cause, so a sample reads as an
+    // example rather than the diagnosis.
+    const causes = ['paperwork', 'credit', 'sample', 'split', 'copyright', 'provenance']
+    expect(causes.filter(c => copy.includes(c)).length).toBeGreaterThanOrEqual(2)
+    // And it must not open by asserting a sample exists, which the old copy did.
+    expect(copy).not.toMatch(/^there(’|')s a sample/)
+  })
+
+  // D-11's positive half: the track is in the catalogue legitimately. The copy
+  // must not read as an apology or as a listing error.
+  it('says the track belongs in the catalogue while clearance is open (D-11)', () => {
+    const copy = (badgeCopy('req') as string).toLowerCase()
+    expect(copy).toMatch(/catalogue|crate/)
+    expect(copy).not.toMatch(/shouldn(’|')t be here|by mistake|not available/)
   })
 
   // The deliberation records that an assistant invented "typically 4-8 weeks"
@@ -112,7 +168,9 @@ describe('buyer Rights filter offers two states', () => {
   it('does not offer Partial — an always-empty option reads as broken', () => {
     expect(filterLine).not.toContain("'Partial'")
     expect(filterLine).toContain("'Rights ready'")
-    expect(filterLine).toContain("'Contains a sample'")
+    // 2026-10-11 (D-11/F2): was 'Contains a sample'.
+    expect(filterLine).toContain("'Clearance required'")
+    expect(filterLine).not.toContain("'Contains a sample'")
     expect(filterLine.match(/'/g)?.length).toBe(4) // exactly two quoted options
   })
 
@@ -212,7 +270,10 @@ describe('the public catalogue fixture carries only buyer states', () => {
 // error. Nobody sees a stack trace; a buyer just concludes you have no music.
 //
 // This nearly happened renaming 'Contact required' to 'Contains a sample'
-// (2026-09-10): four constants across two files had to move together.
+// (2026-09-10): four constants across two files had to move together. It was
+// exercised again renaming 'Contains a sample' to 'Clearance required'
+// (2026-10-11, D-11/F2) — and this guard is what confirmed the options list and
+// the label map moved in lockstep, so the filter did not silently match nothing.
 // ─────────────────────────────────────────────────────────────────────────
 describe('Rights filter options stay coupled to the label map', () => {
   const optionsLine = crate.split('\n').find(l => l.trim().startsWith('Rights: ['))

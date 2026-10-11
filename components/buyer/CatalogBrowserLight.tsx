@@ -94,14 +94,35 @@ const FILTER_OPTIONS: Record<FilterKey, string[]> = {
   Length: ['Under 1:00', '1:00–2:30', '2:30–4:00', 'Over 4:00'],
   Instruments: ['Piano', 'Strings', 'Guitar', 'Synth', 'Brass'],
   Genres: ['Alt-Pop', 'Electronic', 'Soul', 'Folk', 'Indie Rock', 'Cinematic', 'Jazz', 'Acoustic', 'Ambient', 'Synthwave', 'Downtempo', 'Singer-Songwriter', 'Alternative', 'Pop'],
-  // TWO buyer-facing rights states, not three. A track only reaches the Crate
-  // once every required document is signed, every owner has authorized
-  // licensing, and staff have admitted it — which leaves 'Rights ready' and
-  // 'Contains a sample' as the only states a buyer can
-  // ever see. 'Partial' is deliberately NOT offered here: an always-empty
-  // filter option reads as broken.
-  // See .planning/deliberations/sync-catalogue-entry-and-samples.md.
-  Rights: ['Rights ready', 'Contains a sample'],
+  // TWO buyer-facing rights states, not three — but the REASON changed on
+  // 2026-10-11 (owner decision D-11), and the old reason was the inverse of the
+  // new one. It used to read: "a track only reaches the Crate once every
+  // required document is signed, every owner has authorized licensing, and
+  // staff have admitted it." That is no longer true and is the premise D-11
+  // overturned — an admitted track with a playable master stays discoverable
+  // while clearance work continues.
+  //
+  // So the two states are now 'Rights ready' and 'Clearance required', and
+  // 'Clearance required' is the ORDINARY state rather than the exception.
+  //
+  // WHY THE SECOND LABEL CHANGED. It said 'Contains a sample'. Under D-11 the
+  // `req` code is reached by ANY open clearance item — unsigned splits, missing
+  // copyright evidence, an unconfirmed hire credit, unresolved AI provenance —
+  // so the old label told a buyer a specific, usually false story about WHY a
+  // song needed contact. In a rights product that is a false statement about a
+  // song's legal status, which is why review finding F2 ranked it above the
+  // rest of the slice. Sample status is still carried, itemised, in
+  // TrackClearance.outstanding; it is no longer the headline.
+  //
+  // 'Partial' is still deliberately NOT offered: clearanceToCatalogRights never
+  // emits 'part', so an option for it would always be empty, and an
+  // always-empty filter option reads as broken.
+  // See .planning/deliberations/2026-10-10-owner-decisions-phase-50-rescope.md
+  // (D-11) and 50-REVIEWS.md finding F2.
+  //
+  // WORDING IS PROVISIONAL pending counsel via slice S20, which owns final
+  // buyer-facing legal wording. The STATE is settled; the words are not.
+  Rights: ['Rights ready', 'Clearance required'],
 }
 const FILTER_KEYS = Object.keys(FILTER_OPTIONS) as FilterKey[]
 const SORTS = ['Best match', 'Newest', 'Most licensed', 'Shortest first'] as const
@@ -115,13 +136,13 @@ const SORTS = ['Best match', 'Newest', 'Most licensed', 'Shortest first'] as con
 // label instead of `undefined`, and never matches an active Rights filter
 // (which is correct: it is not one of the two buyer states).
 // Do NOT narrow CatalogRights to two members.
-const RIGHTS_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', part: 'Partial rights', req: 'Contains a sample' }
+const RIGHTS_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', part: 'Partial rights', req: 'Clearance required' }
 // COUPLING: matchesFilters() does `sel.Rights.has(RIGHTS_FILTER_LABEL[row.rights])`,
 // so every value offered in FILTER_OPTIONS.Rights must appear here VERBATIM.
 // Change one without the other and the filter silently matches nothing — it
 // looks like an empty catalogue, not like a bug. Guarded by
 // __tests__/buyer-rights-two-states.test.ts.
-const RIGHTS_FILTER_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', part: 'Partial', req: 'Contains a sample' }
+const RIGHTS_FILTER_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', part: 'Partial', req: 'Clearance required' }
 const DYN_LABEL: Record<Dynamics, string> = { build: 'Builds', steady: 'Steady', twin: 'Two peaks', peak: 'Two peaks', fade: 'Fades' }
 // 30-08: staff-only readinessStatus display labels — falls back to the raw
 // value for any status this map doesn't recognize (never throws).

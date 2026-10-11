@@ -27,12 +27,22 @@ const STEPS: { t: string; d: string }[] = [
 // rightsBadge() in lib/sync-library/gate.ts still returns all three: staff
 // Crate review needs 'partial' for an unadmitted, part-way submission.
 //
-// The 'req' copy must NEVER carry a timeline. Sample clearance is a third
-// party's decision on a third party's schedule; it routinely takes months and
-// a meaningful share never clears at all. Any number here would be invented.
+// The 'req' copy must NEVER carry a timeline. Clearance often depends on a third
+// party's decision on a third party's schedule; it routinely takes months and a
+// meaningful share never completes at all. Any number here would be invented.
+// Guarded by __tests__/buyer-rights-two-states.test.ts, which rejects time
+// units, speed claims and durations in this string.
+//
+// 2026-10-11 (owner decision D-11, review finding F2): the 'req' state was
+// labelled "Contains a sample" and described as a sample problem. Under D-11 it
+// is reached by ANY open clearance item — unsigned splits, missing copyright
+// evidence, an unconfirmed hire credit, unresolved AI provenance — so naming a
+// sample told most buyers something false about a song's legal status, on a
+// public page. A sample is now one named cause among several, not the headline.
+// WORDING IS PROVISIONAL pending counsel via slice S20.
 const BADGES: { cls: string; label: string; d: string }[] = [
   { cls: 'ok', label: 'Rights ready', d: 'Cleared and ready to license — the fastest path from request to signed deal.' },
-  { cls: 'req', label: 'Contains a sample', d: 'There’s a sample in here, so licensing starts with clearing it — a third party’s call, on a third party’s clock, so we won’t quote you a date. Send the request anyway. Clearance is one way this lands — and if the clock doesn’t suit, tell us the brief and we’ll see what else we can put in front of you.' },
+  { cls: 'req', label: 'Clearance required — contact Funūn', d: 'Something still needs clearing before this one can be licensed — paperwork we’re finishing, a credit we’re confirming, or a sample that needs a third party’s sign-off. It’s in the catalogue because it’s real and it’s ours to offer; it isn’t cleared yet. Send the request anyway and we’ll tell you exactly where it stands and what it takes — no dates we can’t keep. And if the song’s right but the path isn’t, tell us the brief and we’ll see what else we can put in front of you.' },
 ]
 
 const FAQ: { q: string; a: string }[] = [
