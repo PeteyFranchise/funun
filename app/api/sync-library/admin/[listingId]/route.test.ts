@@ -114,6 +114,11 @@ const READY_PROJECT_ROW = {
       title: 'Midnight Run',
       isrc: 'US1234567890',
       iswc: 'T-034524680-1',
+      // 2026-10-11 (D-11): admission requires a BOUND audio object. Every
+      // fixture derived from this row inherits it, which is why five admit
+      // cases in this file started failing on a missing master before it was
+      // added — a reason unrelated to what any of them assert.
+      audio_file_url: 'track-audio/artist-1/midnight-run.wav',
       metadata: { composers: [{ name: 'Artist One', split: 100 }] },
       producers: [],
       mixing_engineer: null,
@@ -583,10 +588,30 @@ describe('POST /api/sync-library/admin/[listingId]', () => {
       )
     })
 
-    it('is still refused when its RIGHTS documents are incomplete — the sample is not a free pass', async () => {
+    // ─── REVERSED 2026-10-11 by owner decision D-11 ─────────────────────
+    // This case asserted a 409 when the split sheet was unsigned: rights
+    // completeness blocked admission, so "the sample is not a free pass".
+    // D-11 names the admission bar — quality judgment, a playable finished
+    // master, sufficient identity/metadata, a valid project type — and says it
+    // is NOT every clearance document. An unsigned split sheet is a clearance
+    // document, so it no longer refuses; it moves the buyer-facing badge to
+    // "contact Funūn" via trackClearance instead of hiding the song.
+    //
+    // Rewritten rather than deleted, and made STRONGER in the process: it now
+    // pins that the audit trail tells the truth about what was admitted. The
+    // old version's companion case asserted the audited gate said
+    // `rightsClear: true` so nobody could read it as "admitted despite a rights
+    // failure". Under D-11 admitting with rights outstanding is legitimate, so
+    // the audit must record `rightsClear: false` plainly — an admission logged
+    // as rights-clear when it was not would be the actual defect.
+    it('is ADMITTED with its RIGHTS documents incomplete, and the audit says so (D-11)', async () => {
       ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
       const service = mockService({
-        sync_listings: [{ data: PENDING_ADMIT_ROW, error: null }],
+        sync_listings: [
+          { data: PENDING_ADMIT_ROW, error: null },
+          { data: [{ id: LISTING_UUID }], error: null }, // the decision write: ONE row changed
+          { data: [{ id: LISTING_UUID }], error: null },
+        ],
         tracks: [{ data: { title: 'Midnight Run' }, error: null }],
         vault_projects: [
           {
@@ -604,11 +629,37 @@ describe('POST /api/sync-library/admin/[listingId]', () => {
 
       const res = await POST(jsonRequest({ decision: 'admit' }), params())
 
+      expect(res.status).toBe(200)
+      expect(logStaffAction).toHaveBeenCalledWith(
+        service,
+        expect.objectContaining({
+          action: 'sync_library.admit',
+          changes: expect.objectContaining({
+            // Reported, not blocking — and recorded honestly.
+            gate: { rightsClear: false, qualityOk: true, metadataComplete: true },
+          }),
+        })
+      )
+    })
+
+    // The negative control for the case above: admission did not become
+    // unconditional when rightsClear stopped gating it.
+    it('is still refused when the QUALITY bar is unmet, sample or not', async () => {
+      ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
+      const service = mockService({
+        sync_listings: [{ data: { ...PENDING_ADMIT_ROW, quality_ok: false }, error: null }],
+        tracks: [{ data: { title: 'Midnight Run' }, error: null }],
+        vault_projects: [{ data: SAMPLED_PROJECT_ROW, error: null }],
+      })
+      ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+      const res = await POST(jsonRequest({ decision: 'admit' }), params())
+
       expect(res.status).toBe(409)
       const body = await res.json()
       expect(body.data.gate).toEqual({
-        rightsClear: false,
-        qualityOk: true,
+        rightsClear: true,
+        qualityOk: false,
         metadataComplete: true,
       })
       expect(service.builders.sync_listings).toHaveLength(1)

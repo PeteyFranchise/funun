@@ -7,12 +7,20 @@ import { logStaffAction } from '@/lib/staff/audit'
 // ─── Why this test exists ────────────────────────────────────────────────
 // Plan 50-03, two defects in one route.
 //
-// 1. THE EXPOSURE DISAGREEMENT (50-RESEARCH.md §7). The admit gate asks for
+// 1. THE EXPOSURE DISAGREEMENT (50-RESEARCH.md §7). The admit gate asked for
 //    the six sync items BY NAME via syncReadinessForTrack's onlyKeys. The
-//    buyer surfaces do not — all five isRightsReady call sites build their
+//    buyer surfaces did not — all five isRightsReady call sites built their
 //    lists from the release applies_to registry, which emits only
 //    audio_files and split_sheets for 'unreleased'. So staff could admit a
 //    song, the artist was notified, and no buyer could ever see it.
+//
+//    SUPERSEDED 2026-10-11 by owner decision D-11, and this file now pins the
+//    replacement. The divergence was dissolved rather than repaired: readiness
+//    stopped controlling discovery entirely, so the refusal that defended
+//    against it defends against nothing. Admission now requires a playable
+//    master, staff quality judgment, sufficient identity/metadata and a valid
+//    project type — NOT clearance documents. The compare-and-set work in (2)
+//    below is untouched by D-11 and every one of its cases is unchanged.
 //
 // 2. NON-ATOMIC DECISION WRITES (Pass 4 M-04). Both writes updated by id
 //    alone, so a decision landing on an already-decided row reported success
@@ -57,6 +65,10 @@ type Opts = {
   listingStatus?: string
   /** Rows the decision UPDATE reports back. [] simulates a lost race. */
   updatedRows?: { id: string }[]
+  /** 2026-10-11 (D-11): null exercises the no-playable-master refusal. */
+  audioFileUrl?: string | null
+  /** 2026-10-11 (D-11): [] exercises "outstanding clearance work". */
+  documents?: unknown[]
 }
 
 function mockService(opts: Opts) {
@@ -70,13 +82,18 @@ function mockService(opts: Opts) {
         title: 'A Song',
         isrc: null,
         iswc: null,
+        // 2026-10-11 (D-11): the admit bar requires a BOUND audio object, so
+        // every fixture needs one. Note what its absence did while this file
+        // was being updated — the three compare-and-set cases below failed for
+        // a reason that had nothing to do with the CAS.
+        audio_file_url: 'audioFileUrl' in opts ? opts.audioFileUrl : 'track-audio/artist-1/t1.wav',
         metadata: COMPLETE_METADATA,
         producers: [],
         mixing_engineer: null,
         mastering_engineer: null,
       },
     ],
-    vault_documents: COMPLETE_DOCS,
+    vault_documents: opts.documents ?? COMPLETE_DOCS,
     vault_assets: [{ id: 'a1', type: 'cover_art' }],
   }
 
@@ -157,32 +174,54 @@ beforeEach(() => {
 })
 
 describe('the admit gate agrees with the buyer gate', () => {
-  it("REFUSES an 'unreleased' listing the buyer surfaces cannot evaluate, and writes nothing", async () => {
-    const { update } = mockService({ projectType: 'unreleased' })
+  // ─── REVERSED 2026-10-11 by owner decision D-11 ───────────────────────
+  // This case and the one after it used to assert a 409 for an 'unreleased'
+  // listing, on the grounds that the buyer-side readiness registry could not
+  // answer the six-key question so no buyer would ever see the song. D-11
+  // removes the premise: readiness no longer controls discovery, so an
+  // unanswerable readiness question is no longer a reason to withhold
+  // admission. Replaced with the must-ADMIT case the plan calls for, rather
+  // than deleted, because "an unreleased track with outstanding clearance work
+  // IS admitted" is the single behaviour D-11 most needs pinned.
+  it("ADMITS an 'unreleased' track with NOTHING signed — clearance does not gate admission (D-11)", async () => {
+    const { update } = mockService({ projectType: 'unreleased', documents: [] })
+    const res = await decide('admit')
+
+    expect(res.status).toBe(200)
+    expect(update).toHaveBeenCalled()
+    expect(await res.json()).toEqual({ data: { listingId: 'L1', status: 'admitted' } })
+  })
+
+  it("REFUSES a track with no playable master, and writes nothing", async () => {
+    // The precondition that REPLACED the readiness refusal. D-11 requires a
+    // real bound audio object, "not merely the existence of a tracks row" —
+    // admitting without one publishes a listing no buyer can play.
+    const { update } = mockService({ projectType: 'unreleased', audioFileUrl: null })
     const res = await decide('admit')
     const body = await res.json()
 
     expect(res.status).toBe(409)
     expect(update).not.toHaveBeenCalled()
     expect(createNotification).not.toHaveBeenCalled()
-    expect(body.data.exposure.status).toBe('indeterminate')
+    expect(body.data.exposure).toBe('no_playable_master')
   })
 
-  it('names the missing evaluation inputs and NEVER blames the project type', async () => {
-    // Review H-03, caught twice in prose. Now an assertion.
-    mockService({ projectType: 'unreleased' })
+  it('names the missing master and NEVER blames the project type or the paperwork', async () => {
+    // Review H-03, caught twice in prose, then made an assertion. Retargeted at
+    // the new message rather than dropped — the discipline it enforces (never
+    // pressure staff into relabelling a truthful 'unreleased') is unchanged by
+    // D-11, and under D-11 the message must not blame clearance either.
+    mockService({ projectType: 'unreleased', audioFileUrl: null })
     const body = await (await decide('admit')).json()
     const message: string = body.error
 
-    // Names the cause.
-    expect(message).toContain('catalogue read paths')
-    for (const key of ['copyright', 'hire_right', 'metadata', 'visual_asset']) {
-      expect(message).toContain(key)
-    }
-    // Explicitly preserves the type.
-    expect(message).toContain('project type remains valid')
+    // Names the actual cause and what to do about it.
+    expect(message).toContain('no playable master')
+    expect(message).toContain('Upload the finished master')
+    // Explicitly clears the paperwork of blame.
+    expect(message).toContain('Outstanding rights paperwork is not a reason')
 
-    // And blames it in none of the forms the reviews rejected.
+    // And blames the type in none of the forms the reviews rejected.
     for (const forbidden of [
       'change type',
       'change the project type',
@@ -208,7 +247,7 @@ describe('the admit gate agrees with the buyer gate', () => {
     const body = await res.json()
     expect(res.status).toBe(409)
     expect(update).not.toHaveBeenCalled()
-    // The type gate's own shape, not the exposure check's.
+    // The type gate's own shape, not the master check's — it still runs FIRST.
     expect(body.data.projectType).toBe('snippet')
     expect(body.data.exposure).toBeUndefined()
   })

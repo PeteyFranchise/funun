@@ -15,8 +15,7 @@ import {
   isSyncRightsClear,
   syncIneligibleTypeReason,
 } from '@/lib/sync-library/readiness'
-import { syncReadinessCoverage } from '@/lib/deals/catalog'
-import { readinessItemsForProject } from '@/lib/vault/readiness'
+import { trackExposure } from '@/lib/sync-library/track-exposure'
 import type { VaultProjectType } from '@/types'
 
 // ─── POST /api/sync-library/admin/[listingId] ──────────────────────────
@@ -101,7 +100,7 @@ type TrackRow = { title: string }
 // property as "unknown, assume the requirement applies".
 const PROJECT_GATE_COLUMNS = `
   id, type,
-  tracks (id, title, isrc, iswc, metadata, producers, mixing_engineer, mastering_engineer),
+  tracks (id, title, isrc, iswc, audio_file_url, metadata, producers, mixing_engineer, mastering_engineer),
   vault_documents (id, type, status, track_id, document_data),
   vault_assets (id, type)
 `
@@ -114,6 +113,12 @@ type GateProjectRow = {
     title: string | null
     isrc: string | null
     iswc: string | null
+    /**
+     * D-11's playability precondition. Admitting a track with no bound audio
+     * object produces a listing no buyer can play, so the bar is checked here
+     * with the SAME trackExposure authority the buyer surfaces use.
+     */
+    audio_file_url: string | null
     metadata: Record<string, unknown> | null
     producers: string[] | null
     mixing_engineer: string | null
@@ -313,60 +318,61 @@ export async function POST(
       )
     }
 
-    // ─── EXPOSURE AGREEMENT: do not admit what no buyer can be shown ─────
-    // The admit gate above asks for the six sync items BY NAME, via
-    // syncReadinessForTrack's `onlyKeys: SYNC_READINESS_KEYS`. The buyer
-    // surfaces do not: all five isRightsReady call sites build their lists
-    // from the release-oriented applies_to registry, which emits only
-    // audio_files and split_sheets for 'unreleased'. So the two gates can
-    // disagree, and when they do the artist is notified of an admission no
-    // buyer can ever see (50-RESEARCH.md §7).
+    // ─── THE D-11 ADMISSION BAR: a playable finished master ──────────────
+    // SUPERSEDES the exposure-agreement refusal shipped in 357993db, which
+    // refused when syncReadinessCoverage returned 'indeterminate' — i.e. when
+    // the buyer-side readiness registry could not answer the six-key question.
+    // That check was correct for the model it was written against, where those
+    // six keys CONTROLLED buyer visibility, and it is wrong under D-11:
+    // readiness no longer controls discovery at all, so an unanswerable
+    // readiness question is no longer a reason to withhold admission. Exposure
+    // is decided per track from the track's own admitted listing and its bound
+    // master (lib/sync-library/track-exposure.ts), and the divergence that
+    // refusal was defending against no longer exists to defend against.
     //
-    // This asks the BUYER's question with the BUYER's inputs — same call
-    // shape as lib/deals/catalog-query.ts:323-328, deliberately WITHOUT
-    // onlyKeys. PROJECT_GATE_COLUMNS already selects everything it needs, so
-    // this adds no query and no service read.
-    const buyerSideItems = readinessItemsForProject({
-      type: project.type,
-      tracks: project.tracks ?? [],
-      assets: project.vault_assets ?? [],
-      documents: project.vault_documents ?? [],
+    // What replaces it is a genuine precondition rather than a paperwork one.
+    // D-11: "Any musically complete song with a playable finished master may
+    // appear in The Crate once staff admits that exact track" — and the master
+    // must be "proven by an actual bound audio object/path, not merely the
+    // existence of a tracks row". Admitting a track with no audio produces a
+    // listing that is admitted and unplayable: the artist is congratulated and
+    // no buyer can hear it, which is the same class of silent failure in a
+    // different place.
+    //
+    // Asked through trackExposure COUNTERFACTUALLY — `listingStatus:
+    // 'admitted'` is the "if I admit this now, would it be exposed?" question.
+    // Reading the row's real current status would ask something useless, since
+    // it is 'pending_admit' by definition here. Consuming the shared authority
+    // rather than re-testing audio_file_url inline is what keeps this gate and
+    // the buyer surfaces unable to disagree.
+    //
+    // Same discipline as every refusal above: 409, and the listing's status is
+    // left UNTOUCHED. Refusing to admit is not rejecting — the listing stays in
+    // the pipeline and staff can still reject it explicitly.
+    const postAdmitExposure = trackExposure({
+      trackId: track.id,
+      audioFileUrl: track.audio_file_url,
+      listingStatus: 'admitted',
     })
-    // `has_admitted_sync_listing: true` is COUNTERFACTUAL and must stay that
-    // way: the question is "if I admit this now, will the buyer gate render
-    // it?" Reading the project's real current admission state would ask a
-    // different and useless question, since it is false by definition here.
-    const exposure = syncReadinessCoverage(
-      { has_admitted_sync_listing: true, type: project.type },
-      buyerSideItems
-    )
-    // ONLY 'indeterminate' is refused. 'incomplete' means the paperwork is
-    // unfinished, which evaluateInclusionGate above already owns and which
-    // CSUB-13 may later stop blocking — this must never become a second
-    // rights gate. 'indeterminate' is different in kind: the registry cannot
-    // answer the six-key question for this project at all.
-    if (exposure.status === 'indeterminate') {
-      const missing = [...exposure.missingKeys].sort().join(', ')
+    if (postAdmitExposure.status !== 'exposed') {
       return NextResponse.json(
         {
-          // Names the MISSING EVALUATION INPUTS as the cause. Never the
-          // project type: unreleased songs are welcome in The Crate and
-          // potentially exclusive to it (owner decision D-5); what is refused
-          // is a song that SOUNDS unfinished, which is a staff quality
-          // judgment with its own mechanism (quality_ok). Telling staff a
-          // truthful type must change would pressure them to relabel an
-          // honest 'unreleased' as a released format to work around an
-          // implementation gap — the label-integrity failure fence
-          // constraints 10 and 11 exist to prevent. Nor is this a checklist
-          // anyone can finish; S5b fixes it at the five call sites.
+          // Names the actual missing artefact. Never the project type — an
+          // unreleased song is welcome in The Crate and potentially exclusive
+          // to it (owner decision D-5), and telling staff a truthful type must
+          // change would pressure them into relabelling an honest 'unreleased'
+          // as a released format to work around an implementation gap, which is
+          // the label-integrity failure fence constraints 10 and 11 exist to
+          // prevent. And never clearance: outstanding paperwork is explicitly
+          // NOT a reason to refuse admission under D-11.
           error:
-            `Buyer exposure cannot currently evaluate this listing: the catalogue read paths did not ` +
-            `receive the sync-specific requirement keys ${missing}. The listing was not admitted. ` +
-            `Its project type remains valid — S5b corrects the catalogue input.`,
+            'This song has no playable master file bound to it, so admitting it would publish a ' +
+            'listing no buyer can play. Upload the finished master, then admit it. ' +
+            'Outstanding rights paperwork is not a reason this was refused.',
           data: {
             listingId,
             status: row.status,
-            exposure: { status: exposure.status, missingKeys: exposure.missingKeys },
+            exposure: postAdmitExposure.status,
           },
         },
         { status: 409 }
