@@ -139,6 +139,20 @@ export default function SyncLandingPage() {
           </Link>
           <SyncAuthCTAs />
         </div>
+
+        {/* Label-signed artists (owner, 2026-10-11). Funūn represents independent
+            artists, so a supervisor who wants a song from a label roster would
+            otherwise read this page as "not for me" and leave. This says we can
+            still help.
+            DESTINATION IS UNRESOLVED: there is no buyer-facing contact route.
+            /sync/access is a SIGN-IN page, not a conversation, and the only
+            address in the codebase (jordan@funun.studio) appears solely in a test
+            fixture. So this is plain text until the owner supplies a real inbox or
+            a contact surface exists. Do not point it at sign-in. */}
+        <p className="bottom-aside">
+          Chasing a song from an artist signed to a label? We can help with that too.
+          Reach out and talk to us.
+        </p>
       </section>
     </div>
   )
@@ -204,6 +218,7 @@ const LANDING_CSS = `
 .featured-artist{margin:2px 12px 12px;font-size:12px;color:var(--ink-3);}
 .bottom-cta{margin-top:72px;text-align:center;border-top:1px solid var(--line);padding-top:44px;}
 .bottom-cta-text{font-size:20px;font-weight:700;color:var(--ink);}
+.bottom-aside{margin:26px auto 0;max-width:460px;font-size:13px;line-height:1.6;color:var(--ink-2);}
 @media (max-width: 720px){
   .value-row{grid-template-columns:1fr;}
   .featured-grid{grid-template-columns:repeat(2,1fr);}
