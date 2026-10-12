@@ -110,7 +110,7 @@ export default function SyncLandingPage() {
           ))}
         </div>
         <p className="featured-note">
-          Artwork shown for illustration. Browse the catalogue for the songs we represent.
+          Art here is for feel. The songs we represent live in the catalogue.
         </p>
       </section>
 

@@ -295,7 +295,7 @@ describe('no fabricated catalogue row can reach a buyer surface', () => {
     // and the filter copy would be a lie with nothing to come back to.
     const code = stripComments(crate)
     expect(code).toMatch(/rows\.length === 0/)
-    expect(code).toMatch(/Nothing in The Crate yet/)
+    expect(code).toMatch(/Nothing in here yet/)
   })
 })
 

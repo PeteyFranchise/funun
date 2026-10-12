@@ -639,8 +639,8 @@ export function CatalogBrowserLight({
         {rows.length === 0 ? (
           <div className="empty show">
             <div className="ei"><svg className="icn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3M8 11h6" /></svg></div>
-            <h3>Nothing in The Crate yet</h3>
-            <p>We’re onboarding artists now, and songs land here as they clear review. Tell us what you’re looking for and we’ll come to you when it arrives — or check back shortly.</p>
+            <h3>Nothing in here yet</h3>
+            <p>We’re bringing artists on now. Songs land as they clear review. Tell us what you’re looking for and we’ll come to you when something fits.</p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="empty show">

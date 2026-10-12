@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { FNBL_CSS } from '@/components/buyer/fnbl-theme'
+import { BrandPronunciation } from '@/components/brand/BrandPronunciation'
 
 // Public Help / How Licensing Works page (Lane 1 — step 1).
 // Reachable signed-in OR logged-out: /help is not in middleware's protected
@@ -14,9 +15,9 @@ export const metadata = {
 
 const STEPS: { t: string; d: string }[] = [
   { t: 'Browse & shortlist', d: 'Search the catalogue, filter by mood, energy, genre and more, preview tracks, and save favorites.' },
-  { t: 'Request a license', d: 'Pick a track and tell us the use — where it runs, territory, term, and whether you need exclusivity — plus your offer.' },
+  { t: 'Request a license', d: 'Pick a track and tell us the use. Where it runs, territory, term, whether you need exclusivity, plus your offer.' },
   { t: 'We handle the deal', d: 'A Funūn Account Executive reviews your request, confirms rights and pricing with the artist, and negotiates the terms.' },
-  { t: 'Sign', d: 'Once terms are agreed, the license is signed digitally — you get a clear, countersigned agreement.' },
+  { t: 'Sign', d: 'Once terms are agreed the license is signed digitally. You get a clear, countersigned agreement.' },
   { t: 'Get your files', d: 'The licensed master is delivered, cleared for the exact use you agreed to.' },
 ]
 
@@ -41,8 +42,8 @@ const STEPS: { t: string; d: string }[] = [
 // public page. A sample is now one named cause among several, not the headline.
 // WORDING IS PROVISIONAL pending counsel via slice S20.
 const BADGES: { cls: string; label: string; d: string }[] = [
-  { cls: 'ok', label: 'Rights ready', d: 'Cleared and ready to license — the fastest path from request to signed deal.' },
-  { cls: 'req', label: 'Clearance required — contact Funūn', d: 'Something still needs clearing before this one can be licensed — paperwork we’re finishing, a credit we’re confirming, or a sample that needs a third party’s sign-off. It’s in the catalogue because it’s real and it’s ours to offer; it isn’t cleared yet. Send the request anyway and we’ll tell you exactly where it stands and what it takes — no dates we can’t keep. And if the song’s right but the path isn’t, tell us the brief and we’ll see what else we can put in front of you.' },
+  { cls: 'ok', label: 'Rights ready', d: 'Cleared and ready to license. The fastest path from request to signed deal.' },
+  { cls: 'req', label: 'Clearance required', d: 'Something still needs clearing before we can license it. Could be paperwork we’re finishing, a credit we’re confirming, or a sample that needs a third party to sign off. It’s in the catalogue because it’s real and it’s ours to pitch, it’s just not cleared yet. Send the request anyway and we’ll tell you where it actually stands. We won’t quote you a date we can’t keep. If the song’s right but the path isn’t, send us the brief and we’ll see what else we can put in front of you.' },
 ]
 
 const FAQ: { q: string; a: string }[] = [
@@ -59,7 +60,10 @@ export default function HelpPage() {
 
       <header className="help-top">
         <Link href="/sync/catalog" className="help-brand">
-          <span className="brandmark gtext">FUNŪN</span>
+          <span className="help-brandrow">
+            <span className="brandmark gtext">FUNŪN</span>
+            <BrandPronunciation className="brandpron" />
+          </span>
           <span className="brandsub">THE ARTS</span>
         </Link>
         <Link href="/sync/catalog" className="help-back">Browse the catalogue →</Link>
@@ -138,7 +142,9 @@ export default function HelpPage() {
 const HELP_CSS = `
 .fnbl .help-top{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:26px 40px;max-width:1000px;margin:0 auto;}
 .fnbl .help-brand{text-decoration:none;display:inline-block;}
+.fnbl .help-brandrow{display:flex;align-items:baseline;gap:8px;}
 .fnbl .help-brand .brandmark{font-size:30px;font-weight:900;line-height:1;}
+.fnbl .help-brand .brandpron{font-size:10.5px;font-weight:500;letter-spacing:.01em;color:var(--ink-3);white-space:nowrap;}
 .fnbl .help-brand .brandsub{display:block;text-align:center;font-size:9px;letter-spacing:.4em;font-weight:700;color:var(--ink-3);margin-top:5px;}
 .fnbl .help-back{text-decoration:none;color:var(--indigo);font-size:14px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;}
 .fnbl .help-back:hover{color:var(--fuchsia);}
