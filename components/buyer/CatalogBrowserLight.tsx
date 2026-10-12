@@ -67,9 +67,10 @@ export type CatalogRow = {
   vocal: string
   instruments: string[]
   // 22-02 (slice 2c) — the real vault_projects id + track options the
-  // License modal needs to build a POST /api/buyer/requests body. Live rows
-  // carry the real ids; SAMPLE_CATALOG_ROWS carries synthetic ones (a submit
-  // over the fixture is expected to 404 at the route's authorization gate).
+  // License modal needs to build a POST /api/buyer/requests body. Every row
+  // now carries REAL ids: the synthetic-id fixture that used to reach this
+  // component was deleted 2026-10-11 (lib/deals/catalog-sample.ts), so a
+  // licence submit can no longer 404 on an invented project.
   vaultProjectId: string
   tracks: { id: string; title: string }[]
   // 30-08: staff-only layer — populated server-side ONLY when a
@@ -629,7 +630,19 @@ export function CatalogBrowserLight({
           </div>
         )}
 
-        {filtered.length === 0 ? (
+        {/* 2026-10-11: TWO distinct empty states, because they are different
+            facts. An empty CATALOGUE is not the same as filters that exclude
+            everything, and the filter copy ("drop one and tracks come back")
+            would be a lie when there is nothing to come back to. The fixture
+            fallback that used to hide this case was deleted — see
+            lib/deals/catalog-sample.ts. */}
+        {rows.length === 0 ? (
+          <div className="empty show">
+            <div className="ei"><svg className="icn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3M8 11h6" /></svg></div>
+            <h3>Nothing in The Crate yet</h3>
+            <p>We’re onboarding artists now, and songs land here as they clear review. Tell us what you’re looking for and we’ll come to you when it arrives — or check back shortly.</p>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="empty show">
             <div className="ei"><svg className="icn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3M8 11h6" /></svg></div>
             <h3>No tracks match those filters</h3>

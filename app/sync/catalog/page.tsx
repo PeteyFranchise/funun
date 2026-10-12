@@ -3,7 +3,7 @@ import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { buildCatalogFilter } from '@/lib/deals/catalog'
 import { loadCatalogPage } from '@/lib/deals/catalog-query'
 import { CatalogBrowserLight } from '@/components/buyer/CatalogBrowserLight'
-import { mapCardsToLightRows, SAMPLE_CATALOG_ROWS } from '@/lib/deals/catalog-sample'
+import { mapCardsToLightRows } from '@/lib/deals/catalog-sample'
 import { getStaffRole } from '@/lib/admin/gate'
 
 export const dynamic = 'force-dynamic'
@@ -56,9 +56,10 @@ export default async function CatalogPage() {
 
   if (!user) {
     const initial = await loadCatalogPage(service, null, filter, 1)
-    const liveRows = mapCardsToLightRows(initial.data)
-    const rows = liveRows.length > 0 ? liveRows : SAMPLE_CATALOG_ROWS
-    return <CatalogBrowserLight rows={rows} isPublic />
+    // 2026-10-11: no fixture fallback. An empty catalogue renders an honest
+    // empty state — see the SAMPLE_CATALOG_ROWS deletion note in
+    // lib/deals/catalog-sample.ts.
+    return <CatalogBrowserLight rows={mapCardsToLightRows(initial.data)} isPublic />
   }
 
   const { data: member } = await supabase
@@ -76,8 +77,9 @@ export default async function CatalogPage() {
   // CatalogCard[] (it must stay ignorant of the staff-only shape), so the
   // staff layer is zipped on here instead of widening that shared mapper.
   const staffById = new Map(initial.data.map(c => [c.id, c.staff]))
-  const rows0 = staffRole ? liveRows.map(r => ({ ...r, staff: staffById.get(r.id) })) : liveRows
-  const rows = rows0.length > 0 ? rows0 : SAMPLE_CATALOG_ROWS
+  const rows = staffRole ? liveRows.map(r => ({ ...r, staff: staffById.get(r.id) })) : liveRows
 
+  // 2026-10-11: no fixture fallback here either. Staff seeing invented songs
+  // is the same false claim as a buyer seeing them.
   return <CatalogBrowserLight rows={rows} embedded staffMode={staffRole} />
 }

@@ -399,7 +399,7 @@ export function projectMatchesUsageCleared(hasPreclearedTerms: boolean, filter: 
 // never ai_suggested/pending) into the plain display strings CatalogRow
 // expects. CatalogRow.mood/energy/vocal are single display strings, not
 // lists, so the headline mood is the first confirmed mood (mirrors the
-// SAMPLE_CATALOG_ROWS fixture's one-mood-per-row shape). Untagged/missing
+// the buyer table's one-mood-per-row shape). Untagged/missing
 // descriptors resolve to blank strings/empty array — never throw, never
 // synthesize a placeholder. Uses the SAME controlled vocab (MOOD_LABELS/
 // ENERGY_LABELS/VOCAL_LABELS/INSTRUMENT_LABELS, lib/metadata/schema.ts) the

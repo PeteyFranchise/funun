@@ -29,7 +29,12 @@ import path from 'path'
 import type { Stage3Result } from '@/lib/vault/stage3'
 import { rightsBadge, RIGHTS_BADGE_TO_CATALOG_RIGHTS } from '@/lib/sync-library/gate'
 import { catalogRightsFromStage3 } from '@/lib/deals/catalog'
-import { SAMPLE_CATALOG_ROWS } from '@/lib/deals/catalog-sample'
+
+// Comment-stripped scanning, reusing the stripper from the caller-lock suite
+// (which tests the stripper itself). The explanatory comments in this file name
+// SAMPLE_CATALOG_ROWS repeatedly, so without stripping the lock below would
+// fail against its own prose.
+import { stripComments } from './storage-usage-rpc-caller-lock.test'
 
 const read = (p: string) => readFileSync(path.join(process.cwd(), p), 'utf8')
 const helpPage = read('app/help/page.tsx')
@@ -247,16 +252,50 @@ describe('DRIFT GUARD: rightsBadge() still computes three states', () => {
   })
 })
 
-describe('the public catalogue fixture carries only buyer states', () => {
-  // SAMPLE_CATALOG_ROWS is the empty-state fallback on the PUBLIC /sync and
-  // /sync/catalog pages — a row here is a row a real buyer sees.
-  it("has no 'part' row", () => {
-    expect(SAMPLE_CATALOG_ROWS.filter(r => r.rights === 'part')).toEqual([])
+// ─── REPLACED 2026-10-11 (owner decision) ────────────────────────────────
+// This block asserted that SAMPLE_CATALOG_ROWS — the public empty-state
+// fixture — carried only the two buyer rights states. Its own comment said the
+// quiet part: "a row here is a row a real buyer sees."
+//
+// It was right about that and it was the wrong thing to guard. The owner-run
+// buyer-domain preflight proved every buyer table holds zero rows, so the
+// "fallback" was simply what the public catalogue rendered: eight invented
+// songs with invented artist names, synthetic project ids, and a licence button
+// that 404s. A catalogue of music Funūn does not represent is a false claim
+// about what is available to license.
+//
+// The fixture is deleted. What replaces this block is a LOCK: no hardcoded row
+// fixture may reach a buyer surface again. Checking the states of a fabricated
+// row is worthless next to ensuring no fabricated row exists.
+describe('no fabricated catalogue row can reach a buyer surface', () => {
+  const sample = read('lib/deals/catalog-sample.ts')
+
+  it('exports no row fixture from the buyer view-model module', () => {
+    // mapCardsToLightRows and gradientFor stay; a row array does not.
+    const code = stripComments(sample)
+    expect(code).not.toMatch(/export const \w*(SAMPLE|FIXTURE|DEMO|PLACEHOLDER)\w*/i)
+    expect(code).not.toMatch(/CatalogRow\[\]\s*=\s*\[/)
   })
 
-  it('still demonstrates both buyer states', () => {
-    expect(SAMPLE_CATALOG_ROWS.some(r => r.rights === 'ok')).toBe(true)
-    expect(SAMPLE_CATALOG_ROWS.some(r => r.rights === 'req')).toBe(true)
+  it('leaves the real mapper intact', () => {
+    // The deletion must not have taken the live path with it.
+    expect(stripComments(sample)).toContain('export function mapCardsToLightRows')
+  })
+
+  it('has no buyer render path importing a row fixture', () => {
+    for (const rel of ['app/sync/page.tsx', 'app/sync/catalog/page.tsx']) {
+      const code = stripComments(read(rel))
+      expect(code).not.toMatch(/SAMPLE_CATALOG_ROWS/)
+    }
+  })
+
+  it('renders an honest empty state instead of substituting rows', () => {
+    // The distinct zero-rows branch, separate from the filter-empty one: an
+    // empty catalogue is a different fact from filters excluding everything,
+    // and the filter copy would be a lie with nothing to come back to.
+    const code = stripComments(crate)
+    expect(code).toMatch(/rows\.length === 0/)
+    expect(code).toMatch(/Nothing in The Crate yet/)
   })
 })
 

@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { SAMPLE_CATALOG_ROWS } from '@/lib/deals/catalog-sample'
 import { SyncAuthCTAs } from '@/components/buyer/SyncAuthCTAs'
 
 // ─── /sync landing page ─────────────────────────────────────────────────
@@ -9,11 +8,23 @@ import { SyncAuthCTAs } from '@/components/buyer/SyncAuthCTAs'
 //
 // Fully renderable with no session: unlike app/sync/catalog/page.tsx (which
 // still self-gates for now — 23-03's scope), this page never calls
-// loadCatalogPage with a viewer id. The featured strip below reuses the
-// SAME representative fixture (SAMPLE_CATALOG_ROWS) the catalog page falls
-// back to when the live query has no rights-ready rows, rendered as a
-// small non-interactive strip (no play controls, no click-through) — the
-// full interactive browse lives at /sync/catalog.
+// loadCatalogPage with a viewer id.
+//
+// ─── THE STRIP BELOW IS AN ILLUSTRATION, NOT CATALOGUE CONTENT ───────────
+// It used to render SAMPLE_CATALOG_ROWS.slice(0, 4) — four invented songs with
+// invented artist names — UNCONDITIONALLY, under the heading "Featured
+// catalogue". Not a fallback: it showed fabricated songs even once real music
+// existed. Owner decision 2026-10-11: keep the visual, because it conveys what
+// the catalogue is, but it must never present a song or an artist that does not
+// exist.
+//
+// So it carries artwork and a genre/mood descriptor and NOTHING ELSE. No title,
+// no artist, no id, no link, no play control, and no coupling to the catalogue
+// data at all. There is nothing here a visitor could mistake for something they
+// could license, and nothing that needs updating when real music arrives.
+//
+// If this ever needs to show real songs, read them from loadCatalogPage — do not
+// reintroduce a fixture on a live render path.
 //
 // 23-07: the "Log in / Request access" CTA is now split into two buttons
 // (Log in / Request access), both rendered by the SyncAuthCTAs client
@@ -27,7 +38,14 @@ import { SyncAuthCTAs } from '@/components/buyer/SyncAuthCTAs'
 // cookies()/auth.getUser(), which makes the whole /sync route dynamic; this
 // page itself needs no session and stays trivially static-content-safe.
 
-const FEATURED = SAMPLE_CATALOG_ROWS.slice(0, 4)
+// Artwork only, with a descriptor of the KIND of music rather than a claim
+// about a specific recording. Covers live in public/buyer-catalogue/.
+const CATALOGUE_ILLUSTRATION: { art: string; descriptor: string }[] = [
+  { art: '/buyer-catalogue/paper.jpg', descriptor: 'Alt-pop · vocal · driving' },
+  { art: '/buyer-catalogue/moonlight.jpg', descriptor: 'Ambient · instrumental · cinematic' },
+  { art: '/buyer-catalogue/golden-hour.jpg', descriptor: 'Soul · vocal · warm' },
+  { art: '/buyer-catalogue/lantern.jpg', descriptor: 'Folk · vocal · pensive' },
+]
 
 export default function SyncLandingPage() {
   return (
@@ -80,21 +98,20 @@ export default function SyncLandingPage() {
         </div>
       </section>
 
-      {/* ─── Featured catalogue teaser ─── */}
-      <section className="featured">
-        <p className="featured-kicker">Featured catalogue</p>
+      {/* ─── What the catalogue looks like (illustration, not content) ─── */}
+      <section className="featured" aria-label="An illustration of the catalogue">
+        <p className="featured-kicker">What you’ll browse</p>
         <div className="featured-grid">
-          {FEATURED.map(row => (
-            <div key={row.id} className="featured-card">
-              <div
-                className="featured-art"
-                style={row.coverUrl ? { backgroundImage: `url(${row.coverUrl})` } : { background: row.gradient }}
-              />
-              <p className="featured-title">{row.title}</p>
-              <p className="featured-artist">{row.artist}</p>
+          {CATALOGUE_ILLUSTRATION.map(tile => (
+            <div key={tile.art} className="featured-card" aria-hidden="true">
+              <div className="featured-art" style={{ backgroundImage: `url(${tile.art})` }} />
+              <p className="featured-artist">{tile.descriptor}</p>
             </div>
           ))}
         </div>
+        <p className="featured-note">
+          Artwork shown for illustration. Browse the catalogue for the songs we represent.
+        </p>
       </section>
 
       {/* ─── Bottom CTA ─── */}
@@ -166,7 +183,8 @@ const LANDING_CSS = `
 .featured-grid{margin-top:16px;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
 .featured-card{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;}
 .featured-art{width:100%;aspect-ratio:1;background-size:cover;background-position:center;}
-.featured-title{margin:10px 12px 0;font-size:13px;font-weight:700;color:var(--ink);}
+
+.featured-note{margin-top:14px;text-align:center;font-size:12px;color:var(--ink-3);}
 .featured-artist{margin:2px 12px 12px;font-size:12px;color:var(--ink-3);}
 .bottom-cta{margin-top:72px;text-align:center;border-top:1px solid var(--line);padding-top:44px;}
 .bottom-cta-text{font-size:20px;font-weight:700;color:var(--ink);}
