@@ -55,7 +55,10 @@ import { SyncAuthCTAs } from '@/components/buyer/SyncAuthCTAs'
 // page itself needs no session and stays trivially static-content-safe.
 
 // Artwork only, with a descriptor of the KIND of music rather than a claim
-// about a specific recording. Covers live in public/buyer-catalogue/.
+// about a specific recording. Covers live in public/buyer-catalogue/, and are
+// FUNŪN'S OWN — owner-made in Midjourney to illustrate the idea, confirmed
+// 2026-10-11. No third-party rights question; see that folder's README before
+// asking again. Never attach a song title or an artist name to one of these.
 const CATALOGUE_ILLUSTRATION: { art: string; descriptor: string }[] = [
   { art: '/buyer-catalogue/paper.jpg', descriptor: 'Alt-pop · vocal · driving' },
   { art: '/buyer-catalogue/moonlight.jpg', descriptor: 'Ambient · instrumental · cinematic' },
