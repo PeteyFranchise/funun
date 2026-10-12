@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { FNBL_CSS } from '@/components/buyer/fnbl-theme'
+import { SYNC_CONTACT_EMAIL, syncContactHref } from '@/lib/sync-library/contact'
 import { BrandPronunciation } from '@/components/brand/BrandPronunciation'
 
 // Public Help / How Licensing Works page (Lane 1 — step 1).
@@ -131,6 +132,10 @@ export default function HelpPage() {
           <div>
             <h2>Ready to find your track?</h2>
             <p>Browse the full catalogue, preview anything, and send a request when you’re ready.</p>
+            <p className="help-contact">
+              Questions about sync, representation, or getting a song into the catalogue?{' '}
+              <a href={syncContactHref('Sync question')}>{SYNC_CONTACT_EMAIL}</a>
+            </p>
           </div>
           <Link href="/sync/catalog" className="help-cta-btn">Browse the catalogue</Link>
         </section>
@@ -140,6 +145,9 @@ export default function HelpPage() {
 }
 
 const HELP_CSS = `
+.fnbl .help-contact{margin-top:10px;font-size:13px;color:var(--ink-3);}
+.fnbl .help-contact a{color:var(--indigo);font-weight:700;text-decoration:none;}
+.fnbl .help-contact a:hover{color:var(--fuchsia);}
 .fnbl .help-top{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:26px 40px;max-width:1000px;margin:0 auto;}
 .fnbl .help-brand{text-decoration:none;display:inline-block;}
 .fnbl .help-brandrow{display:flex;align-items:baseline;gap:8px;}

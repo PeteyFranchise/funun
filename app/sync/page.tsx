@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { syncContactHref } from '@/lib/sync-library/contact'
 import { SyncAuthCTAs } from '@/components/buyer/SyncAuthCTAs'
 
 // ─── /sync landing page ─────────────────────────────────────────────────
@@ -144,14 +145,15 @@ export default function SyncLandingPage() {
             artists, so a supervisor who wants a song from a label roster would
             otherwise read this page as "not for me" and leave. This says we can
             still help.
-            DESTINATION IS UNRESOLVED: there is no buyer-facing contact route.
-            /sync/access is a SIGN-IN page, not a conversation, and the only
-            address in the codebase (jordan@funun.studio) appears solely in a test
-            fixture. So this is plain text until the owner supplies a real inbox or
-            a contact surface exists. Do not point it at sign-in. */}
+            Destination resolved 2026-10-11: the owner created sync@funun.studio
+            for exactly this. It is NOT /sync/access, which is a sign-in page, so
+            do not repoint it there. */}
         <p className="bottom-aside">
-          Chasing a song from an artist signed to a label? We can help with that too.
-          Reach out and talk to us.
+          Chasing a song from an artist signed to a label? We can help with that too.{' '}
+          <a className="bottom-aside-link" href={syncContactHref('Licensing a label-signed artist')}>
+            Talk to us
+          </a>
+          .
         </p>
       </section>
     </div>
@@ -219,6 +221,8 @@ const LANDING_CSS = `
 .bottom-cta{margin-top:72px;text-align:center;border-top:1px solid var(--line);padding-top:44px;}
 .bottom-cta-text{font-size:20px;font-weight:700;color:var(--ink);}
 .bottom-aside{margin:26px auto 0;max-width:460px;font-size:13px;line-height:1.6;color:var(--ink-2);}
+.bottom-aside-link{color:var(--indigo);font-weight:700;text-decoration:none;}
+.bottom-aside-link:hover{color:var(--fuchsia);}
 @media (max-width: 720px){
   .value-row{grid-template-columns:1fr;}
   .featured-grid{grid-template-columns:repeat(2,1fr);}

@@ -14,6 +14,7 @@ import {
 import { buildRequestBody } from '@/lib/deals/request-payload'
 import { FNBL_CSS } from '@/components/buyer/fnbl-theme'
 import { LoginRegisterModal } from '@/components/buyer/LoginRegisterModal'
+import { syncContactHref } from '@/lib/sync-library/contact'
 import { BRIEF_APPLY_KEY, RERANK_CAND_CAP, coerceBrief, briefToCrateFilters, type BriefCandidate } from '@/lib/buyer/brief'
 
 // ─── CatalogBrowserLight ──────────────────────────────────────────────────
@@ -640,7 +641,9 @@ export function CatalogBrowserLight({
           <div className="empty show">
             <div className="ei"><svg className="icn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3M8 11h6" /></svg></div>
             <h3>Nothing in here yet</h3>
-            <p>We’re bringing artists on now. Songs land as they clear review. Tell us what you’re looking for and we’ll come to you when something fits.</p>
+            <p>We’re bringing artists on now. Songs land as they clear review.{' '}
+              <a className="empty-link" href={syncContactHref('What I’m looking for')}>Tell us what you’re looking for</a>{' '}
+              and we’ll come to you when something fits.</p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="empty show">
@@ -1036,6 +1039,8 @@ const CSS = `
 .fnbl .empty .ei{width:70px;height:70px;border-radius:18px;background:var(--wash);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--indigo);margin-bottom:22px;}
 .fnbl .empty .ei svg{width:31px;height:31px;stroke-width:1.7;}
 .fnbl .empty h3{font-size:24px;font-weight:800;margin:0;}
+.empty-link{color:var(--indigo);font-weight:700;text-decoration:underline;text-underline-offset:2px;}
+.empty-link:hover{color:var(--fuchsia);}
 .fnbl .empty p{font-size:16px;color:var(--ink-2);margin:11px 0 0;line-height:1.55;max-width:48ch;}
 .fnbl .empty .cta{margin-top:24px;border:none;border-radius:10px;background:var(--grad);color:#fff;font-size:15px;font-weight:800;padding:15px 26px;}
 .fnbl .mini{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);box-shadow:0 -14px 40px -18px rgba(36,26,77,.22);z-index:80;transform:translateY(100%);transition:transform .34s cubic-bezier(.22,.61,.36,1);}
