@@ -10,6 +10,21 @@ import { SyncAuthCTAs } from '@/components/buyer/SyncAuthCTAs'
 // still self-gates for now — 23-03's scope), this page never calls
 // loadCatalogPage with a viewer id.
 //
+// ─── COPY CORRECTED 2026-10-11: THIS PAGE MADE FALSE RIGHTS CLAIMS ──────
+// The hero promised "a rights-ready catalog" and a value card promised
+// "Rights-ready by default / Every project you see has already cleared Funūn's
+// readiness gate, split sheets, registrations, and metadata are locked in before
+// it ever reaches you."
+//
+// Owner decision D-11 reversed that: an admitted song stays discoverable WHILE
+// clearance work continues, so a buyer routinely sees songs whose paperwork is
+// open. D-14 went further on one item, making copyright registration encouraged
+// rather than required. And the card said "project" where the unit is a song
+// (D-13). Four false claims about rights standing, on a public page.
+//
+// The replacement sells the transparency instead, which is both true and the
+// better pitch: we tell you which songs are cleared and which are not.
+//
 // ─── THE STRIP BELOW IS AN ILLUSTRATION, NOT CATALOGUE CONTENT ───────────
 // It used to render SAMPLE_CATALOG_ROWS.slice(0, 4) — four invented songs with
 // invented artist names — UNCONDITIONALLY, under the heading "Featured
@@ -62,8 +77,8 @@ export default function SyncLandingPage() {
         <p className="kicker">FUNŪN SYNC</p>
         <h1 className="headline">License independent music, direct.</h1>
         <p className="sub">
-          Browse a rights-ready catalog of independent artists and request a sync license —
-          Funūn handles clearance, negotiation, and paperwork end to end.
+          Browse independent music and tell us the use you have in mind. We handle
+          clearance, negotiation and the paperwork.
         </p>
         <div className="ctas">
           <Link href="/sync/catalog" className="cta cta-primary">
@@ -76,24 +91,25 @@ export default function SyncLandingPage() {
       {/* ─── Value prop row ─── */}
       <section className="value-row">
         <div className="value-card">
-          <p className="value-title">Rights-ready by default</p>
+          <p className="value-title">You know where every song stands</p>
           <p className="value-body">
-            Every project you see has already cleared Funūn&apos;s readiness gate — split
-            sheets, registrations, and metadata are locked in before it ever reaches you.
+            Every song here is admitted and ours to pitch. Some are cleared and ready to
+            license. Some still have paperwork we&rsquo;re finishing, and we tell you which
+            before you ask.
           </p>
         </div>
         <div className="value-card">
-          <p className="value-title">Direct to independent artists</p>
+          <p className="value-title">Straight from the artist</p>
           <p className="value-body">
-            No aggregator layer, no stale library. You&apos;re licensing straight from the
+            No aggregator layer, no stale library. You&rsquo;re licensing from independent
             artists building their careers on Funūn.
           </p>
         </div>
         <div className="value-card">
-          <p className="value-title">Fast, transparent licensing</p>
+          <p className="value-title">One place to track it</p>
           <p className="value-body">
-            Submit a request with your usage, territory, and budget — your whole team sees
-            it move through the same dashboard, in real time.
+            Send a request with your use, territory and budget. Your whole team watches it
+            move in the same dashboard.
           </p>
         </div>
       </section>
@@ -110,7 +126,7 @@ export default function SyncLandingPage() {
           ))}
         </div>
         <p className="featured-note">
-          Art here is for feel. The songs we represent live in the catalogue.
+          Art here is for feel. The songs we represent live in the catalog.
         </p>
       </section>
 
