@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { FNBL_CSS } from '@/components/buyer/fnbl-theme'
 import { SYNC_CONTACT_EMAIL, syncContactHref } from '@/lib/sync-library/contact'
-import { BrandPronunciation } from '@/components/brand/BrandPronunciation'
 
 // Public Help / How Licensing Works page (Lane 1 — step 1).
 // Reachable signed-in OR logged-out: /help is not in middleware's protected
@@ -61,10 +60,7 @@ export default function HelpPage() {
 
       <header className="help-top">
         <Link href="/sync/catalog" className="help-brand">
-          <span className="help-brandrow">
-            <span className="brandmark gtext">FUNŪN</span>
-            <BrandPronunciation className="brandpron" />
-          </span>
+          <span className="brandmark gtext">FUNŪN</span>
           <span className="brandsub">THE ARTS</span>
         </Link>
         <Link href="/sync/catalog" className="help-back">Browse the catalogue →</Link>
@@ -150,9 +146,7 @@ const HELP_CSS = `
 .fnbl .help-contact a:hover{color:var(--fuchsia);}
 .fnbl .help-top{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:26px 40px;max-width:1000px;margin:0 auto;}
 .fnbl .help-brand{text-decoration:none;display:inline-block;}
-.fnbl .help-brandrow{display:flex;align-items:baseline;gap:8px;}
 .fnbl .help-brand .brandmark{font-size:30px;font-weight:900;line-height:1;}
-.fnbl .help-brand .brandpron{font-size:10.5px;font-weight:500;letter-spacing:.01em;color:var(--ink-3);white-space:nowrap;}
 .fnbl .help-brand .brandsub{display:block;text-align:center;font-size:9px;letter-spacing:.4em;font-weight:700;color:var(--ink-3);margin-top:5px;}
 .fnbl .help-back{text-decoration:none;color:var(--indigo);font-size:14px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;}
 .fnbl .help-back:hover{color:var(--fuchsia);}
