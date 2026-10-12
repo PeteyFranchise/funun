@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { SAMPLE_CATALOG_ROWS } from '@/lib/deals/catalog-sample'
+import { syncContactHref } from '@/lib/sync-library/contact'
 import { SyncAuthCTAs } from '@/components/buyer/SyncAuthCTAs'
 
 // ─── /sync landing page ─────────────────────────────────────────────────
@@ -9,11 +9,38 @@ import { SyncAuthCTAs } from '@/components/buyer/SyncAuthCTAs'
 //
 // Fully renderable with no session: unlike app/sync/catalog/page.tsx (which
 // still self-gates for now — 23-03's scope), this page never calls
-// loadCatalogPage with a viewer id. The featured strip below reuses the
-// SAME representative fixture (SAMPLE_CATALOG_ROWS) the catalog page falls
-// back to when the live query has no rights-ready rows, rendered as a
-// small non-interactive strip (no play controls, no click-through) — the
-// full interactive browse lives at /sync/catalog.
+// loadCatalogPage with a viewer id.
+//
+// ─── COPY CORRECTED 2026-10-11: THIS PAGE MADE FALSE RIGHTS CLAIMS ──────
+// The hero promised "a rights-ready catalog" and a value card promised
+// "Rights-ready by default / Every project you see has already cleared Funūn's
+// readiness gate, split sheets, registrations, and metadata are locked in before
+// it ever reaches you."
+//
+// Owner decision D-11 reversed that: an admitted song stays discoverable WHILE
+// clearance work continues, so a buyer routinely sees songs whose paperwork is
+// open. D-14 went further on one item, making copyright registration encouraged
+// rather than required. And the card said "project" where the unit is a song
+// (D-13). Four false claims about rights standing, on a public page.
+//
+// The replacement sells the transparency instead, which is both true and the
+// better pitch: we tell you which songs are cleared and which are not.
+//
+// ─── THE STRIP BELOW IS AN ILLUSTRATION, NOT CATALOGUE CONTENT ───────────
+// It used to render SAMPLE_CATALOG_ROWS.slice(0, 4) — four invented songs with
+// invented artist names — UNCONDITIONALLY, under the heading "Featured
+// catalogue". Not a fallback: it showed fabricated songs even once real music
+// existed. Owner decision 2026-10-11: keep the visual, because it conveys what
+// the catalogue is, but it must never present a song or an artist that does not
+// exist.
+//
+// So it carries artwork and a genre/mood descriptor and NOTHING ELSE. No title,
+// no artist, no id, no link, no play control, and no coupling to the catalogue
+// data at all. There is nothing here a visitor could mistake for something they
+// could license, and nothing that needs updating when real music arrives.
+//
+// If this ever needs to show real songs, read them from loadCatalogPage — do not
+// reintroduce a fixture on a live render path.
 //
 // 23-07: the "Log in / Request access" CTA is now split into two buttons
 // (Log in / Request access), both rendered by the SyncAuthCTAs client
@@ -27,7 +54,17 @@ import { SyncAuthCTAs } from '@/components/buyer/SyncAuthCTAs'
 // cookies()/auth.getUser(), which makes the whole /sync route dynamic; this
 // page itself needs no session and stays trivially static-content-safe.
 
-const FEATURED = SAMPLE_CATALOG_ROWS.slice(0, 4)
+// Artwork only, with a descriptor of the KIND of music rather than a claim
+// about a specific recording. Covers live in public/buyer-catalogue/, and are
+// FUNŪN'S OWN — owner-made in Midjourney to illustrate the idea, confirmed
+// 2026-10-11. No third-party rights question; see that folder's README before
+// asking again. Never attach a song title or an artist name to one of these.
+const CATALOGUE_ILLUSTRATION: { art: string; descriptor: string }[] = [
+  { art: '/buyer-catalogue/paper.jpg', descriptor: 'Alt-pop · vocal · driving' },
+  { art: '/buyer-catalogue/moonlight.jpg', descriptor: 'Ambient · instrumental · cinematic' },
+  { art: '/buyer-catalogue/golden-hour.jpg', descriptor: 'Soul · vocal · warm' },
+  { art: '/buyer-catalogue/lantern.jpg', descriptor: 'Folk · vocal · pensive' },
+]
 
 export default function SyncLandingPage() {
   return (
@@ -44,8 +81,8 @@ export default function SyncLandingPage() {
         <p className="kicker">FUNŪN SYNC</p>
         <h1 className="headline">License independent music, direct.</h1>
         <p className="sub">
-          Browse a rights-ready catalog of independent artists and request a sync license —
-          Funūn handles clearance, negotiation, and paperwork end to end.
+          Browse independent music and tell us the use you have in mind. We handle
+          clearance, negotiation and the paperwork.
         </p>
         <div className="ctas">
           <Link href="/sync/catalog" className="cta cta-primary">
@@ -58,43 +95,43 @@ export default function SyncLandingPage() {
       {/* ─── Value prop row ─── */}
       <section className="value-row">
         <div className="value-card">
-          <p className="value-title">Rights-ready by default</p>
+          <p className="value-title">You know where every song stands</p>
           <p className="value-body">
-            Every project you see has already cleared Funūn&apos;s readiness gate — split
-            sheets, registrations, and metadata are locked in before it ever reaches you.
+            Every song here is admitted and ours to pitch. Some are cleared and ready to
+            license. Some still have paperwork we&rsquo;re finishing, and we tell you which
+            before you ask.
           </p>
         </div>
         <div className="value-card">
-          <p className="value-title">Direct to independent artists</p>
+          <p className="value-title">Straight from the artist</p>
           <p className="value-body">
-            No aggregator layer, no stale library. You&apos;re licensing straight from the
+            No aggregator layer, no stale library. You&rsquo;re licensing from independent
             artists building their careers on Funūn.
           </p>
         </div>
         <div className="value-card">
-          <p className="value-title">Fast, transparent licensing</p>
+          <p className="value-title">One place to track it</p>
           <p className="value-body">
-            Submit a request with your usage, territory, and budget — your whole team sees
-            it move through the same dashboard, in real time.
+            Send a request with your use, territory and budget. Your whole team watches it
+            move in the same dashboard.
           </p>
         </div>
       </section>
 
-      {/* ─── Featured catalogue teaser ─── */}
-      <section className="featured">
-        <p className="featured-kicker">Featured catalogue</p>
+      {/* ─── What the catalogue looks like (illustration, not content) ─── */}
+      <section className="featured" aria-label="An illustration of the catalogue">
+        <p className="featured-kicker">What you’ll browse</p>
         <div className="featured-grid">
-          {FEATURED.map(row => (
-            <div key={row.id} className="featured-card">
-              <div
-                className="featured-art"
-                style={row.coverUrl ? { backgroundImage: `url(${row.coverUrl})` } : { background: row.gradient }}
-              />
-              <p className="featured-title">{row.title}</p>
-              <p className="featured-artist">{row.artist}</p>
+          {CATALOGUE_ILLUSTRATION.map(tile => (
+            <div key={tile.art} className="featured-card" aria-hidden="true">
+              <div className="featured-art" style={{ backgroundImage: `url(${tile.art})` }} />
+              <p className="featured-artist">{tile.descriptor}</p>
             </div>
           ))}
         </div>
+        <p className="featured-note">
+          Art here is for feel. The songs we represent live in the catalog.
+        </p>
       </section>
 
       {/* ─── Bottom CTA ─── */}
@@ -106,6 +143,21 @@ export default function SyncLandingPage() {
           </Link>
           <SyncAuthCTAs />
         </div>
+
+        {/* Label-signed artists (owner, 2026-10-11). Funūn represents independent
+            artists, so a supervisor who wants a song from a label roster would
+            otherwise read this page as "not for me" and leave. This says we can
+            still help.
+            Destination resolved 2026-10-11: the owner created sync@funun.studio
+            for exactly this. It is NOT /sync/access, which is a sign-in page, so
+            do not repoint it there. */}
+        <p className="bottom-aside">
+          Chasing a song from an artist signed to a label? We can help with that too.{' '}
+          <a className="bottom-aside-link" href={syncContactHref('Licensing a label-signed artist')}>
+            Talk to us
+          </a>
+          .
+        </p>
       </section>
     </div>
   )
@@ -166,10 +218,14 @@ const LANDING_CSS = `
 .featured-grid{margin-top:16px;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
 .featured-card{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;}
 .featured-art{width:100%;aspect-ratio:1;background-size:cover;background-position:center;}
-.featured-title{margin:10px 12px 0;font-size:13px;font-weight:700;color:var(--ink);}
+
+.featured-note{margin-top:14px;text-align:center;font-size:12px;color:var(--ink-3);}
 .featured-artist{margin:2px 12px 12px;font-size:12px;color:var(--ink-3);}
 .bottom-cta{margin-top:72px;text-align:center;border-top:1px solid var(--line);padding-top:44px;}
 .bottom-cta-text{font-size:20px;font-weight:700;color:var(--ink);}
+.bottom-aside{margin:26px auto 0;max-width:460px;font-size:13px;line-height:1.6;color:var(--ink-2);}
+.bottom-aside-link{color:var(--indigo);font-weight:700;text-decoration:none;}
+.bottom-aside-link:hover{color:var(--fuchsia);}
 @media (max-width: 720px){
   .value-row{grid-template-columns:1fr;}
   .featured-grid{grid-template-columns:repeat(2,1fr);}
