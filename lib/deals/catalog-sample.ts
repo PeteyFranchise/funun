@@ -60,7 +60,12 @@ export function mapCardsToLightRows(cards: CatalogCard[]): CatalogRow[] {
     energy: c.energy,
     length: '',
     versions: Math.max(1, c.tracks.length),
-    rights: c.rights, // real tri-state, derived from the sync-library rights signal
+    // 50.5 Task 3 — THE BUYER BOUNDARY. CatalogCard.rights is CatalogRightsCode
+    // ('ok'|'part'|'req') because catalogRightsFromStage3() can still produce
+    // 'part' for staff review. The buyer row is two-state, so anything that is
+    // not 'ok' maps to 'req' here. Internal partial progress never reaches a
+    // buyer as its own label.
+    rights: c.rights === 'ok' ? 'ok' : 'req',
     dynamics: 'steady' as const,
     mood: c.mood,
     vocal: c.vocal,

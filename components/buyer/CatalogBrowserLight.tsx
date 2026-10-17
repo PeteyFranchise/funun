@@ -49,7 +49,7 @@ import { BRIEF_APPLY_KEY, RERANK_CAND_CAP, coerceBrief, briefToCrateFilters, typ
 // reach for the dark Team Console's .fncon tokens, which would not resolve
 // inside this light-themed component.
 
-export type CatalogRights = 'ok' | 'part' | 'req'
+export type CatalogRights = 'ok' | 'req'
 export type Dynamics = 'twin' | 'steady' | 'build' | 'fade' | 'peak'
 
 export type CatalogRow = {
@@ -116,9 +116,9 @@ const FILTER_OPTIONS: Record<FilterKey, string[]> = {
   // rest of the slice. Sample status is still carried, itemised, in
   // TrackClearance.outstanding; it is no longer the headline.
   //
-  // 'Partial' is still deliberately NOT offered: clearanceToCatalogRights never
-  // emits 'part', so an option for it would always be empty, and an
-  // always-empty filter option reads as broken.
+  // 'Partial' is not offered and no longer exists in the buyer type at all
+  // (50.5 Task 3). clearanceToCatalogRights never emitted it; the type now
+  // agrees with the producer.
   // See .planning/deliberations/2026-10-10-owner-decisions-phase-50-rescope.md
   // (D-11) and 50-REVIEWS.md finding F2.
   //
@@ -129,22 +129,26 @@ const FILTER_OPTIONS: Record<FilterKey, string[]> = {
 const FILTER_KEYS = Object.keys(FILTER_OPTIONS) as FilterKey[]
 const SORTS = ['Best match', 'Newest', 'Most licensed', 'Shortest first'] as const
 
-// Both maps keep the `part` key even though FILTER_OPTIONS.Rights no longer
-// offers 'Partial' and the help page no longer defines it. rightsBadge()
-// (lib/sync-library/gate.ts) still returns 'partial' — staff Crate review
-// needs it for a part-way, unadmitted submission — so a legacy or
-// mid-migration row can still arrive here carrying `rights: 'part'`. Keeping
-// the Record<CatalogRights, string> exhaustive means such a row renders a
-// label instead of `undefined`, and never matches an active Rights filter
-// (which is correct: it is not one of the two buyer states).
-// Do NOT narrow CatalogRights to two members.
-const RIGHTS_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', part: 'Partial rights', req: 'Clearance required' }
+// 50.5 Task 3: the buyer contract is TWO states and the type now says so.
+//
+// The previous comment here kept a `part` key against "a legacy or
+// mid-migration row". That reasoning was stale: a row's `rights` is COMPUTED
+// per request, never stored, so no row can carry a value forward. The single
+// production producer is catalog-query.ts:502 -> clearanceToCatalogRights(),
+// which returns 'ok' | 'req' only (lib/sync-library/track-clearance.ts:152).
+// catalogRightsFromStage3() can still return 'part' but has NO production
+// caller — only comments and its own tests.
+//
+// rightsBadge() keeps 'partial' for staff review of a part-way submission.
+// That is internal: it maps to 'req' at every buyer boundary
+// (see mapCardsToLightRows in lib/deals/catalog-sample.ts).
+const RIGHTS_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', req: 'Clearance required' }
 // COUPLING: matchesFilters() does `sel.Rights.has(RIGHTS_FILTER_LABEL[row.rights])`,
 // so every value offered in FILTER_OPTIONS.Rights must appear here VERBATIM.
 // Change one without the other and the filter silently matches nothing — it
 // looks like an empty catalogue, not like a bug. Guarded by
 // __tests__/buyer-rights-two-states.test.ts.
-const RIGHTS_FILTER_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', part: 'Partial', req: 'Clearance required' }
+const RIGHTS_FILTER_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', req: 'Clearance required' }
 const DYN_LABEL: Record<Dynamics, string> = { build: 'Builds', steady: 'Steady', twin: 'Two peaks', peak: 'Two peaks', fade: 'Fades' }
 // 30-08: staff-only readinessStatus display labels — falls back to the raw
 // value for any status this map doesn't recognize (never throws).
@@ -223,16 +227,12 @@ function DynGlyph({ shape }: { shape: Dynamics }) {
   return (<svg className="dyn" width="104" height="26" viewBox="0 0 104 26" aria-hidden>{paths[shape]}</svg>)
 }
 
-// Renders all three codes. 'part' is not a state a buyer-visible row should
-// reach (see FILTER_OPTIONS.Rights above), but a legacy row carrying it must
-// still render a real badge rather than fall through to the 'req' envelope
-// icon and mislabel itself. Retained deliberately, not offered as a filter.
+// Renders the two buyer states. Both are reachable and both are honest:
+// 'ok' says the rights information is in place, 'req' says talk to us.
 function RightsBadge({ rights }: { rights: CatalogRights }) {
   const icon = rights === 'ok'
     ? (<><path d="M12 3 4 7v6c0 5 3.4 7.4 8 8 4.6-.6 8-3 8-8V7z" /><path d="m9 12 2 2 4-4" /></>)
-    : rights === 'part'
-      ? (<><circle cx="12" cy="12" r="9" /><path d="M12 3v18a9 9 0 0 0 0-18" /></>)
-      : (<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 8 9 5 9-5" /></>)
+    : (<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 8 9 5 9-5" /></>)
   return (<span className={`rights ${rights}`}><svg className="icn" viewBox="0 0 24 24">{icon}</svg>{RIGHTS_LABEL[rights]}</span>)
 }
 
@@ -1026,7 +1026,6 @@ const CSS = `
 .fnbl .rights{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;padding:4px 9px;border-radius:6px;margin-top:9px;letter-spacing:.02em;white-space:nowrap;}
 .fnbl .rights svg{width:12px;height:12px;stroke-width:2.4;flex:none;}
 .fnbl .rights.ok{color:var(--ok-fg);background:var(--ok-bg);border:1px solid var(--ok-line);}
-.fnbl .rights.part{color:var(--part-fg);background:var(--part-bg);border:1px solid var(--part-line);}
 .fnbl .rights.req{color:var(--req-fg);background:var(--req-bg);border:1px solid var(--req-line);}
 /* 30-08: staff-only panel — light .fnbl tokens ONLY, never .fncon (Pitfall 4). */
 .fnbl .staffpanel{display:flex;flex-wrap:wrap;align-items:center;gap:8px 22px;margin:-2px 6px 4px;padding:12px 16px;border-radius:10px;background:var(--wash);border:1px dashed var(--line-2);font-size:12.5px;color:var(--ink-2);}
