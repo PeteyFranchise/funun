@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { isReadWithheld } from '@/lib/deals/buyer-song-unit-read-withholding'
 import Link from 'next/link'
 import {
   DEAL_STAGE_VALUES,
@@ -165,7 +166,11 @@ export function DealsQueue({ initialRows }: { initialRows: AdminDealRow[] }) {
                     </p>
                     <p className="mt-0.5 text-xs text-white/50">
                       {row.projectTitle}
-                      {row.projectReadinessScore != null && (
+                      {/* 50.5 Task 2 — WITHHELD. This is the PROJECT's release
+                          readiness, shown beside a deal whose subject is one
+                          song. A number that looks like an answer and is not is
+                          the owner_segment lesson this repo already paid for. */}
+                      {!isReadWithheld('project_readiness_figure') && row.projectReadinessScore != null && (
                         <span className="text-white/30"> · {row.projectReadinessScore}% ready</span>
                       )}
                     </p>

@@ -14,6 +14,10 @@ import {
   type ListingStatusRow,
 } from '@/lib/sync-library/track-exposure'
 import {
+  isReadWithheld,
+  STAFF_RIGHTS_DETAIL_WITHHELD,
+} from '@/lib/deals/buyer-song-unit-read-withholding'
+import {
   trackClearance,
   clearanceToCatalogRights,
   type TrackClearance,
@@ -331,7 +335,12 @@ export async function loadCatalogPage(
   // Usage-cleared filter (D-15): one batched existence check against
   // project_license_terms, not a per-project query.
   let preclearedProjectIds = new Set<string>()
-  if (filter.usageCleared) {
+  // 50.5 Task 2 — WITHHELD. This existence check is against
+  // project_license_terms, so one project row clears every song in it. Fail
+  // closed: match nothing rather than vouch for songs whose terms were never
+  // written. The filter affordance is removed from the buyer UI alongside this,
+  // so an empty result is not what a user sees.
+  if (filter.usageCleared && !isReadWithheld('usage_cleared_filter')) {
     const { data: termsRows } = await service
       .from('project_license_terms')
       .select('vault_project_id')
@@ -499,7 +508,16 @@ export async function loadCatalogPage(
       // considered (the terminal listing state and AI provenance). 'part'
       // therefore stops being emitted here; the distinction it drew survives
       // itemised in TrackClearance.outstanding, which S5c renders.
-      rights: clearanceToCatalogRights(clearanceByTrack.get(representativeTrack.id)?.status),
+      // 50.5 Task 2 — WITHHELD. The badge below reads the REPRESENTATIVE
+      // exposed track's clearance and renders it for the whole card, so a
+      // multi-song project shows one sibling's answer as every song's. Until
+      // the row is one captured song, fail closed to 'req' (contact Funūn)
+      // rather than publish a borrowed answer. Note this is also what every
+      // song resolves to today anyway, because aiProvenance is passed null
+      // below and trackClearance treats unresolved as not cleared.
+      rights: isReadWithheld('buyer_clearance_badge')
+        ? 'req'
+        : clearanceToCatalogRights(clearanceByTrack.get(representativeTrack.id)?.status),
       // C-01 (.planning/deliberations/2026-10-05-pass-5-rights-eligibility-
       // review.md): admission is song-level (26-06), so a card must never
       // imply a track is licensable just because a project sibling is
@@ -535,8 +553,12 @@ export async function loadCatalogPage(
       const repListing = representativeTrack
         ? projectListings.find(l => l.track_id === representativeTrack.id) ?? null
         : null
-      const artistNotes =
-        repListing?.staff_notes ?? projectListings.find(l => l.staff_notes != null)?.staff_notes ?? null
+      // 50.5 Task 2 — WITHHELD fallback. The second clause takes a note
+      // written about a DIFFERENT song in the same project and shows it on
+      // this one. Use only this song's own note.
+      const artistNotes = isReadWithheld('staff_sibling_note_fallback')
+        ? repListing?.staff_notes ?? null
+        : repListing?.staff_notes ?? projectListings.find(l => l.staff_notes != null)?.staff_notes ?? null
 
       let readinessStatus: CatalogStaffLayer['readinessStatus']
       if (repListing?.status === 'admitted') {
@@ -564,7 +586,15 @@ export async function loadCatalogPage(
         readinessStatus = 'needs_completion'
       }
 
-      const rightsDetail = `${stage3.requiredComplete}/${stage3.requiredTotal} required rights documents signed${stage3.sampleBlock ? ' — sample clearance blocking' : ''}`
+      // 50.5 Task 2 — WITHHELD. This fraction is summed across the whole
+      // PROJECT (stage3.requiredComplete / requiredTotal), so it names no song,
+      // no requirement and no person. It is a progress bar nobody can act on,
+      // shown where staff need a to-do list. Task 10 replaces it with the
+      // per-song action list; until then it says so rather than implying the
+      // number describes this song.
+      const rightsDetail = isReadWithheld('staff_rights_detail')
+        ? STAFF_RIGHTS_DETAIL_WITHHELD
+        : `${stage3.requiredComplete}/${stage3.requiredTotal} required rights documents signed${stage3.sampleBlock ? ' — sample clearance blocking' : ''}`
 
       card.staff = { readinessStatus, rightsDetail, artistNotes, inProgress }
     }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { isReadWithheld } from '@/lib/deals/buyer-song-unit-read-withholding'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -130,7 +131,12 @@ export function DealDetailPanel({
                 : 'border-amber-400/30 bg-amber-400/10 text-amber-300'
             }`}
           >
-            {request.matched_precleared ? 'Pre-cleared match' : 'Needs negotiation'}
+            {/* 50.5 Task 2 — WITHHELD. matched_precleared is written from
+                PROJECT terms, so it can call a deal pre-cleared on the strength
+                of a row that never named this song. */}
+            {isReadWithheld('project_readiness_figure')
+              ? 'Clearance being confirmed'
+              : request.matched_precleared ? 'Pre-cleared match' : 'Needs negotiation'}
           </span>
         </div>
 
@@ -161,7 +167,10 @@ export function DealDetailPanel({
           </div>
           <div>
             <span className="block text-xs text-white/30">Readiness</span>
-            {detail.project ? `${detail.project.readinessScore}% ready` : 'Unknown'}
+            {/* 50.5 Task 2 — WITHHELD: project release readiness, on a song deal. */}
+            {isReadWithheld('project_readiness_figure')
+              ? 'Being confirmed'
+              : detail.project ? `${detail.project.readinessScore}% ready` : 'Unknown'}
           </div>
           <div>
             <span className="block text-xs text-white/30">Stage</span>
