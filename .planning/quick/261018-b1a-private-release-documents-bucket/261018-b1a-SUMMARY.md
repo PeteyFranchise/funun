@@ -80,3 +80,21 @@ None.
 ## Threat flags
 
 None beyond the plan's register. T-b1a-01 through T-b1a-06 are mitigated as specified (private bucket with literal `public = false`, RLS-gated session read before signing, ownership check before the service-client upload, http(s) values refused, 600 s TTL with `no-store`, no client storage policies).
+
+## Review fixes
+
+Follow-up commits after the adversarial review of PR #192 (`eccb1aa2`, `3cf50a81`, `e77c6d82`, `4b660a13`). Migration 245 is still unapplied, so it was edited in place.
+
+1. **file_url / source write guard.** Owners and co-owners could write `file_url` and `source` through PostgREST (236 returns early for full authority), so `/file` could be made to sign another user's object. 245 now adds `vault_documents_guard_file_url` (BEFORE INSERT OR UPDATE, SECURITY INVOKER, `search_path = ''`, `auth.role()` idiom from 209/231): a non-null `file_url` on INSERT, or any change to `file_url` or `source` on UPDATE, is rejected unless `auth.role()` is NULL or `service_role`. Writer audit (grep of every insert/update/upsert/delete on `vault_documents` under app, lib, components, plus SQL): the upload route and `app/api/contracts/verify` used the SESSION client for file_url, so both now write through the service client after their ownership checks (upload keeps id, project_id and user_id filters). The DocuSeal fan-out, `mint-agreement` and the webhook already use the service client. The PATCH route changes status and signed_at only, DELETE and the other inserts never set file_url, and no RPC or trigger writes either column, so no reset-to-NULL path needed handling. `/file` also refuses empty, leading-slash, `..`, `.`, backslash and empty-segment paths (404). The documents page no longer ships the path to the browser: stage3 collapses `file_url` into `has_file` and DocumentCard uses that.
+2. **Policy DROP loop removed from 245.** The footer query B2 still lists any policy that mentions the bucket.
+3. **PDF magic check.** `uploadSignedPdf` reads the first 5 bytes and rejects anything not starting `%PDF-` (route returns 400).
+4. **Orphan cleanup.** A failed row update removes the newly stored object. After a successful update the previous object is removed, but only when its path is `{user}/{project}/{doc}-...` (written by this route for this doc). Split-sheet fan-out rows share one executed PDF across parties, so removing an arbitrary old `file_url` would delete other parties' evidence. Removal failures go to Sentry with no path and never fail the request.
+5. **Missing object.** `createSignedUrl` errors with 404 status, statusCode `'404'` or an "not found" message now return 404, not 500.
+6. **Stale comments.** `stage3.ts` (path, not public URL), `distribution.ts` (paths), `sync-library/page.tsx` (hub-access signs for 2 hours, not DocumentCard's idiom), 245 header (readers: `/file` 10 min, hub-access 2 h, `esign_envelopes` paths have no reader).
+7. **CONTRACT_BUCKET.** `contracts/verify` uses it in all three places; a test asserts the writers and `vaultDocumentBucket` agree.
+8. **Fixtures.** `distribution.test.ts` uses `initiator-1/split-sheets/sheet-1/executed-envelope-1.pdf` style paths.
+9. **Tests.** Session query filters by `id` and `project_id` and not `user_id`; migration-245 text test covers the trigger (idiom, INSERT and UPDATE, file_url and source, REVOKE, no `current_user`).
+
+Verification: `npm run security:migrations:verify` PASS (214-218); `npm test` 666 suites / 8404 tests passed, 0 failed; `npm run lint` clean; `npm run typecheck:strict` clean.
+
+Owner-run checks added to the 245 footer: G1 to G4 (owner UPDATE and INSERT of file_url must fail 42501; service client and the pending-row insert must succeed). The trigger is text-tested only, not run against Postgres.
