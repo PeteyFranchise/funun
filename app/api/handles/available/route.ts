@@ -43,16 +43,17 @@ function json(body: AvailabilityBody, status = 200) {
 
 export async function GET(request: Request) {
   const ip = getClientIp(request)
+  // Fail-open on purpose: courtesy-only endpoint (D-14). A limiter outage must
+  // not make the signup form report real handles as taken or block submit.
   if (
     await checkRateLimit(`handle-check:ip:${ip}`, {
       windowMs: HANDLE_CHECK_WINDOW_MS,
       maxAttempts: HANDLE_CHECK_MAX_ATTEMPTS,
     })
   ) {
-    return NextResponse.json(
-      { error: 'Too many requests. Please try again later.' },
-      { status: 429 }
-    )
+    // Over the limit is "unknown", never "taken": clients map a non-ok
+    // response to available: null, which does not block submit.
+    return json({ available: null, reason: 'unavailable' }, 429)
   }
 
   const url = new URL(request.url)

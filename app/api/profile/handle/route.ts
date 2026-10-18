@@ -30,6 +30,7 @@ export async function PATCH(request: Request) {
   const limited = await checkRateLimit(`handle-change:${user.id}`, {
     windowMs: 24 * 60 * 60 * 1000,
     maxAttempts: 5,
+    failClosed: true,
   })
   if (limited) {
     return NextResponse.json(
