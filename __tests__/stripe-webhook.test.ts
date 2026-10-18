@@ -10,6 +10,11 @@ jest.mock('@/lib/stripe', () => ({
   },
 }))
 
+const mockCaptureMessage = jest.fn()
+jest.mock('@sentry/nextjs', () => ({
+  captureMessage: (...args: unknown[]) => mockCaptureMessage(...args),
+}))
+
 const mockCreateServiceClient = jest.fn()
 jest.mock('@/lib/supabase/server', () => ({
   createServiceClient: (...args: unknown[]) => mockCreateServiceClient(...args),
@@ -47,9 +52,10 @@ function makeRequest(signature: string | null = 't=1,v1=fake', body = '{}') {
   } as unknown as Request
 }
 
-function checkoutEvent(overrides: Record<string, unknown> = {}) {
+function checkoutEvent(overrides: Record<string, unknown> = {}, type = 'checkout.session.completed') {
   return {
-    type: 'checkout.session.completed',
+    id: 'evt_1',
+    type,
     data: {
       object: {
         id: 'cs_1',
@@ -62,6 +68,10 @@ function checkoutEvent(overrides: Record<string, unknown> = {}) {
       },
     },
   }
+}
+
+function chargeEvent(type: string, object: Record<string, unknown>) {
+  return { id: 'evt_2', type, data: { object } }
 }
 
 function accountEvent() {
@@ -147,8 +157,8 @@ describe('stripe webhook — checkout reconciliation', () => {
     expect((await POST(makeRequest())).status).toBe(409)
   })
 
-  it('returns 400 for incomplete or unpaid checkout data', async () => {
-    mockConstructEvent.mockReturnValue(checkoutEvent({ metadata: {}, payment_status: 'unpaid' }))
+  it('returns 400 for a paid checkout with missing reconciliation metadata', async () => {
+    mockConstructEvent.mockReturnValue(checkoutEvent({ metadata: {} }))
     const service = makeService()
     mockCreateServiceClient.mockReturnValue(service.client)
     expect((await POST(makeRequest())).status).toBe(400)
@@ -193,5 +203,104 @@ describe('stripe webhook — account.updated persistence', () => {
       makeService({ updateError: { message: 'write failed' } }).client
     )
     expect((await POST(makeRequest())).status).toBe(503)
+  })
+})
+
+describe('stripe webhook - delayed payments, refunds and disputes', () => {
+  it('acknowledges an unpaid (delayed method) completion without completing the deal', async () => {
+    mockConstructEvent.mockReturnValue(checkoutEvent({ payment_status: 'unpaid' }))
+    const service = makeService()
+    mockCreateServiceClient.mockReturnValue(service.client)
+    expect((await POST(makeRequest())).status).toBe(200)
+    expect(service.rpc).not.toHaveBeenCalled()
+    expect(mockRetrievePaymentIntent).not.toHaveBeenCalled()
+    expect(mockCaptureMessage).not.toHaveBeenCalled()
+  })
+
+  it('completes the deal on async_payment_succeeded through the paid-completion path', async () => {
+    mockConstructEvent.mockReturnValue(checkoutEvent({}, 'checkout.session.async_payment_succeeded'))
+    const service = makeService()
+    mockCreateServiceClient.mockReturnValue(service.client)
+
+    expect((await POST(makeRequest())).status).toBe(200)
+    expect(mockRetrievePaymentIntent).toHaveBeenCalledWith('pi_1')
+    expect(service.rpc).toHaveBeenCalledTimes(1)
+    expect(service.rpc).toHaveBeenCalledWith('complete_license_checkout', {
+      p_deal_id: 'd1',
+      p_checkout_session_id: 'cs_1',
+      p_economics_fingerprint: 'fingerprint-1',
+      p_payment_intent_id: 'pi_1',
+      p_amount_cents: 10_000,
+      p_currency: 'usd',
+      p_application_fee_cents: 1_500,
+      p_transfer_destination: 'acct_artist_1',
+    })
+  })
+
+  it('returns 409 on async_payment_succeeded when the database rejects the economics', async () => {
+    mockConstructEvent.mockReturnValue(checkoutEvent({}, 'checkout.session.async_payment_succeeded'))
+    mockCreateServiceClient.mockReturnValue(makeService({ rpcResult: { data: false, error: null } }).client)
+    expect((await POST(makeRequest())).status).toBe(409)
+  })
+
+  it('returns 400 on async_payment_succeeded with missing metadata', async () => {
+    mockConstructEvent.mockReturnValue(checkoutEvent({ metadata: {} }, 'checkout.session.async_payment_succeeded'))
+    const service = makeService()
+    mockCreateServiceClient.mockReturnValue(service.client)
+    expect((await POST(makeRequest())).status).toBe(400)
+    expect(service.rpc).not.toHaveBeenCalled()
+  })
+
+  it('does not complete on async_payment_succeeded unless the session is paid', async () => {
+    mockConstructEvent.mockReturnValue(
+      checkoutEvent({ payment_status: 'unpaid' }, 'checkout.session.async_payment_succeeded')
+    )
+    const service = makeService()
+    mockCreateServiceClient.mockReturnValue(service.client)
+    expect((await POST(makeRequest())).status).toBe(200)
+    expect(service.rpc).not.toHaveBeenCalled()
+    expect(mockRetrievePaymentIntent).not.toHaveBeenCalled()
+  })
+
+  it('acknowledges async_payment_failed, writes nothing and reports to Sentry', async () => {
+    mockConstructEvent.mockReturnValue(checkoutEvent({ payment_status: 'unpaid' }, 'checkout.session.async_payment_failed'))
+    const service = makeService()
+    mockCreateServiceClient.mockReturnValue(service.client)
+    expect((await POST(makeRequest())).status).toBe(200)
+    expect(service.rpc).not.toHaveBeenCalled()
+    expect(service.client.from).not.toHaveBeenCalled()
+    expect(mockCaptureMessage).toHaveBeenCalledTimes(1)
+  })
+
+  it('acknowledges charge.refunded, writes nothing and reports the charge id to Sentry', async () => {
+    mockConstructEvent.mockReturnValue(chargeEvent('charge.refunded', { id: 'ch_1', payment_intent: 'pi_1' }))
+    const service = makeService()
+    mockCreateServiceClient.mockReturnValue(service.client)
+    expect((await POST(makeRequest())).status).toBe(200)
+    expect(service.rpc).not.toHaveBeenCalled()
+    expect(service.updates).toHaveLength(0)
+    expect(mockCaptureMessage).toHaveBeenCalledTimes(1)
+    expect(JSON.stringify(mockCaptureMessage.mock.calls[0])).toContain('ch_1')
+  })
+
+  it('acknowledges charge.dispute.created, writes nothing and reports to Sentry', async () => {
+    mockConstructEvent.mockReturnValue(
+      chargeEvent('charge.dispute.created', { id: 'dp_1', charge: 'ch_1', payment_intent: 'pi_1' })
+    )
+    const service = makeService()
+    mockCreateServiceClient.mockReturnValue(service.client)
+    expect((await POST(makeRequest())).status).toBe(200)
+    expect(service.rpc).not.toHaveBeenCalled()
+    expect(service.updates).toHaveLength(0)
+    expect(mockCaptureMessage).toHaveBeenCalledTimes(1)
+  })
+
+  it('still returns 200 with no side effects for an unknown event type', async () => {
+    mockConstructEvent.mockReturnValue(chargeEvent('invoice.paid', { id: 'in_1' }))
+    const service = makeService()
+    mockCreateServiceClient.mockReturnValue(service.client)
+    expect((await POST(makeRequest())).status).toBe(200)
+    expect(service.rpc).not.toHaveBeenCalled()
+    expect(mockCaptureMessage).not.toHaveBeenCalled()
   })
 })
