@@ -1,19 +1,25 @@
 import { Webhook } from 'svix'
 
 /**
- * Minimal, defensive shape for a Resend webhook event. The exact nesting of
- * the bounce-type field is unconfirmed against Resend's live docs at
- * implementation time (RESEARCH.md Assumptions Log A5 / Open Question 1),
- * so both a nested `data.bounce.type` and a flat `data.bounce_type` are
- * supported — callers should check both.
+ * Minimal shape for the Resend webhook events this app reads, taken from
+ * Resend's documented payloads:
+ *   https://resend.com/docs/webhooks/emails/bounced
+ *   https://resend.com/docs/webhooks/emails/complained
+ * `data.to` is the array of impacted recipients (an address may carry a
+ * display name). `data.bounce.type` is Resend's bounce class (e.g.
+ * "Permanent"); the webhook route decides which classes count as a hard
+ * bounce. The earlier flat `data.bounce_type` / `data.email` fields were
+ * guesses made before the docs were checked and do not exist in the payload.
  */
 export type ResendWebhookEvent = {
   type: string
+  created_at?: string
   data: {
+    email_id?: string
+    from?: string
     to?: string[]
-    email?: string
-    bounce?: { type?: string }
-    bounce_type?: string
+    subject?: string
+    bounce?: { message?: string; subType?: string; type?: string }
   }
 }
 

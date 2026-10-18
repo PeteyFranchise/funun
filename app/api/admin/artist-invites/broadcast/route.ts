@@ -6,6 +6,7 @@ import { logStaffAction } from '@/lib/staff/audit'
 import { mintOrRotateInvite } from '@/lib/invites/mintInvite'
 import { artistReopenedEmail } from '@/lib/email/artistReopened'
 import { sendEmail } from '@/lib/email'
+import { normalizeEmailAddress, RECIPIENT_SUPPRESSED_ERROR } from '@/lib/email/suppression'
 
 // ─── POST /api/admin/artist-invites/broadcast — Leadership-only reopen ───
 // (Phase 27, D-13b/D-15) A one-shot bulk send to every eligible waitlister.
@@ -71,6 +72,37 @@ import { sendEmail } from '@/lib/email'
 // with no time component — is both sufficient and correct: it cannot
 // collide with a genuinely later, distinct reopen campaign because this
 // row would no longer be eligible for one.
+//
+// (GH #190 review) Recipients on public.email_suppressions (permanent
+// bounces, spam complaints) can never be delivered to, and sendEmail()
+// refuses them. Counting that refusal as `failed` released the claim, so the
+// row was re-claimed and its invite token re-minted on EVERY run. No existing
+// column can record it honestly: notified_reopen_at means "delivered" and
+// unsubscribed_at means the person opted out, and neither is true. So the
+// suppression list itself is the terminal state: suppressed rows are filtered
+// out of the eligible set up front (no claim, no mint), and a row that gets
+// suppressed between that filter and its send is released and counted as
+// `skipped`, never `failed`. Removing the address from the list (DELETE
+// /api/admin/email-suppressions) makes the row eligible again.
+const SUPPRESSION_LOOKUP_CHUNK = 100
+
+async function findSuppressedAddresses(
+  service: ReturnType<typeof createServiceClient>,
+  emails: string[]
+): Promise<Set<string>> {
+  const suppressed = new Set<string>()
+  for (let i = 0; i < emails.length; i += SUPPRESSION_LOOKUP_CHUNK) {
+    const chunk = emails.slice(i, i + SUPPRESSION_LOOKUP_CHUNK)
+    const { data, error } = await service.from('email_suppressions').select('email').in('email', chunk)
+    // Fail open, like sendEmail(): if the table is missing (migration 246
+    // unapplied) the in-loop sendEmail() check still stops the send and the
+    // row is counted as skipped; it only costs a claim and a token mint.
+    if (error) continue
+    for (const row of (data ?? []) as { email: string }[]) suppressed.add(row.email)
+  }
+  return suppressed
+}
+
 export async function POST() {
   const auth = await requireStaff(['leadership'])
   if ('error' in auth) {
@@ -87,7 +119,12 @@ export async function POST() {
 
   if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
-  const eligible = (rows ?? []) as { id: string; email: string; unsubscribe_token: string }[]
+  const candidates = (rows ?? []) as { id: string; email: string; unsubscribe_token: string }[]
+  const suppressedAddresses = await findSuppressedAddresses(
+    service,
+    candidates.map(row => normalizeEmailAddress(row.email))
+  )
+  const eligible = candidates.filter(row => !suppressedAddresses.has(normalizeEmailAddress(row.email)))
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
   // Claim lease — long enough to cover a normal mint+send round trip, short
   // enough that a claim orphaned by a dead process (or a lost response) is
@@ -96,6 +133,9 @@ export async function POST() {
   const CLAIM_LEASE_MS = 10 * 60 * 1000
   let delivered = 0
   let failed = 0
+  // Suppressed recipients: neither delivered nor failed (see the GH #190
+  // note above). Starts with the rows filtered out of the eligible set.
+  let skipped = candidates.length - eligible.length
   // Release-result visibility (LOW — 27-CODEX-REVIEW.md follow-up review
   // #3). Collected across the loop and attached to the run's audit-log
   // entry rather than console-logged (this codebase has no console.log
@@ -204,7 +244,8 @@ export async function POST() {
       } else if (!release.data) {
         releaseIssues.push({ id: row.id, phase: 'send', kind: 'cas_miss' })
       }
-      failed += 1
+      if (sendResult.error === RECIPIENT_SUPPRESSED_ERROR) skipped += 1
+      else failed += 1
       continue
     }
 
@@ -235,8 +276,8 @@ export async function POST() {
     actorId: auth.user.id,
     action: 'artist_invite.broadcast',
     targetType: 'artist_waitlist',
-    changes: { delivered, failed, ...(releaseIssues.length ? { releaseIssues } : {}) },
+    changes: { delivered, failed, skipped, ...(releaseIssues.length ? { releaseIssues } : {}) },
   })
 
-  return NextResponse.json({ delivered, failed })
+  return NextResponse.json({ delivered, failed, skipped })
 }
