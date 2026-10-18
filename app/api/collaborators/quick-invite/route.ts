@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   if (!member.ok) return NextResponse.json({ error: member.error }, { status: member.status })
   const { user } = member
 
-  // ── 1b. Per-sender invite limits — before any lookup, insert or send. ──
+  // ── 1b. Per-sender invite limits, before any lookup, insert or send. ──
   const limited = await isCollaboratorInviteRateLimited(user.id)
   if (limited) {
     return NextResponse.json(

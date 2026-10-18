@@ -448,7 +448,7 @@ export function LoginRegisterModal({ open, onClose, initialTab = 'login', initia
                 )}
                 {siteKey && turnstileScriptError && (
                   <p className="err">
-                    Couldn&rsquo;t load verification — refresh the page and try again.
+                    Couldn&rsquo;t load verification. Refresh the page and try again.
                   </p>
                 )}
               </div>
