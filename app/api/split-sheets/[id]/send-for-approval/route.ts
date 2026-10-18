@@ -6,6 +6,7 @@ import {
   APPROVAL_TOKEN_EXPIRY_DAYS,
 } from '@/lib/split-sheets/approval'
 import { sendEmail } from '@/lib/email'
+import { checkRateLimit } from '@/lib/security/rate-limit'
 
 // ─── POST /api/split-sheets/[id]/send-for-approval ───────────────────
 // Generates a per-party approval token and emails each party the link to
@@ -21,6 +22,11 @@ export async function POST(
     data: { user },
   } = await apiClient.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // Per-sender send limit: 20 per hour, fail-closed, before any token or email.
+  if (await checkRateLimit(`split-approval-send:${user.id}`, { windowMs: 60 * 60 * 1000, maxAttempts: 20, failClosed: true })) {
+    return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
+  }
 
   const { id } = await params
 
