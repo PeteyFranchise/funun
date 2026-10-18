@@ -43,12 +43,18 @@ describe('migration 245 - release-documents bucket', () => {
     expect(code).not.toMatch(/TO\s+(anon|authenticated)\b/i)
   })
 
-  it('drops hand-made storage.objects policies that mention the bucket', () => {
-    expect(code).toMatch(/FROM pg_policies/)
-    expect(code).toMatch(/schemaname = 'storage'/)
-    expect(code).toMatch(/tablename = 'objects'/)
-    expect(code).toMatch(/ILIKE '%release-documents%'/)
-    expect(code).toMatch(/EXECUTE format\('DROP POLICY %I ON storage\.objects'/)
+  it('does not drop or alter any storage.objects policy', () => {
+    // Production was read on 2026-10-18: storage.objects carries only
+    // vault_assets_* and vault_contracts_* policies. The migration must not
+    // run a catalog-driven DROP over policies it did not create.
+    expect(code).not.toMatch(/DROP POLICY/i)
+    expect(code).not.toMatch(/ALTER POLICY/i)
+    expect(code).not.toMatch(/FOR r IN/i)
+  })
+
+  it('lists any policy that mentions the bucket in the verification footer', () => {
+    expect(sql).toMatch(/FROM pg_policies/)
+    expect(sql).toMatch(/ILIKE '%release-documents%'/)
   })
 
   it('documents vault_documents.file_url as a path in either bucket', () => {
@@ -65,5 +71,42 @@ describe('migration 245 - release-documents bucket', () => {
 
   it('carries no em dashes', () => {
     expect(sql).not.toContain(String.fromCharCode(0x2014))
+  })
+})
+
+describe('migration 245 - vault_documents file_url / source write guard', () => {
+  const fn = code.match(/CREATE OR REPLACE FUNCTION public\.vault_documents_guard_file_url\(\)([\s\S]*?)\$\$;/)?.[1] ?? ''
+
+  it('defines a guard function with a pinned search_path', () => {
+    expect(fn).not.toBe('')
+    expect(fn).toMatch(/RETURNS TRIGGER/)
+    expect(fn).toMatch(/SET search_path = ''/)
+  })
+
+  it('uses the auth.role() idiom from 209/231, never current_user', () => {
+    expect(fn).toMatch(/\(SELECT auth\.role\(\)\)/)
+    expect(fn).toMatch(/v_role IS NULL OR v_role = 'service_role'/)
+    expect(code).not.toMatch(/current_user/i)
+  })
+
+  it('rejects a non-null file_url on INSERT and any file_url or source change on UPDATE', () => {
+    expect(fn).toMatch(/TG_OP = 'INSERT' AND NEW\.file_url IS NOT NULL/)
+    expect(fn).toMatch(/TG_OP = 'UPDATE' AND \(\s*NEW\.file_url IS DISTINCT FROM OLD\.file_url\s+OR NEW\.source IS DISTINCT FROM OLD\.source\s*\)/)
+    expect(fn).toMatch(/ERRCODE = '42501'/)
+    expect(fn).toMatch(/NOT v_privileged/)
+  })
+
+  it('fires BEFORE INSERT OR UPDATE for each row, and is not callable by clients', () => {
+    expect(code).toMatch(
+      /CREATE TRIGGER vault_documents_guard_file_url\s+BEFORE INSERT OR UPDATE ON public\.vault_documents\s+FOR EACH ROW\s+EXECUTE FUNCTION public\.vault_documents_guard_file_url\(\)/
+    )
+    expect(code).toMatch(
+      /REVOKE EXECUTE ON FUNCTION public\.vault_documents_guard_file_url\(\) FROM PUBLIC, anon, authenticated/
+    )
+  })
+
+  it('does not replace 236 guard or its policies', () => {
+    expect(code).not.toMatch(/vault_documents_guard_evidence/)
+    expect(code).not.toMatch(/CREATE POLICY/i)
   })
 })
