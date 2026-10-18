@@ -17,11 +17,35 @@ jest.mock('resend', () => ({
   })),
 }))
 
+// ─── Suppression lookup (GH #190) ──────────────────────────────────────────
+// sendEmail consults public.email_suppressions before every send. The Supabase
+// service client is mocked as from(table).select('email').in('email', list)
+// resolving a per-test configurable { data, error }.
+let suppressionResult: { data: { email: string }[] | null; error: { message: string } | null } = {
+  data: [],
+  error: null,
+}
+const inMock = jest.fn(async () => suppressionResult)
+const selectMock = jest.fn(() => ({ in: inMock }))
+const fromMock = jest.fn(() => ({ select: selectMock }))
+const createServiceClientMock = jest.fn(() => ({ from: fromMock }))
+
+jest.mock('@/lib/supabase/server', () => ({
+  createServiceClient: () => createServiceClientMock(),
+}))
+
+const captureExceptionMock = jest.fn()
+jest.mock('@sentry/nextjs', () => ({
+  captureException: (...args: unknown[]) => captureExceptionMock(...args),
+}))
+
 const ENV_BACKUP = { ...process.env }
 
 beforeEach(() => {
   jest.clearAllMocks()
-  process.env = { ...ENV_BACKUP, RESEND_API_KEY: 'test-key', RESEND_FROM_EMAIL: 'hello@funun.studio' }
+  suppressionResult = { data: [], error: null }
+  createServiceClientMock.mockImplementation(() => ({ from: fromMock }))
+  process.env ={ ...ENV_BACKUP, RESEND_API_KEY: 'test-key', RESEND_FROM_EMAIL: 'hello@funun.studio' }
 })
 
 afterAll(() => {
@@ -72,5 +96,89 @@ describe('sendEmail', () => {
 
     expect(result).toEqual({ ok: false, error: 'Email not configured' })
     expect(sendMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('sendEmail suppression (GH #190)', () => {
+  const base = { subject: 'Subject', html: '<p>hi</p>' }
+
+  it('does not call Resend for a suppressed single recipient', async () => {
+    suppressionResult = { data: [{ email: 'bounced@example.com' }], error: null }
+
+    const result = await sendEmail({ ...base, to: 'bounced@example.com' })
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'Recipient suppressed',
+      suppressed: ['bounced@example.com'],
+    })
+    expect(sendMock).not.toHaveBeenCalled()
+    expect(fromMock).toHaveBeenCalledWith('email_suppressions')
+  })
+
+  it('matches case- and whitespace-insensitively and strips Name <addr> forms', async () => {
+    suppressionResult = { data: [{ email: 'bounced@example.com' }], error: null }
+
+    const padded = await sendEmail({ ...base, to: ' Bounced@Example.com ' })
+    expect(padded.error).toBe('Recipient suppressed')
+    expect(inMock).toHaveBeenLastCalledWith('email', ['bounced@example.com'])
+
+    const named = await sendEmail({ ...base, to: 'Some One <Bounced@Example.com>' })
+    expect(named.error).toBe('Recipient suppressed')
+    expect(inMock).toHaveBeenLastCalledWith('email', ['bounced@example.com'])
+    expect(sendMock).not.toHaveBeenCalled()
+  })
+
+  it('sends to the unsuppressed recipients of a mixed list and reports the skipped ones', async () => {
+    suppressionResult = { data: [{ email: 'bounced@example.com' }], error: null }
+
+    const result = await sendEmail({ ...base, to: ['bounced@example.com', 'ok@example.com'] })
+
+    expect(result).toEqual({ ok: true, suppressed: ['bounced@example.com'] })
+    expect(sendMock).toHaveBeenCalledTimes(1)
+    expect(sendMock).toHaveBeenCalledWith(
+      expect.objectContaining({ to: ['ok@example.com'] }),
+      undefined
+    )
+  })
+
+  it('fails open and reports to Sentry when the lookup returns an error', async () => {
+    suppressionResult = {
+      data: null,
+      error: { message: 'relation "public.email_suppressions" does not exist' },
+    }
+
+    const result = await sendEmail({ ...base, to: 'artist@example.com' })
+
+    expect(result).toEqual({ ok: true })
+    expect(sendMock).toHaveBeenCalledWith(
+      expect.objectContaining({ to: 'artist@example.com' }),
+      undefined
+    )
+    expect(captureExceptionMock).toHaveBeenCalledTimes(1)
+    expect(captureExceptionMock).toHaveBeenCalledWith(expect.anything(), {
+      tags: { feature: 'email', operation: 'suppression-lookup' },
+    })
+  })
+
+  it('fails open when createServiceClient throws', async () => {
+    createServiceClientMock.mockImplementation(() => {
+      throw new Error('supabaseUrl is required.')
+    })
+
+    const result = await sendEmail({ ...base, to: 'artist@example.com' })
+
+    expect(result).toEqual({ ok: true })
+    expect(sendMock).toHaveBeenCalledTimes(1)
+    expect(captureExceptionMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('never touches the database when email is not configured', async () => {
+    process.env.RESEND_API_KEY = ''
+
+    const result = await sendEmail({ ...base, to: 'artist@example.com' })
+
+    expect(result).toEqual({ ok: false, error: 'Email not configured' })
+    expect(createServiceClientMock).not.toHaveBeenCalled()
   })
 })
