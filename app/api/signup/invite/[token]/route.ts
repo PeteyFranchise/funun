@@ -68,6 +68,8 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> }
 ) {
   const ip = getClientIp(request)
+  // Fail-open on purpose: this GET only prefills the signup form (the claim
+  // itself is re-verified at redemption), so a limiter outage must not block it.
   if (await checkRateLimit(`ip:${ip}`)) {
     return tooManyRequests()
   }

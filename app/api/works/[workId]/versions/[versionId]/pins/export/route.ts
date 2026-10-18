@@ -69,6 +69,7 @@ export async function GET(request: Request, { params }: RouteContext) {
   // allowance (200 over 15 minutes) matches the comments export's own
   // generous, low-cost-read allowance; this limiter fails open like every
   // other read path in this subsystem.
+  // Fail-open on purpose: read-only export of the caller's own data; no writes or messages.
   if (await checkRateLimit(`work-version-pins-export:${user.id}`, { maxAttempts: 200, windowMs: 15 * 60 * 1000 })) {
     return NextResponse.json({ error: 'Too many exports. Please slow down.' }, { status: 429 })
   }

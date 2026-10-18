@@ -16,6 +16,7 @@ import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
 
 export async function POST(request: Request) {
   const ip = getClientIp(request)
+  // Fail-open on purpose: opting out must keep working during a limiter outage.
   if (await checkRateLimit(`ip:${ip}`)) {
     return NextResponse.json(
       { error: 'Too many requests. Please try again later.' },

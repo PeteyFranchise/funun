@@ -44,8 +44,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   // per-track cap (migration 117) backstops distributed abuse.
   const ip = getClientIp(request)
   if (
-    (await checkRateLimit(`selects-react:${token}:${ip}`, { maxAttempts: 60 })) ||
-    (await checkRateLimit(`selects-react:${token}`, { maxAttempts: 300 }))
+    (await checkRateLimit(`selects-react:${token}:${ip}`, { maxAttempts: 60, failClosed: true })) ||
+    (await checkRateLimit(`selects-react:${token}`, { maxAttempts: 300, failClosed: true }))
   ) {
     return NextResponse.json({ error: 'Too many reactions — please slow down.' }, { status: 429 })
   }

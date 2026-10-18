@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { resolveWorkAccess, createWorkAccessDeps } from '@/lib/catalogue/access'
 import * as collaboratorInvite from '@/lib/collaborators/invite'
+import { isCollaboratorInviteRateLimited } from '@/lib/collaborators/invite-quota'
 import { planWriterPromotion } from '@/lib/catalogue/splits'
 import { loadWorkSplits } from '@/lib/catalogue/splits-io'
 import { planWorkMemberAdmission } from '@/lib/catalogue/member-admission'
@@ -95,6 +96,15 @@ export async function POST(request: Request, { params }: RouteCtx) {
   }
   const input = parsed.data
   const { tier, is_writer: isWriter } = input
+
+  // Per-sender invite limits, shared with the collaborator invite routes.
+  // Runs before any roster lookup, insert or send (fail-closed).
+  if (await isCollaboratorInviteRateLimited(userId)) {
+    return NextResponse.json(
+      { error: 'You have sent too many invites recently. Try again later.' },
+      { status: 429 }
+    )
+  }
 
   // ── Look up or create the collaborator row, quick-invite's reuse-by-
   //    email pattern — so re-inviting the same person never creates a

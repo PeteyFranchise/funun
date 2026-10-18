@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { createNotification } from '@/lib/notifications'
+import { isTokenFormat } from '@/lib/curators/tokens'
 
 type PitchRow = {
   id: string
@@ -18,6 +19,10 @@ type PitchRow = {
 // status !== 'pending' guard (T-06-03).
 export async function POST(_request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
+  // Malformed tokens can never match a pitch, so they cost no query.
+  if (!isTokenFormat(token)) {
+    return NextResponse.json({ error: 'Invalid or expired link' }, { status: 404 })
+  }
   const service = createServiceClient()
   const now = new Date().toISOString()
 

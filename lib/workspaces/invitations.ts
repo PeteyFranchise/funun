@@ -110,9 +110,11 @@ export function normalizeInvitedEmail(raw: string): string | null {
  * Per-workspace invitation issuance limit, consumed by the issuance route
  * via `checkRateLimit('workspace-invite:' + workspaceId, INVITATION_RATE_LIMIT)`
  * so the magic numbers live beside the logic that governs them, not inline
- * in the route.
+ * in the route. Fail-closed: a limiter outage refuses issuance instead of
+ * sending without a cap.
  */
 export const INVITATION_RATE_LIMIT = {
   windowMs: 60 * 60 * 1000,
   maxAttempts: 20,
+  failClosed: true,
 } as const

@@ -149,7 +149,16 @@ describe('GET /api/handles/available', () => {
     const res = await GET(req('maya-reyes'))
 
     expect(res.status).toBe(429)
+    expect(await res.json()).toEqual({ available: null, reason: 'unavailable' })
     expect(mockCreateServiceClient).not.toHaveBeenCalled()
+  })
+
+  it('keeps the limiter fail-open (courtesy-only endpoint)', async () => {
+    mockCheckRateLimit.mockResolvedValueOnce(false)
+
+    await GET(req('maya-reyes'))
+
+    expect(mockCheckRateLimit.mock.calls[0][1]).not.toHaveProperty('failClosed', true)
   })
 
   it('reports an unknown verdict (never a false one) on a database error resolving the handle', async () => {
