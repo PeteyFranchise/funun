@@ -2,11 +2,11 @@ import { createHash } from 'crypto'
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email'
+import { esc } from '@/lib/email/esc'
 import { provisionIndustryAccount, DuplicateIndustryMemberError } from '@/lib/industry/createIndustryMember'
 import * as Sentry from '@sentry/nextjs'
 import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
 import { isTokenFormat } from '@/lib/curators/tokens'
-import { esc } from '@/lib/email/esc'
 
 // ─── POST /api/curators/claim/[token] ────────────────────────────────────
 // Verifies a 72h-expiry, one-time claim token (issued via the admin
