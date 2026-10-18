@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
+import { isProtectedPath } from '@/lib/auth/protectedRoutes'
 
 const SOURCE = readFileSync(join(process.cwd(), 'app/profile-preview/page.tsx'), 'utf8')
 
@@ -31,9 +32,8 @@ describe('/profile-preview — dev-only guards', () => {
   // to /settings-preview would bounce it to sign-in and defeat its purpose, so
   // the location is load-bearing, not cosmetic.
   it('lives outside the middleware-gated /settings prefix', () => {
-    const middleware = readFileSync(join(process.cwd(), 'middleware.ts'), 'utf8')
-    expect(middleware).toContain("pathname.startsWith('/settings')")
-    expect('/profile-preview'.startsWith('/settings')).toBe(false)
+    expect(isProtectedPath('/settings')).toBe(true)
+    expect(isProtectedPath('/profile-preview')).toBe(false)
   })
 
   // The profile it renders must stay fabricated. A future edit that fetches a

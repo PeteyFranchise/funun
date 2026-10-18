@@ -5,15 +5,27 @@
 // (IDOR mitigation, T-28-03-01) is preserved exactly. Unit-level — no HTTP
 // harness; mirrors the mock-Supabase-client style of capability-grant.test.ts
 // and verification-admin-api.test.ts's direct route-handler invocation.
+// Also covers the per-address and per-link throttle, its fail-closed posture,
+// the token format gate, and that the limiter key never holds the raw token.
 
+import { createHash } from 'crypto'
 import { POST } from '@/app/api/curators/claim/[token]/route'
 import { createServiceClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email'
 import { industryInviteEmail } from '@/lib/email/industryInvite'
 import { provisionIndustryAccount, DuplicateIndustryMemberError } from '@/lib/industry/createIndustryMember'
+import { checkRateLimit } from '@/lib/security/rate-limit'
 
 jest.mock('@/lib/supabase/server', () => ({ createServiceClient: jest.fn() }))
 jest.mock('@/lib/email', () => ({ sendEmail: jest.fn() }))
+jest.mock('@sentry/nextjs', () => ({ captureMessage: jest.fn(), captureException: jest.fn() }))
+
+// The real limiter builds its own service client and RPC; mock it so each test
+// controls the outcome. true means the caller is limited.
+jest.mock('@/lib/security/rate-limit', () => ({
+  ...jest.requireActual('@/lib/security/rate-limit'),
+  checkRateLimit: jest.fn(),
+}))
 
 // Keep the real DuplicateIndustryMemberError class (the route's `instanceof`
 // check must work against it) but mock provisionIndustryAccount itself.
@@ -22,7 +34,8 @@ jest.mock('@/lib/industry/createIndustryMember', () => {
   return { ...actual, provisionIndustryAccount: jest.fn() }
 })
 
-const TOKEN = 'tok_abc123'
+// Matches the shape generateClaimToken() produces: 32 random bytes as hex.
+const TOKEN = 'a'.repeat(32) + 'b'.repeat(32)
 
 function buildService({
   curatorRow,
@@ -76,6 +89,8 @@ function params() {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  ;(checkRateLimit as jest.Mock).mockResolvedValue(false)
+  ;(sendEmail as jest.Mock).mockResolvedValue({ ok: true })
 })
 
 describe('POST /api/curators/claim/[token]', () => {
@@ -234,5 +249,135 @@ describe('POST /api/curators/claim/[token]', () => {
     const res = await POST(req(), params())
     expect(res.status).toBe(500)
     expect(deleteUser).not.toHaveBeenCalled() // still never delete
+  })
+})
+
+describe('claim route throttle', () => {
+  const WINDOW = 15 * 60 * 1000
+
+  function throttledReq() {
+    return new Request(`http://t.local/api/curators/claim/${TOKEN}`, {
+      method: 'POST',
+      headers: { 'x-real-ip': '203.0.113.7' },
+    })
+  }
+
+  function expectNoSideEffects() {
+    expect(createServiceClient).not.toHaveBeenCalled()
+    expect(provisionIndustryAccount).not.toHaveBeenCalled()
+    expect(sendEmail).not.toHaveBeenCalled()
+  }
+
+  it('returns 429 when one address exceeds the claim limit', async () => {
+    ;(checkRateLimit as jest.Mock).mockResolvedValueOnce(true)
+
+    const res = await POST(throttledReq(), params())
+    expect(res.status).toBe(429)
+    expect(await res.json()).toEqual({ error: 'Too many attempts. Try again in a few minutes.' })
+    expect(checkRateLimit).toHaveBeenCalledTimes(1)
+    expectNoSideEffects()
+  })
+
+  it('returns 429 when one link exceeds the claim limit', async () => {
+    ;(checkRateLimit as jest.Mock).mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+
+    const res = await POST(throttledReq(), params())
+    expect(res.status).toBe(429)
+    expect(await res.json()).toEqual({ error: 'Too many attempts. Try again in a few minutes.' })
+    expect(checkRateLimit).toHaveBeenCalledTimes(2)
+    expectNoSideEffects()
+  })
+
+  it('refuses with 429 when the limiter is unavailable', async () => {
+    // Mirrors the real limiter: on RPC failure it resolves to options.failClosed.
+    ;(checkRateLimit as jest.Mock).mockImplementation((_key: string, opts?: { failClosed?: boolean }) =>
+      Promise.resolve(opts?.failClosed === true)
+    )
+
+    const res = await POST(throttledReq(), params())
+    expect(res.status).toBe(429)
+    expectNoSideEffects()
+  })
+
+  it.each([['tok_abc123'], ['a'.repeat(65)], ['g'.repeat(64)]])(
+    'rejects a malformed link without a lookup (%s)',
+    async (bad) => {
+      const res = await POST(throttledReq(), { params: Promise.resolve({ token: bad }) })
+      expect(res.status).toBe(404)
+      expect(await res.json()).toEqual({ error: 'Invalid or expired link' })
+      expect(checkRateLimit).toHaveBeenCalledTimes(1)
+      expectNoSideEffects()
+    }
+  )
+
+  it('keys the per-address limit on the client address and the per-link limit on a sha256 of the link token', async () => {
+    const curatorRow = {
+      id: 'cur1',
+      email: 'curator@example.com',
+      name: 'Nova Curator',
+      claim_token_expires_at: null,
+      claimed_by: null,
+    }
+    const { service } = buildService({ curatorRow })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(provisionIndustryAccount as jest.Mock).mockResolvedValueOnce({ userId: 'u1' })
+
+    const res = await POST(throttledReq(), params())
+    expect(res.status).toBe(200)
+
+    const calls = (checkRateLimit as jest.Mock).mock.calls
+    expect(calls).toHaveLength(2)
+    expect(calls[0]).toEqual([
+      'curator-claim:ip:203.0.113.7',
+      { windowMs: WINDOW, maxAttempts: 30, failClosed: true },
+    ])
+    const digest = createHash('sha256').update(TOKEN).digest('hex')
+    expect(calls[1]).toEqual([
+      `curator-claim:token:${digest}`,
+      { windowMs: WINDOW, maxAttempts: 5, failClosed: true },
+    ])
+    expect(calls[1][0]).not.toContain(TOKEN)
+  })
+})
+
+describe('claim route sign-in email after the claim is written', () => {
+  const curatorRow = {
+    id: 'cur1',
+    email: 'curator@example.com',
+    name: 'Nova Curator',
+    claim_token_expires_at: null,
+    claimed_by: null,
+  }
+
+  it('returns 200 with emailSent false when the email send throws, since the token is already spent', async () => {
+    const { service } = buildService({ curatorRow })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(provisionIndustryAccount as jest.Mock).mockResolvedValueOnce({ userId: 'u1' })
+    ;(sendEmail as jest.Mock).mockRejectedValueOnce(new Error('resend down'))
+
+    const res = await POST(req(), params())
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ ok: true, emailSent: false })
+  })
+
+  it('returns 200 with emailSent false and sends nothing when no sign-in link is generated', async () => {
+    const { service } = buildService({ curatorRow, generateLinkResult: { data: null, error: { message: 'x' } } })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(provisionIndustryAccount as jest.Mock).mockResolvedValueOnce({ userId: 'u1' })
+
+    const res = await POST(req(), params())
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ ok: true, emailSent: false })
+    expect(sendEmail).not.toHaveBeenCalled()
+  })
+
+  it('rejects an uppercase token with 404 before any lookup', async () => {
+    const upper = TOKEN.toUpperCase()
+    const res = await POST(
+      new Request(`http://t.local/api/curators/claim/${upper}`, { method: 'POST' }),
+      { params: Promise.resolve({ token: upper }) }
+    )
+    expect(res.status).toBe(404)
+    expect(createServiceClient).not.toHaveBeenCalled()
   })
 })

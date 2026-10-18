@@ -1,15 +1,24 @@
+import { createHash } from 'crypto'
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email'
 import { esc } from '@/lib/email/esc'
 import { provisionIndustryAccount, DuplicateIndustryMemberError } from '@/lib/industry/createIndustryMember'
+import * as Sentry from '@sentry/nextjs'
+import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
+import { isTokenFormat } from '@/lib/curators/tokens'
 
 // ─── POST /api/curators/claim/[token] ────────────────────────────────────
 // Verifies a 72h-expiry, one-time claim token (issued via the admin
 // issue_claim action) and turns a claimed curator directory row into a real
 // Industry account (member_type='industry', badge playlist_curator) —
 // INDUSTRY-04. Public — no session required to call this route; the token
-// itself is the authentication.
+// itself is the credential. A valid hit can mint a magic link and send an
+// email, so the route is throttled per client address (30 per 15 minutes) and
+// per token (5 per 15 minutes) through the durable limiter. Both checks fail
+// closed: if the limiter is unavailable the route refuses with 429 instead of
+// allowing unlimited sends. A token that is not 64 hex characters gets the
+// generic 404 with no database lookup.
 //
 // NOTE (migration 104 / 27-CODEX-REVIEW follow-up): on this Supabase,
 // app_metadata is applied AFTER the auth.users INSERT, so handle_new_user()'s
@@ -23,8 +32,45 @@ import { provisionIndustryAccount, DuplicateIndustryMemberError } from '@/lib/in
 // directly and NEVER mints app_metadata.role='curator'. It also does NOT call
 // createIndustryMember() wholesale — that would send its own cold-invite email
 // on top of this route's curator-claim copy (RESEARCH Pitfall 4).
-export async function POST(_request: Request, { params }: { params: Promise<{ token: string }> }) {
+
+// ─── Throttle ─────────────────────────────────────────────────────────────
+// Dedicated curator-claim: namespace so claim attempts never draw on another
+// route's allowance. The per-token key stores a sha256 of the token, so the
+// raw token never lands in the rate_limits table, and its length is fixed.
+const CLAIM_RATE_WINDOW_MS = 15 * 60 * 1000
+// The per-address cap is the looser one, so a shared network is not locked
+// out by a few bad requests; the per-token cap is the tight one.
+const CLAIM_IP_MAX_ATTEMPTS = 30
+const CLAIM_TOKEN_MAX_ATTEMPTS = 5
+
+function tooManyAttempts() {
+  return NextResponse.json({ error: 'Too many attempts. Try again in a few minutes.' }, { status: 429 })
+}
+
+function claimTokenKey(token: string) {
+  return `curator-claim:token:${createHash('sha256').update(token).digest('hex')}`
+}
+
+export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
+  const ipLimited = await checkRateLimit(`curator-claim:ip:${getClientIp(request).slice(0, 64)}`, {
+    windowMs: CLAIM_RATE_WINDOW_MS,
+    maxAttempts: CLAIM_IP_MAX_ATTEMPTS,
+    failClosed: true,
+  })
+  if (ipLimited) return tooManyAttempts()
+
   const { token } = await params
+  if (!isTokenFormat(token)) {
+    return NextResponse.json({ error: 'Invalid or expired link' }, { status: 404 })
+  }
+
+  const tokenLimited = await checkRateLimit(claimTokenKey(token), {
+    windowMs: CLAIM_RATE_WINDOW_MS,
+    maxAttempts: CLAIM_TOKEN_MAX_ATTEMPTS,
+    failClosed: true,
+  })
+  if (tokenLimited) return tooManyAttempts()
+
   const service = createServiceClient()
 
   const { data: curator, error: fetchError } = await service
@@ -88,12 +134,12 @@ export async function POST(_request: Request, { params }: { params: Promise<{ to
     if (claimError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     if (!claimed) return NextResponse.json({ error: 'Already claimed' }, { status: 410 })
 
-    await sendEmail({
-      ...emailPayload,
-      html: `<p>Sign in to your account:</p><p><a href="${esc(existing.properties.action_link)}">Sign in</a></p>`,
-    })
+    const emailSent = await sendSignInLink(
+      emailPayload,
+      `<p>Sign in to your account:</p><p><a href="${esc(existing.properties.action_link)}">Sign in</a></p>`
+    )
 
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true, emailSent })
   }
 
   let { data: claimed, error: claimError } = await service
@@ -152,12 +198,43 @@ export async function POST(_request: Request, { params }: { params: Promise<{ to
     type: 'magiclink',
     email: curator.email,
   })
-  if (link?.properties?.action_link) {
-    await sendEmail({
-      ...emailPayload,
-      html: `<p>Your curator profile is now a Funūn Industry account. Sign in:</p><p><a href="${esc(link.properties.action_link)}">Sign in</a></p>`,
+  if (!link?.properties?.action_link) {
+    // The claim already went through and the token is spent, so report the
+    // missing link instead of failing the request. The curator can still
+    // sign in from the sign-in page with their email.
+    Sentry.captureMessage('Curator claim completed without a sign-in link', {
+      level: 'error',
+      tags: { feature: 'curator-claim', operation: 'generate-link' },
     })
+    return NextResponse.json({ ok: true, emailSent: false })
   }
+  const emailSent = await sendSignInLink(
+    emailPayload,
+    `<p>Your curator profile is now a Funūn Industry account. Sign in:</p><p><a href="${esc(link.properties.action_link)}">Sign in</a></p>`
+  )
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, emailSent })
+}
+
+// Sends the sign-in email after the claim has been written. The token is
+// already spent at this point, so a send failure is reported to Sentry and
+// returned as emailSent: false instead of failing the request (a retry would
+// only see a 404).
+async function sendSignInLink(
+  payload: Omit<Parameters<typeof sendEmail>[0], 'html'>,
+  html: string
+): Promise<boolean> {
+  try {
+    const result = await sendEmail({ ...payload, html })
+    if (!result.ok) {
+      Sentry.captureMessage('Curator claim sign-in email was not sent', {
+        level: 'error',
+        tags: { feature: 'curator-claim', operation: 'send-email' },
+      })
+    }
+    return result.ok
+  } catch (err) {
+    Sentry.captureException(err, { tags: { feature: 'curator-claim', operation: 'send-email' } })
+    return false
+  }
 }
