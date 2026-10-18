@@ -80,6 +80,24 @@ describe('split-sheet send-for-approval email', () => {
     }
   })
 
+  it('escapes the approve link in the href', async () => {
+    const previous = process.env.NEXT_PUBLIC_APP_URL
+    process.env.NEXT_PUBLIC_APP_URL = 'https://x.test/?a=1&b="2"'
+    try {
+      mockSheetResult.mockReturnValue({ data: makeSheet('Song', 'Alice', 'Bob'), error: null })
+      await callPost()
+      expect(sendEmailMock).toHaveBeenCalled()
+      for (const [args] of sendEmailMock.mock.calls) {
+        const html = args.html as string
+        expect(html).toContain('href="https://x.test/?a=1&amp;b=&quot;2&quot;/approve/')
+        expect(html).not.toContain('b="2"')
+      }
+    } finally {
+      if (previous === undefined) delete process.env.NEXT_PUBLIC_APP_URL
+      else process.env.NEXT_PUBLIC_APP_URL = previous
+    }
+  })
+
   it('keeps the subject on a single line', async () => {
     mockSheetResult.mockReturnValue({
       data: makeSheet('Song\r\nBcc: x@y.z', 'Alice', 'Bob'),

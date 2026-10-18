@@ -135,7 +135,7 @@ export function buildSignatureInviteEmail(input: SignatureInviteInput): Signatur
   const url = approveUrl(input.token)
   const expiryDays = input.expiryDays ?? APPROVAL_TOKEN_EXPIRY_DAYS
 
-  const subject = `Signature requested: split sheet for "${song}"`
+  const subject = `Signature requested: split sheet for "${song.replace(/[\r\n]+/g, ' ')}"`
 
   // By this point the terms are already agreed — the approval step
   // settled them. The ask here is narrower and should read that way: not
