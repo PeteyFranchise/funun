@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email'
+import { buildInitiatorNotification } from '@/lib/split-sheets/initiator-notification'
 import { identityDigest } from '@/lib/split-sheets/identity-policy'
 import { resolvePartyIdentitiesForSheet } from '@/lib/split-sheets/resolve-party-identities.server'
 
@@ -293,15 +294,13 @@ async function notifyInitiator(
   const initiatorEmail = initiator?.user?.email
   if (!initiatorEmail) return
 
-  const subject =
-    action === 'approved'
-      ? `${partyName} approved the split for "${sheet.song_name}"`
-      : `${partyName} proposed a counter-split for "${sheet.song_name}"`
-
-  const html =
-    action === 'approved'
-      ? `<h2>${partyName} approved the split</h2><p>All parties approving will flip the sheet to Approved. <a href="${appUrl}/split-sheets">View in Funūn →</a></p>`
-      : `<h2>${partyName} proposed a counter-split</h2><p>They proposed ${counterSplit}% for their share. Review and re-send. <a href="${appUrl}/split-sheets">Open split sheet →</a></p>`
+  const { subject, html } = buildInitiatorNotification({
+    partyName,
+    songName: sheet.song_name,
+    action,
+    counterSplit,
+    appUrl,
+  })
 
   await sendEmail({ to: initiatorEmail, subject, html })
 }
