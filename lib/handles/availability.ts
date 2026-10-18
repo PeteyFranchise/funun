@@ -93,3 +93,28 @@ export function handleFieldState({
     blocksSubmit: true,
   }
 }
+
+/**
+ * Maps a GET /api/handles/available response to a verdict. Anything that is
+ * not a clean 200 with a boolean `available` (a 429 from the limiter, a 5xx,
+ * a malformed body) is 'unknown' (available: null), never a false 'taken'.
+ * Shared by the signup form and ChooseHandleGate so both behave identically.
+ */
+export async function readHandleAvailability(res: {
+  ok: boolean
+  json: () => Promise<unknown>
+}): Promise<HandleRemoteVerdict> {
+  const unknown: HandleRemoteVerdict = { available: null, reason: null }
+  if (!res.ok) return unknown
+
+  const data = (await res.json().catch(() => null)) as {
+    available?: unknown
+    reason?: unknown
+  } | null
+  if (!data || typeof data.available !== 'boolean') return unknown
+
+  return {
+    available: data.available,
+    reason: typeof data.reason === 'string' ? data.reason : null,
+  }
+}
