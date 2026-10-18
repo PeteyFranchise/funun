@@ -64,6 +64,6 @@ describe('migration 245 - release-documents bucket', () => {
   })
 
   it('carries no em dashes', () => {
-    expect(sql).not.toContain('—')
+    expect(sql).not.toContain(String.fromCharCode(0x2014))
   })
 })
