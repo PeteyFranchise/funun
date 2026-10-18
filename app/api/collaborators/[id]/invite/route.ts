@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { sendCollaboratorInvite } from '@/lib/collaborators/invite'
+import { isCollaboratorInviteRateLimited } from '@/lib/collaborators/invite-quota'
 import { requireMemberApiAccount } from '@/lib/accounts/member-api-gate'
 import {
   mustBlockActionBetween,
@@ -12,7 +13,9 @@ import {
 // ─── POST /api/collaborators/[id]/invite ─────────────────────────────────
 // Sends an educational IPI-invite email to the collaborator with a tokenized
 // link to /signup?invite=[token]. Enforces a 60s cooldown per collaborator+
-// inviting user pair to prevent duplicate emails (T-01-15, Pitfall 4).
+// inviting user pair to prevent duplicate emails (T-01-15, Pitfall 4), and
+// applies per-sender hourly and daily limits (fail-closed) right after auth,
+// before any lookup or send.
 //
 // This route is a thin wrapper: it owns auth + ownership, then delegates the
 // send mechanics (cooldown, token insert, email build/send) to the shared
@@ -28,6 +31,15 @@ export async function POST(
   const member = await requireMemberApiAccount(supabase, authUser)
   if (!member.ok) return NextResponse.json({ error: member.error }, { status: member.status })
   const { user } = member
+
+  // ── 1b. Per-sender invite limits — before any lookup or send. ─────────
+  const limited = await isCollaboratorInviteRateLimited(user.id)
+  if (limited) {
+    return NextResponse.json(
+      { error: 'You have sent too many invites recently. Try again later.' },
+      { status: 429 }
+    )
+  }
 
   const { id } = await params
 

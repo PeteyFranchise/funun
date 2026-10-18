@@ -205,6 +205,11 @@ function mockAuth(service: ReturnType<typeof serviceClient>, collaborators: unkn
   jest.doMock('@/lib/accounts/member-api-gate', () => ({
     requireMemberApiAccount: jest.fn(async () => ({ ok: true, user: { id: CALLER } })),
   }))
+  // The service stub above answers every rpc as an identity lookup; this file
+  // is about the block gate, so the per-sender limiter is held under its cap.
+  jest.doMock('@/lib/security/rate-limit', () => ({
+    checkRateLimit: jest.fn(async () => false),
+  }))
 }
 
 // ─────────────────────────────────────────────────────────────────────────

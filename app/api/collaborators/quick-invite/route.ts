@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { sendCollaboratorInvite } from '@/lib/collaborators/invite'
+import { isCollaboratorInviteRateLimited } from '@/lib/collaborators/invite-quota'
 import { requireMemberApiAccount } from '@/lib/accounts/member-api-gate'
 import {
   mustBlockActionForEmail,
@@ -25,6 +26,10 @@ import {
 //    copyable link is the only working delivery channel right now.
 // 2. Why reuse-by-email exists: without it, re-inviting the same person
 //    from the modal would create a second roster row every time.
+//
+// Per-sender limits (hourly and daily, fail-closed) run right after the auth
+// gate, before any roster lookup, insert or send. The shared helper's 60s
+// per-collaborator cooldown remains the double-send guard.
 
 const QuickInviteSchema = z
   .object({
@@ -40,6 +45,15 @@ export async function POST(request: Request) {
   const member = await requireMemberApiAccount(supabase, authUser)
   if (!member.ok) return NextResponse.json({ error: member.error }, { status: member.status })
   const { user } = member
+
+  // ── 1b. Per-sender invite limits — before any lookup, insert or send. ──
+  const limited = await isCollaboratorInviteRateLimited(user.id)
+  if (limited) {
+    return NextResponse.json(
+      { error: 'You have sent too many invites recently. Try again later.' },
+      { status: 429 }
+    )
+  }
 
   // ── 2. Strict payload validation — exactly first_name + email. ────────
   const body = await request.json().catch(() => ({}))
