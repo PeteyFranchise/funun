@@ -21,8 +21,12 @@ jest.mock('@/lib/supabase/server', () => ({
     ({ rpc: (...a: unknown[]) => mockRpc(...a), from: (table: string) => mockFrom(table) }) as unknown as SupabaseClient,
 }))
 
+const mockCaptureMessage = jest.fn()
+jest.mock('@sentry/nextjs', () => ({ captureMessage: (...a: unknown[]) => mockCaptureMessage(...a) }))
+
 import {
   checkRateLimit,
+  resetLimiterReportThrottleForTests,
   peekRateLimit,
   getClientIp,
   RATE_LIMIT_WINDOW_MS,
@@ -30,7 +34,10 @@ import {
   RATE_LIMIT_MAX_KEY_LENGTH,
 } from './rate-limit'
 
-beforeEach(() => jest.clearAllMocks())
+beforeEach(() => {
+  jest.clearAllMocks()
+  resetLimiterReportThrottleForTests()
+})
 
 // ─── checkRateLimit ───────────────────────────────────────────────────────
 describe('checkRateLimit', () => {
@@ -72,6 +79,24 @@ describe('checkRateLimit', () => {
   it('fails OPEN (false) when the client throws', async () => {
     mockRpc.mockRejectedValue(new Error('network'))
     expect(await checkRateLimit('ip:1.2.3.4')).toBe(false)
+  })
+
+  it('reports a limiter outage to Sentry with tags only, at most once a minute', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: { message: 'down' } })
+    await checkRateLimit('email:someone@example.com', { failClosed: true })
+    await checkRateLimit('email:someone@example.com', { failClosed: true })
+    expect(mockCaptureMessage).toHaveBeenCalledTimes(1)
+    expect(mockCaptureMessage).toHaveBeenCalledWith('Rate limiter unavailable', {
+      level: 'error',
+      tags: { feature: 'rate-limit', posture: 'fail-closed' },
+    })
+    expect(JSON.stringify(mockCaptureMessage.mock.calls)).not.toContain('someone@example.com')
+  })
+
+  it('does not report when the limiter answers normally', async () => {
+    mockRpc.mockResolvedValue({ data: true, error: null })
+    await checkRateLimit('ip:1.2.3.4')
+    expect(mockCaptureMessage).not.toHaveBeenCalled()
   })
 
   it('rejects invalid inputs before calling the database', async () => {

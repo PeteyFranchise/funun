@@ -13,6 +13,7 @@
 // signups. Abuse-sensitive or fan-out writes pass `failClosed: true`, preventing
 // a database/limiter outage from turning into an unlimited messaging channel.
 
+import * as Sentry from '@sentry/nextjs'
 import { createServiceClient } from '@/lib/supabase/server'
 
 export const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000
@@ -45,11 +46,36 @@ export async function checkRateLimit(
       p_window_seconds: Math.ceil(windowMs / 1000),
       p_max: maxAttempts,
     })
-    if (error) return options.failClosed === true
+    if (error) {
+      reportLimiterUnavailable(options.failClosed === true)
+      return options.failClosed === true
+    }
     return data === true
   } catch {
+    reportLimiterUnavailable(options.failClosed === true)
     return options.failClosed === true
   }
+}
+
+// A limiter outage otherwise looks like a wave of 429s (fail-closed callers)
+// or silently unthrottled traffic (fail-open callers). Report it, at most once
+// a minute per instance, with tags only: the key can hold an address or email.
+const LIMITER_REPORT_INTERVAL_MS = 60 * 1000
+let lastLimiterReportAt = 0
+
+function reportLimiterUnavailable(failClosed: boolean) {
+  const now = Date.now()
+  if (now - lastLimiterReportAt < LIMITER_REPORT_INTERVAL_MS) return
+  lastLimiterReportAt = now
+  Sentry.captureMessage('Rate limiter unavailable', {
+    level: 'error',
+    tags: { feature: 'rate-limit', posture: failClosed ? 'fail-closed' : 'fail-open' },
+  })
+}
+
+/** Test hook: clears the once-a-minute report throttle. */
+export function resetLimiterReportThrottleForTests() {
+  lastLimiterReportAt = 0
 }
 
 export type RateLimitPeek = 'allowed' | 'limited' | 'unavailable'
