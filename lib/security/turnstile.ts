@@ -86,7 +86,7 @@ export async function verifyTurnstileToken(
     if (TURNSTILE_TEST_SECRET.test(secret)) return true
 
     if (options.expectedAction !== undefined && result.action !== options.expectedAction) {
-      return false // fail closed — token was minted for a different widget
+      return false // fail closed: token was minted for a different widget
     }
 
     const hostnames = expectedHostnames()
@@ -97,6 +97,6 @@ export async function verifyTurnstileToken(
 
     return true
   } catch {
-    return false // fail closed — includes the timeout abort
+    return false // fail closed, includes the timeout abort
   }
 }

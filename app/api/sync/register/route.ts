@@ -151,7 +151,7 @@ export async function POST(request: Request) {
   const payload = result.body
 
   // Bot check, fail-closed and BEFORE the email counter and any DB write, so
-  // unverified requests cannot use up a victim email's budget. Mirrors
+  // unverified requests cannot use up another visitor's email budget. Mirrors
   // POST /api/waitlist: only the half-configured states are reported to Sentry
   // (once per server instance), and the client response is identical in every
   // config state.
@@ -170,7 +170,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 400 })
   }
 
-  // Second rate-limit dimension — same visitor retrying with a different
+  // Second rate-limit dimension: the same visitor retrying with a different
   // IP (or behind a shared IP) is still capped per email.
   if (await checkRateLimit(`${EMAIL_KEY_PREFIX}${payload.email}`, { failClosed: true })) {
     return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
