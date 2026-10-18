@@ -184,8 +184,10 @@ export default async function SyncLibraryHubPage() {
         )}
       </section>
 
-      {/* "Your agreement" — signed date + the file link, mirrors
-          DocumentCard.tsx's file_url -> View PDF idiom. */}
+      {/* "Your agreement": signed date plus the file link. Unlike DocumentCard's
+          View PDF (which goes through the /file route, 10 minute links), this
+          link is signed server-side by lib/sync-library/hub-access.ts from
+          document_data.esign.signedFileUrl and stays valid for 2 hours. */}
       <section className="mt-10">
         <h2 className="text-lg font-semibold text-white">Your agreement</h2>
         {hub.agreement ? (
