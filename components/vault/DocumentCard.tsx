@@ -148,9 +148,10 @@ export function DocumentCard({
                 Signed {new Date(req.signed_at).toLocaleDateString()}
               </p>
             )}
-            {/* file_url is a storage path, used here only as a "a file exists" flag.
-                The link goes through the /file route, which issues a signed URL. */}
-            {req.file_url && req.documentId && (
+            {/* has_file only says a file exists. The storage path stays on the
+                server; the link goes through the /file route, which issues a
+                10 minute signed URL. */}
+            {req.has_file && req.documentId && (
               <a
                 href={`/api/vault/${projectId}/documents/${req.documentId}/file`}
                 target="_blank"
