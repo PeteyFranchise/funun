@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
 import { buildRegisterPayload } from '@/lib/buyers/register'
@@ -7,13 +8,15 @@ import { resolveLeadershipFallback } from '@/lib/staff/leadershipFallback'
 import { resolveLeadRecipient, buildLeadRoutedNotification } from '@/lib/staff/notifications'
 import { createNotification } from '@/lib/notifications'
 import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
+import { turnstileConfigStatus, verifyTurnstileToken } from '@/lib/security/turnstile'
 
 // ─── POST /api/sync/register — public, unauthenticated (23-04 Task 3) ─────
 // The FIRST genuinely public write path in the buyer domain (RESEARCH
 // Pitfall 7) — no session, no requireStaff() gate. Compensating controls
-// replace auth: rate limiting, strict allowlist validation
-// (buildRegisterPayload), and account-enumeration avoidance on the
-// duplicate-email path. Creates a real buyer_orgs row in
+// replace auth: a Cloudflare Turnstile bot check (verified before any DB
+// write), fail-closed per-ip and per-email rate limits, a global daily cap
+// on new registrations, strict allowlist validation (buildRegisterPayload),
+// and account-enumeration avoidance on the duplicate-email path. Creates a real buyer_orgs row in
 // 'pending_onboarding' (NOT a bare lead) + a first approver/org-admin
 // member via lib/buyers/createBuyerAccount (D-11/A1), then wires the
 // already-built Phase 25 lead-routing hook
@@ -32,6 +35,11 @@ const ORG_SELECT_COLUMNS = 'id, name, ae_user_id'
 // behavior instead of copy-pasting a 4th/5th limiter (RESEARCH "Don't
 // Hand-Roll"). Now backed by the shared durable limiter (audit #7) — the count
 // lives in Postgres, so it holds across serverless instances and cold starts.
+
+// Global daily cap on new registrations, shared across all callers. Module
+// level and not exported: Next route files may only export HTTP handlers.
+const GLOBAL_DAILY_REGISTRATION_CAP = 200
+const DAY_MS = 24 * 60 * 60 * 1000
 
 // ─── Best-effort lead routing (Phase 25 hook) ──────────────────────────────
 // Never throws — any failure here must never fail the signup it's attached
@@ -73,7 +81,7 @@ async function routeLead(
 
 export async function POST(request: Request) {
   const ip = getClientIp(request)
-  if (await checkRateLimit(`ip:${ip}`)) {
+  if (await checkRateLimit(`ip:${ip}`, { failClosed: true })) {
     return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
   }
 
@@ -97,8 +105,39 @@ export async function POST(request: Request) {
 
   // Second rate-limit dimension — same visitor retrying with a different
   // IP (or behind a shared IP) is still capped per email.
-  if (await checkRateLimit(`email:${payload.email}`)) {
+  if (await checkRateLimit(`email:${payload.email}`, { failClosed: true })) {
     return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
+  }
+
+  // Bot check, fail-closed and BEFORE any DB write. Mirrors POST /api/waitlist:
+  // only the half-configured states are reported to Sentry, and the client
+  // response is identical in every config state.
+  const turnstileToken = typeof raw.turnstileToken === 'string' ? raw.turnstileToken : ''
+  const verified = await verifyTurnstileToken(turnstileToken, ip)
+  if (!verified) {
+    const configStatus = turnstileConfigStatus()
+    if (configStatus === 'secret-missing' || configStatus === 'site-key-missing') {
+      Sentry.captureMessage('Buyer signup Turnstile verification failed due to misconfiguration', {
+        level: 'error',
+        tags: { feature: 'sync-register-turnstile', configStatus },
+      })
+    }
+    return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 400 })
+  }
+
+  // Global daily cap. Deliberately AFTER the bot check: requests that fail
+  // verification must not be able to use up the shared daily allowance.
+  if (
+    await checkRateLimit('sync-register:global', {
+      windowMs: DAY_MS,
+      maxAttempts: GLOBAL_DAILY_REGISTRATION_CAP,
+      failClosed: true,
+    })
+  ) {
+    return NextResponse.json(
+      { error: 'Registration is temporarily unavailable. Please try again later.' },
+      { status: 429 }
+    )
   }
 
   const service = createServiceClient()

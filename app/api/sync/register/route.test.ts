@@ -3,6 +3,8 @@ import { createBuyerAccount, DuplicateBuyerAccountError } from '@/lib/buyers/cre
 import { resolveLeadershipFallback } from '@/lib/staff/leadershipFallback'
 import { createNotification } from '@/lib/notifications'
 import { checkRateLimit } from '@/lib/security/rate-limit'
+import { turnstileConfigStatus, verifyTurnstileToken } from '@/lib/security/turnstile'
+import * as Sentry from '@sentry/nextjs'
 import { POST } from './route'
 
 // ─── POST /api/sync/register (23-04 Task 3) ────────────────────────────────
@@ -10,7 +12,10 @@ import { POST } from './route'
 // mirroring __tests__/staff-buyer-orgs-api.test.ts's admin-route
 // conventions. Covers: 201 + correct insert shape, best-effort lead
 // routing, 400 on invalid payload, neutral response on duplicate email
-// (account-enumeration avoidance), and 429 over the rate limit.
+// (account-enumeration avoidance), and 429 over the rate limit. Also covers
+// the bot check (rejected before any DB call, identical response in every
+// config state) and the fail-closed limiter posture including the global
+// daily cap.
 
 jest.mock('@/lib/supabase/server', () => ({
   createServiceClient: jest.fn(),
@@ -36,6 +41,15 @@ jest.mock('@/lib/security/rate-limit', () => ({
   checkRateLimit: jest.fn(),
 }))
 
+jest.mock('@/lib/security/turnstile', () => ({
+  verifyTurnstileToken: jest.fn(),
+  turnstileConfigStatus: jest.fn(),
+}))
+
+jest.mock('@sentry/nextjs', () => ({
+  captureMessage: jest.fn(),
+}))
+
 const ORG_UUID = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
 const NEW_USER_UUID = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'
 const LEADERSHIP_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
@@ -56,6 +70,7 @@ function validBody(overrides: Record<string, unknown> = {}) {
     phone: '555-123-4567',
     role: 'Marketing Director',
     useCase: 'agency',
+    turnstileToken: 'tok-ok',
     ...overrides,
   }
 }
@@ -83,6 +98,8 @@ beforeEach(() => {
   ;(resolveLeadershipFallback as jest.Mock).mockResolvedValue(LEADERSHIP_UUID)
   ;(createNotification as jest.Mock).mockResolvedValue({ ok: true })
   ;(checkRateLimit as jest.Mock).mockResolvedValue(false)
+  ;(verifyTurnstileToken as jest.Mock).mockResolvedValue(true)
+  ;(turnstileConfigStatus as jest.Mock).mockReturnValue('configured')
 })
 
 describe('POST /api/sync/register', () => {
@@ -211,6 +228,119 @@ describe('POST /api/sync/register', () => {
     )
 
     expect(res.status).toBe(500)
+    expect(createBuyerAccount).not.toHaveBeenCalled()
+  })
+})
+
+describe('POST /api/sync/register - bot check', () => {
+  const VERIFY_FAILED = { error: 'Verification failed. Please try again.' }
+
+  it('rejects buyer signup without a bot check token, before any DB call', async () => {
+    ;(verifyTurnstileToken as jest.Mock).mockResolvedValue(false)
+    const body = validBody()
+    delete (body as Record<string, unknown>).turnstileToken
+
+    const res = await POST(jsonRequest(body, { 'x-forwarded-for': '7.7.7.7' }))
+
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual(VERIFY_FAILED)
+    expect(verifyTurnstileToken).toHaveBeenCalledWith('', '7.7.7.7')
+    expect(createServiceClient).not.toHaveBeenCalled()
+    expect(createBuyerAccount).not.toHaveBeenCalled()
+  })
+
+  it('rejects buyer signup when the token fails verification, before any DB call', async () => {
+    ;(verifyTurnstileToken as jest.Mock).mockResolvedValue(false)
+
+    const res = await POST(
+      jsonRequest(validBody({ turnstileToken: 'tok-bad' }), { 'x-forwarded-for': '7.7.7.8' })
+    )
+
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual(VERIFY_FAILED)
+    expect(verifyTurnstileToken).toHaveBeenCalledWith('tok-bad', '7.7.7.8')
+    expect(createServiceClient).not.toHaveBeenCalled()
+    expect(createBuyerAccount).not.toHaveBeenCalled()
+  })
+
+  it('reports a half-configured bot check to Sentry once, with an identical client response', async () => {
+    ;(verifyTurnstileToken as jest.Mock).mockResolvedValue(false)
+    ;(turnstileConfigStatus as jest.Mock).mockReturnValue('secret-missing')
+
+    const res = await POST(jsonRequest(validBody(), { 'x-forwarded-for': '7.7.7.9' }))
+
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual(VERIFY_FAILED)
+    expect(Sentry.captureMessage).toHaveBeenCalledTimes(1)
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      'Buyer signup Turnstile verification failed due to misconfiguration',
+      expect.objectContaining({
+        level: 'error',
+        tags: { feature: 'sync-register-turnstile', configStatus: 'secret-missing' },
+      })
+    )
+  })
+
+  it.each(['configured', 'unconfigured'] as const)(
+    'does not report to Sentry when a failed check is in the %s state',
+    async status => {
+      ;(verifyTurnstileToken as jest.Mock).mockResolvedValue(false)
+      ;(turnstileConfigStatus as jest.Mock).mockReturnValue(status)
+
+      const res = await POST(jsonRequest(validBody(), { 'x-forwarded-for': '7.7.7.10' }))
+
+      expect(res.status).toBe(400)
+      expect(await res.json()).toEqual(VERIFY_FAILED)
+      expect(Sentry.captureMessage).not.toHaveBeenCalled()
+    }
+  )
+})
+
+describe('POST /api/sync/register - fail-closed limits', () => {
+  it('passes failClosed for the ip, email and global daily keys', async () => {
+    const service = mockService()
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(createBuyerAccount as jest.Mock).mockResolvedValue({ userId: NEW_USER_UUID, emailSent: true })
+
+    await POST(jsonRequest(validBody(), { 'x-forwarded-for': '8.8.8.8' }))
+
+    expect(checkRateLimit).toHaveBeenCalledWith('ip:8.8.8.8', { failClosed: true })
+    expect(checkRateLimit).toHaveBeenCalledWith('email:jamie.rivera@acme.test', { failClosed: true })
+    expect(checkRateLimit).toHaveBeenCalledWith('sync-register:global', {
+      windowMs: 24 * 60 * 60 * 1000,
+      maxAttempts: 200,
+      failClosed: true,
+    })
+  })
+
+  it('returns 429 with no DB call when the global daily cap is reached', async () => {
+    ;(checkRateLimit as jest.Mock).mockImplementation(async (key: string) => key === 'sync-register:global')
+
+    const res = await POST(jsonRequest(validBody(), { 'x-forwarded-for': '8.8.8.9' }))
+
+    expect(res.status).toBe(429)
+    expect(createServiceClient).not.toHaveBeenCalled()
+    expect(createBuyerAccount).not.toHaveBeenCalled()
+  })
+
+  it('does not consult the global daily cap until the bot check has passed', async () => {
+    ;(verifyTurnstileToken as jest.Mock).mockResolvedValue(false)
+
+    await POST(jsonRequest(validBody(), { 'x-forwarded-for': '8.8.8.10' }))
+
+    expect(checkRateLimit).not.toHaveBeenCalledWith('sync-register:global', expect.anything())
+  })
+
+  it('refuses with 429 when the limiter is unavailable', async () => {
+    // Mirror the real helper's failure branch: only fail-closed callers see "limited".
+    ;(checkRateLimit as jest.Mock).mockImplementation(
+      async (_key: string, opts?: { failClosed?: boolean }) => opts?.failClosed === true
+    )
+
+    const res = await POST(jsonRequest(validBody(), { 'x-forwarded-for': '8.8.8.11' }))
+
+    expect(res.status).toBe(429)
+    expect(createServiceClient).not.toHaveBeenCalled()
     expect(createBuyerAccount).not.toHaveBeenCalled()
   })
 })
