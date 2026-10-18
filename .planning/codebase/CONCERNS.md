@@ -15,7 +15,7 @@
 | ID | Severity | Type | Title |
 |----|----------|------|-------|
 | SEC-01 | high | security | See advisory table below |
-| SEC-02 | high | security **verify** | See advisory table below |
+| SEC-02 | medium | bug (verified live 2026-10-18: bucket absent, no data affected) | See advisory table below |
 | SEC-03 | medium | security | See advisory table below |
 | SEC-04 | medium | security | See advisory table below |
 | SEC-05 | medium | security | See advisory table below |
@@ -44,7 +44,7 @@ Open security findings are tracked in private GitHub Security Advisories on this
 | ID | Severity | Advisory |
 |----|----------|----------|
 | SEC-01 | high | Public issue #188 (gitignore hygiene, no exposure) |
-| SEC-02 | high | GHSA-2crg-39c2-xwr5 |
+| SEC-02 | medium | GHSA-2crg-39c2-xwr5 (bucket absent in production, 0 envelopes and 0 vault documents as of 2026-10-18) |
 | SEC-03 | medium | GHSA-j9rc-hh3f-v55c |
 | SEC-04 | medium | GHSA-p72w-64h6-cfvg |
 | SEC-05 | medium | GHSA-hqfv-ff36-9mj7 |
