@@ -55,9 +55,23 @@ type WaitlistRow = { id: string; email: string; unsubscribe_token: string }
 type MaybeSingleResult = { data: { id: string } | null; error: { message: string } | null }
 
 function mockService(
-  options: { eligibleRows?: WaitlistRow[]; maybeSingleResults?: MaybeSingleResult[] } = {}
+  options: {
+    eligibleRows?: WaitlistRow[]
+    maybeSingleResults?: MaybeSingleResult[]
+    /** Normalized addresses currently on public.email_suppressions. */
+    suppressedEmails?: string[]
+    suppressionLookupError?: { message: string }
+  } = {}
 ) {
-  const { eligibleRows = [], maybeSingleResults } = options
+  const { eligibleRows = [], maybeSingleResults, suppressedEmails = [], suppressionLookupError } = options
+
+  // ── email_suppressions pre-filter: select('email').in('email', chunk)
+  const suppressionInSpy = jest.fn(async (_column: string, chunk: string[]) =>
+    suppressionLookupError
+      ? { data: null, error: suppressionLookupError }
+      : { data: suppressedEmails.filter(e => chunk.includes(e)).map(email => ({ email })), error: null }
+  )
+  const suppressionSelectSpy = jest.fn(() => ({ in: suppressionInSpy }))
 
   const auditInsert = jest.fn(async () => ({ error: null }))
 
@@ -96,6 +110,7 @@ function mockService(
 
   const from = jest.fn((table: string) => {
     if (table === 'staff_audit_log') return { insert: auditInsert }
+    if (table === 'email_suppressions') return { select: suppressionSelectSpy }
     if (table === 'artist_waitlist') {
       return { select: selectQuerySpy, update: updateSpy }
     }
@@ -115,6 +130,7 @@ function mockService(
     selectQuerySpy,
     isOuter,
     isInner,
+    suppressionInSpy,
   }
 }
 
@@ -189,7 +205,7 @@ describe('POST /api/admin/artist-invites/broadcast', () => {
       actorId: LEADERSHIP_UUID,
       action: 'artist_invite.broadcast',
       targetType: 'artist_waitlist',
-      changes: { delivered: 2, failed: 0 },
+      changes: { delivered: 2, failed: 0, skipped: 0 },
     })
   })
 
@@ -474,8 +490,73 @@ describe('POST /api/admin/artist-invites/broadcast', () => {
     expect(service.updateSpy).not.toHaveBeenCalled()
     expect(logStaffAction).toHaveBeenCalledWith(
       service,
-      expect.objectContaining({ changes: { delivered: 0, failed: 0 } })
+      expect.objectContaining({ changes: { delivered: 0, failed: 0, skipped: 0 } })
     )
+  })
+
+  it('leaves suppressed recipients out of the run: no claim, no mint, no send, counted as skipped (GH #190)', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
+    const eligibleRows: WaitlistRow[] = [
+      { id: 'w1', email: 'Bounced@Example.com ', unsubscribe_token: 'tok-a' },
+      { id: 'w2', email: 'fine@example.com', unsubscribe_token: 'tok-b' },
+    ]
+    const service = mockService({ eligibleRows, suppressedEmails: ['bounced@example.com'] })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await POST()
+
+    expect(await res.json()).toEqual({ delivered: 1, failed: 0, skipped: 1 })
+    expect(service.suppressionInSpy).toHaveBeenCalledWith('email', ['bounced@example.com', 'fine@example.com'])
+    expect(mintOrRotateInvite).toHaveBeenCalledTimes(1)
+    expect(mintOrRotateInvite).toHaveBeenCalledWith(service, expect.objectContaining({ email: 'fine@example.com' }))
+    expect(sendEmail).toHaveBeenCalledTimes(1)
+    expect(logStaffAction).toHaveBeenCalledWith(
+      service,
+      expect.objectContaining({ changes: { delivered: 1, failed: 0, skipped: 1 } })
+    )
+  })
+
+  it('counts a recipient suppressed between the pre-filter and the send as skipped, releasing its claim (GH #190)', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
+    const eligibleRows: WaitlistRow[] = [{ id: 'w1', email: 'late@example.com', unsubscribe_token: 'tok-a' }]
+    const service = mockService({ eligibleRows })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(sendEmail as jest.Mock).mockResolvedValue({
+      ok: false,
+      error: 'Recipient suppressed',
+      suppressed: ['late@example.com'],
+    })
+
+    const res = await POST()
+
+    expect(await res.json()).toEqual({ delivered: 0, failed: 0, skipped: 1 })
+    // Claim, then release; never the delivered marker.
+    expect(service.updateSpy).toHaveBeenCalledTimes(2)
+    expect(service.updateSpy).toHaveBeenNthCalledWith(2, { claim_token: null, claimed_at: null })
+    expect(service.updateSpy.mock.calls.some(([payload]) => 'notified_reopen_at' in payload)).toBe(false)
+  })
+
+  it('fails open when the suppression pre-filter errors: rows still go through the claim and send path', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
+    const eligibleRows: WaitlistRow[] = [{ id: 'w1', email: 'a@example.com', unsubscribe_token: 'tok-a' }]
+    const service = mockService({ eligibleRows, suppressionLookupError: { message: 'relation does not exist' } })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await POST()
+
+    expect(await res.json()).toEqual({ delivered: 1, failed: 0, skipped: 0 })
+    expect(sendEmail).toHaveBeenCalledTimes(1)
+  })
+
+  it('still counts an ordinary send failure as failed, not skipped', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
+    const eligibleRows: WaitlistRow[] = [{ id: 'w1', email: 'a@example.com', unsubscribe_token: 'tok-a' }]
+    ;(createServiceClient as jest.Mock).mockReturnValue(mockService({ eligibleRows }))
+    ;(sendEmail as jest.Mock).mockResolvedValue({ ok: false, error: 'Email could not be sent' })
+
+    const res = await POST()
+
+    expect(await res.json()).toEqual({ delivered: 0, failed: 1, skipped: 0 })
   })
 
   it('rejects a non-leadership staff caller (AE/BD) with 403 before touching the service client', async () => {
