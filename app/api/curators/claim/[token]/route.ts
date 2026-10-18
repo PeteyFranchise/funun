@@ -1,14 +1,21 @@
+import { createHash } from 'crypto'
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email'
 import { provisionIndustryAccount, DuplicateIndustryMemberError } from '@/lib/industry/createIndustryMember'
+import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
 
 // ─── POST /api/curators/claim/[token] ────────────────────────────────────
 // Verifies a 72h-expiry, one-time claim token (issued via the admin
 // issue_claim action) and turns a claimed curator directory row into a real
 // Industry account (member_type='industry', badge playlist_curator) —
 // INDUSTRY-04. Public — no session required to call this route; the token
-// itself is the authentication.
+// itself is the credential. A valid hit can mint a magic link and send an
+// email, so the route is throttled per client address (10 per 15 minutes) and
+// per token (5 per 15 minutes) through the durable limiter. Both checks fail
+// closed: if the limiter is unavailable the route refuses with 429 instead of
+// allowing unlimited sends. A token that is not 64 hex characters gets the
+// generic 404 with no database lookup.
 //
 // NOTE (migration 104 / 27-CODEX-REVIEW follow-up): on this Supabase,
 // app_metadata is applied AFTER the auth.users INSERT, so handle_new_user()'s
@@ -22,8 +29,44 @@ import { provisionIndustryAccount, DuplicateIndustryMemberError } from '@/lib/in
 // directly and NEVER mints app_metadata.role='curator'. It also does NOT call
 // createIndustryMember() wholesale — that would send its own cold-invite email
 // on top of this route's curator-claim copy (RESEARCH Pitfall 4).
-export async function POST(_request: Request, { params }: { params: Promise<{ token: string }> }) {
+
+// ─── Throttle ─────────────────────────────────────────────────────────────
+// Dedicated curator-claim: namespace so claim attempts never draw on another
+// route's allowance. The per-token key stores a sha256 of the token, so the
+// raw token never lands in the rate_limits table, and its length is fixed.
+const CLAIM_TOKEN_PATTERN = /^[a-f0-9]{64}$/i
+const CLAIM_RATE_WINDOW_MS = 15 * 60 * 1000
+const CLAIM_IP_MAX_ATTEMPTS = 10
+const CLAIM_TOKEN_MAX_ATTEMPTS = 5
+
+function tooManyAttempts() {
+  return NextResponse.json({ error: 'Too many attempts. Please try again later.' }, { status: 429 })
+}
+
+function claimTokenKey(token: string) {
+  return `curator-claim:token:${createHash('sha256').update(token).digest('hex')}`
+}
+
+export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
+  const ipLimited = await checkRateLimit(`curator-claim:ip:${getClientIp(request)}`, {
+    windowMs: CLAIM_RATE_WINDOW_MS,
+    maxAttempts: CLAIM_IP_MAX_ATTEMPTS,
+    failClosed: true,
+  })
+  if (ipLimited) return tooManyAttempts()
+
   const { token } = await params
+  if (!CLAIM_TOKEN_PATTERN.test(token)) {
+    return NextResponse.json({ error: 'Invalid or expired link' }, { status: 404 })
+  }
+
+  const tokenLimited = await checkRateLimit(claimTokenKey(token), {
+    windowMs: CLAIM_RATE_WINDOW_MS,
+    maxAttempts: CLAIM_TOKEN_MAX_ATTEMPTS,
+    failClosed: true,
+  })
+  if (tokenLimited) return tooManyAttempts()
+
   const service = createServiceClient()
 
   const { data: curator, error: fetchError } = await service
