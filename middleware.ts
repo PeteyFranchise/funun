@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { isProtectedPath } from '@/lib/auth/protectedRoutes'
 import { isMarketingDocumentPath, shouldRewriteRootToMarketing } from '@/lib/marketing/rootRewrite'
 
 const CLAIM_ORIGIN_HOSTS = new Set(['funun.studio', 'www.funun.studio'])
@@ -167,22 +168,13 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith('/signin') ||
     pathname.startsWith('/signup') ||
     pathname.startsWith('/forgot-password')
-  const isProtected =
-    pathname.startsWith('/vault') ||
-    pathname.startsWith('/dashboard') ||
-    pathname.startsWith('/settings') ||
-    pathname.startsWith('/collaborators') ||
-    pathname.startsWith('/split-sheets') ||
-    pathname.startsWith('/launchpad') ||
-    pathname === '/w' ||
-    pathname.startsWith('/w/') ||
-    pathname.startsWith('/admin')
-  // Note: /approve and /join are intentionally public — collaborators access
-  // approval and invite pages without a Funūn account (D-15, D-08).
+  const isProtected = isProtectedPath(pathname)
+  // Public pages (/approve, /join, ...) are listed in lib/auth/protectedRoutes.ts.
 
   if (isProtected && !user) {
     const url = new URL('/signin', req.url)
-    url.searchParams.set('next', pathname)
+    // Keep the query so the visitor lands back on the same view after sign-in.
+    url.searchParams.set('next', pathname + req.nextUrl.search)
     return respondWithAuthState(NextResponse.redirect(url))
   }
 
