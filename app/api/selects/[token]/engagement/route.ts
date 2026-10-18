@@ -67,8 +67,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   // per-(token+ip) and per-token dimensions).
   const ip = getClientIp(request)
   if (
-    (await checkRateLimit(`selects-engagement:${token}:${ip}`, { maxAttempts: 60 })) ||
-    (await checkRateLimit(`selects-engagement:${token}`, { maxAttempts: 300 }))
+    (await checkRateLimit(`selects-engagement:${token}:${ip}`, { maxAttempts: 60, failClosed: true })) ||
+    (await checkRateLimit(`selects-engagement:${token}`, { maxAttempts: 300, failClosed: true }))
   ) {
     return NextResponse.json({ error: 'Too many requests — please slow down.' }, { status: 429 })
   }

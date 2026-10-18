@@ -47,6 +47,7 @@ export async function GET(request: Request) {
     await checkRateLimit(`handle-check:ip:${ip}`, {
       windowMs: HANDLE_CHECK_WINDOW_MS,
       maxAttempts: HANDLE_CHECK_MAX_ATTEMPTS,
+      failClosed: true,
     })
   ) {
     return NextResponse.json(

@@ -16,7 +16,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
   const supabase = await createApiClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (await checkRateLimit(`producer-handoff-activity:${user.id}`, { maxAttempts: 120, windowMs: 15 * 60 * 1000 })) {
+  if (await checkRateLimit(`producer-handoff-activity:${user.id}`, { maxAttempts: 120, windowMs: 15 * 60 * 1000, failClosed: true })) {
     return NextResponse.json({ error: 'Too many activity updates. Please slow down.' }, { status: 429 })
   }
   const parsed = ActivitySchema.safeParse(await request.json().catch(() => null))

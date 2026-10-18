@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (await checkRateLimit(`earnings-import:${user.id}`, { maxAttempts: 20 })) {
+  if (await checkRateLimit(`earnings-import:${user.id}`, { maxAttempts: 20, failClosed: true })) {
     return NextResponse.json({ error: 'Too many imports — please slow down.' }, { status: 429 })
   }
 

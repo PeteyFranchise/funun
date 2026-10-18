@@ -49,7 +49,7 @@ function errorResponse(message: string, status: number) {
 
 export async function POST(request: Request) {
   const ip = getClientIp(request)
-  if (await checkRateLimit(`ip:${ip}`)) {
+  if (await checkRateLimit(`ip:${ip}`, { failClosed: true })) {
     return errorResponse('Too many requests. Please try again later.', 429)
   }
 
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
   }
   const entry = result.value
 
-  if (await checkRateLimit(`email:${entry.email}`)) {
+  if (await checkRateLimit(`email:${entry.email}`, { failClosed: true })) {
     return errorResponse('Too many requests. Please try again later.', 429)
   }
 

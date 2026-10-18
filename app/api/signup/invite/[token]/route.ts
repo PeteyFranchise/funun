@@ -68,7 +68,7 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> }
 ) {
   const ip = getClientIp(request)
-  if (await checkRateLimit(`ip:${ip}`)) {
+  if (await checkRateLimit(`ip:${ip}`, { failClosed: true })) {
     return tooManyRequests()
   }
 

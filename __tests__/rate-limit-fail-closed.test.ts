@@ -18,6 +18,7 @@ jest.mock('@/lib/supabase/server', () => ({
 import fs from 'node:fs'
 import path from 'node:path'
 import { checkRateLimit } from '@/lib/security/rate-limit'
+import { INVITATION_RATE_LIMIT } from '@/lib/workspaces/invitations'
 
 beforeEach(() => {
   jest.clearAllMocks()
@@ -114,5 +115,88 @@ describe('upload-intent routes keep the fail-closed limiter posture', () => {
       'utf8'
     )
     expect(file).not.toContain('checkRateLimit')
+  })
+})
+
+// ─── Repo-wide posture lock over app/api ───────────────────────────────────
+// Every checkRateLimit call in a route file either passes `failClosed: true`
+// or is annotated `// Fail-open on purpose: <reason>`. The default in
+// lib/security/rate-limit.ts stays fail-open (covered by the behavioural
+// tests above), so a new call that omits the flag shows up here instead of
+// silently inheriting that default.
+
+const INVITATIONS_ROUTE = 'app/api/workspaces/[workspaceId]/invitations/route.ts'
+
+function listRouteFiles(dir: string): string[] {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+    const full = path.join(dir, entry.name)
+    if (entry.isDirectory()) return listRouteFiles(full)
+    return entry.name === 'route.ts' ? [full] : []
+  })
+}
+
+function isCommentLine(line: string): boolean {
+  const trimmed = line.trim()
+  return trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')
+}
+
+// Returns the full text of each non-comment `checkRateLimit(...)` call.
+function rateLimitCalls(source: string): string[] {
+  const lines = source.split('\n')
+  const calls: string[] = []
+  const needle = 'checkRateLimit('
+  let offset = 0
+  for (const line of lines) {
+    const lineStart = offset
+    offset += line.length + 1
+    if (isCommentLine(line)) continue
+    const at = line.indexOf(needle)
+    if (at === -1) continue
+    // Imports and re-exports never contain the call form, so this is a call.
+    let i = lineStart + at + needle.length
+    let depth = 1
+    while (depth > 0 && i < source.length) {
+      const ch = source[i]
+      if (ch === '(') depth += 1
+      else if (ch === ')') depth -= 1
+      i += 1
+    }
+    calls.push(source.slice(lineStart + at, i))
+  }
+  return calls
+}
+
+const routeFiles = listRouteFiles(path.join(process.cwd(), 'app/api')).map(f =>
+  path.relative(process.cwd(), f)
+)
+
+describe('every app/api limiter call fails closed or documents why it stays open', () => {
+  it('finds the route files it is meant to check', () => {
+    expect(routeFiles.length).toBeGreaterThan(20)
+    expect(routeFiles.filter(f => rateLimitCalls(fs.readFileSync(f, 'utf8')).length > 0).length).toBeGreaterThan(20)
+  })
+
+  it.each(routeFiles.filter(f => f !== INVITATIONS_ROUTE))('%s', relativePath => {
+    const source = fs.readFileSync(path.join(process.cwd(), relativePath), 'utf8')
+    const calls = rateLimitCalls(source)
+    if (calls.length === 0) return
+
+    const failOpenCalls = calls.filter(call => !/failClosed:\s*true/.test(call))
+    const annotations = source
+      .split('\n')
+      .filter(line => line.trim().startsWith('// Fail-open on purpose:')).length
+
+    expect(annotations).toBeGreaterThanOrEqual(failOpenCalls.length)
+  })
+
+  it('workspace invitations pass a limit config that fails closed', () => {
+    const source = fs.readFileSync(path.join(process.cwd(), INVITATIONS_ROUTE), 'utf8')
+    expect(rateLimitCalls(source).some(call => call.includes('INVITATION_RATE_LIMIT'))).toBe(true)
+    expect(INVITATION_RATE_LIMIT.failClosed).toBe(true)
+  })
+
+  it('does not change the helper default: omitting the flag still resolves false on an RPC error', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: { message: 'rpc unavailable' } })
+    await expect(checkRateLimit('default-posture:u1')).resolves.toBe(false)
   })
 })
