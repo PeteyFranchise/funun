@@ -5,15 +5,20 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 const mockRpc = jest.fn()
 const mockPeekResult = jest.fn()
-const mockPeekChain = {
+type PeekChain = {
+  select: jest.Mock
+  eq: jest.Mock
+  gte: jest.Mock
+}
+const mockPeekChain: PeekChain = {
   select: jest.fn(() => mockPeekChain),
   eq: jest.fn(() => mockPeekChain),
   gte: jest.fn(async () => mockPeekResult()),
 }
-const mockFrom = jest.fn(() => mockPeekChain)
+const mockFrom = jest.fn((_table: string) => mockPeekChain)
 jest.mock('@/lib/supabase/server', () => ({
   createServiceClient: () =>
-    ({ rpc: (...a: unknown[]) => mockRpc(...a), from: (...a: unknown[]) => (mockFrom as (...x: unknown[]) => unknown)(...a) }) as unknown as SupabaseClient,
+    ({ rpc: (...a: unknown[]) => mockRpc(...a), from: (table: string) => mockFrom(table) }) as unknown as SupabaseClient,
 }))
 
 import {

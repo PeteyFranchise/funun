@@ -297,13 +297,11 @@ describe('POST /api/sync/register - bot check', () => {
       checkRateLimit: jest.Mock
       peekRateLimit: jest.Mock
     }
-    const server = jest.requireMock('@/lib/supabase/server') as { createServiceClient: jest.Mock }
     limiter.checkRateLimit.mockResolvedValue(false)
     limiter.peekRateLimit.mockResolvedValue('allowed')
     turnstile.verifyTurnstileToken.mockResolvedValue(false)
     turnstile.turnstileConfigStatus.mockReturnValue('site-key-missing')
     sentry.captureMessage.mockClear()
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { POST: freshPost } = require('./route') as { POST: typeof POST }
 
     const first = await freshPost(jsonRequest(validBody(), { 'x-forwarded-for': '7.7.7.20' }))
@@ -440,7 +438,6 @@ describe('POST /api/sync/register - limits', () => {
     limiter.peekRateLimit.mockResolvedValue('limited')
     server.createServiceClient.mockClear()
     sentry.captureMessage.mockClear()
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { POST: freshPost } = require('./route') as { POST: typeof POST }
 
     const res = await freshPost(jsonRequest(validBody(), { 'x-forwarded-for': '8.8.8.9' }))
@@ -473,12 +470,10 @@ describe('POST /api/sync/register - limits', () => {
       checkRateLimit: jest.Mock
       peekRateLimit: jest.Mock
     }
-    const server = jest.requireMock('@/lib/supabase/server') as { createServiceClient: jest.Mock }
     turnstile.verifyTurnstileToken.mockResolvedValue(true)
     limiter.checkRateLimit.mockResolvedValue(false)
     limiter.peekRateLimit.mockResolvedValue('unavailable')
     sentry.captureMessage.mockClear()
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { POST: freshPost } = require('./route') as { POST: typeof POST }
 
     const res = await freshPost(jsonRequest(validBody(), { 'x-forwarded-for': '8.8.8.12' }))
