@@ -14,15 +14,21 @@ migration_244_applied: false
 
 Migration 244 stops the per-request collaborator-claim retry for confirmed accounts with no usable invite token. Middleware now requires sign-in on every `app/(artist)` route through a tested `isProtectedPath` predicate.
 
-## Task 1: Migration 244 (af5649a5, Closes #191)
+## Task 1: Migration 244 (af5649a5, Closes #191; review fixes in a follow-up commit)
 
-- `supabase/migrations/244_verified_signup_claim_sentinel.sql`: `CREATE OR REPLACE` of `complete_verified_signup_claim`, based on 214 (still the only file defining it, confirmed with grep). 214's combined guard is split into two:
-  1. `IF NOT FOUND OR v_email IS NULL THEN RETURN FALSE` (unconfirmed users: no write, they keep retrying).
-  2. `IF v_token IS NULL OR v_token !~ '^[A-Fa-f0-9]{64}$' THEN UPDATE user_profiles SET claimed_at = COALESCE(claimed_at, now()); RETURN FALSE`.
-- Everything from the `artist_invites` lookup through the final `RETURN TRUE` is identical to 214. The test extracts both spans and compares them.
-- Grants re-issued service_role only. One-time backfill excludes unconfirmed users and users holding a well-formed token. `NOTIFY pgrst`, owner-run verification block (C1 to C4) included.
-- `lib/invites/completeSignupClaim.ts` and `app/api/claim-collaborators/route.ts` need no change. The no-token branch still returns FALSE, so the helper still reports `completed: false` and the route still returns 409.
-- Test: `__tests__/migration-244-verified-signup-claim-sentinel.test.ts` (10 tests).
+- `supabase/migrations/244_verified_signup_claim_sentinel.sql`: `CREATE OR REPLACE` of `complete_verified_signup_claim`, based on 214 (still the only file defining it, confirmed with grep). Wrapped in `BEGIN`/`COMMIT` with `NOTIFY pgrst` inside, matching 214's layout. 214's combined guard is split in two, and the dead-end is covered too:
+  1. `IF NOT FOUND OR v_email IS NULL THEN RETURN FALSE` (unconfirmed or email-less users: no write, they keep retrying).
+  2. `IF v_token IS NULL OR v_token !~ '^[A-Fa-f0-9]{64}$' THEN UPDATE user_profiles SET claimed_at = COALESCE(claimed_at, now()); RETURN FALSE` (tokenless case).
+  3. The `collaborator_invites` `IF NOT FOUND` dead-end writes the same sentinel before `RETURN FALSE` (well-formed token, no redeemable invite: expired, revoked or consumed).
+- Explicit `p_invite_token` is used only when it matches the 64-hex pattern. A malformed non-empty parameter no longer overrides a valid metadata token; the metadata token is used instead.
+- Everything from the `artist_invites` lookup through the final `RETURN TRUE` is identical to 214 except the one added dead-end sentinel write. The test strips that write and compares the span to 214's.
+- Grants re-issued service_role only. Backfill covers confirmed users with an email, NULL `claimed_at`, no ledger row, and either no well-formed metadata token or a well-formed token that no invite redeems under the function's own predicates. It is deliberately not "all confirmed users with NULL claimed_at": that would set the sentinel for users whose metadata token still redeems a live invite and short-circuit a pending middleware redemption. Owner verification block has C1, C1b (dead token), C2, C3, C3b (malformed explicit token) and C4.
+- `lib/invites/completeSignupClaim.ts` and `app/api/claim-collaborators/route.ts` need no change. Both FALSE branches still return FALSE, so the helper still reports `completed: false` and the route still returns 409.
+- Test: `__tests__/migration-244-verified-signup-claim-sentinel.test.ts` (14 tests). The `auth.users` `SELECT ... FOR UPDATE` block is asserted exactly (tail compared to 214 and to a literal), so dropping `FOR UPDATE` fails the suite (confirmed by mutation).
+
+### Review follow-up (GitHub #191)
+
+Production check on 2026-10-18 (read-only): 10 `user_profiles`, 0 with `claimed_at` NULL. Nobody is stuck today; the migration is preventive. `claimed_at` is read only by middleware as a retry sentinel. The function keys on the ledger and token + email, never on `claimed_at`, and later invites are redeemed with an explicit token, so setting the sentinel never blocks a later legitimate claim.
 
 ### Who is affected by #191
 
@@ -58,18 +64,15 @@ Route groups: `(admin)`, `(artist)`, `(auth)`, `(curator-portal)`. Top-level dir
 
 ## Owner steps
 
-1. Apply 244 by hand (not applied by this task). Before and after, run `select count(*) from public.user_profiles where claimed_at is null;`. It should drop by the number of confirmed users with no usable token, and not move for unconfirmed users or holders of a well-formed token. Then run the C1 to C4 probes at the bottom of the migration.
-2. Remaining loop, out of scope: a confirmed user holding a well-formed token whose invite expired or was revoked before confirmation still returns FALSE without setting `claimed_at`. Count:
+1. Apply 244 by hand (not applied by this task). Before and after, run `select count(*) from public.user_profiles where claimed_at is null;`. On 2026-10-18 it was 0, so the backfill is expected to be a no-op and the C1 to C4 probes need a synthetic user created inside the probe transaction.
+2. Out of scope: the ledger early-return TRUE branch does not set `claimed_at`. Normally unreachable, since the success path sets it in the same transaction. The backfill skips users with a ledger row for the same reason.
 
-   ```sql
-   select count(*) from public.user_profiles p
-   join auth.users u on u.id = p.id
-   where p.claimed_at is null
-     and u.email_confirmed_at is not null
-     and trim(u.raw_user_meta_data->>'signup_invite_token') ~ '^[A-Fa-f0-9]{64}$';
-   ```
+### Review follow-up verification
 
-3. Also out of scope: the ledger early-return TRUE branch does not set `claimed_at`. Normally unreachable, since the success path sets it in the same transaction.
+- `npx jest __tests__/migration-244`: 14 of 14 passed; removing `FOR UPDATE` from the migration fails the suite (mutation checked, then restored).
+- `npm run security:migrations:verify`: PASS.
+- Full `npm test`: 673 of 673 suites, 8554 of 8554 tests passed.
+- `rtk proxy npm run lint`: exit 0 (`--max-warnings=0`). `npm run typecheck:strict`: exit 0.
 
 ## Self-Check: PASSED
 
