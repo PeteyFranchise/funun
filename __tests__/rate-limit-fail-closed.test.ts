@@ -19,6 +19,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { checkRateLimit } from '@/lib/security/rate-limit'
 import { INVITATION_RATE_LIMIT } from '@/lib/workspaces/invitations'
+import { COLLABORATOR_INVITE_RATE_LIMITS } from '@/lib/collaborators/invite-quota'
 
 beforeEach(() => {
   jest.clearAllMocks()
@@ -118,20 +119,38 @@ describe('upload-intent routes keep the fail-closed limiter posture', () => {
   })
 })
 
-// ─── Repo-wide posture lock over app/api ───────────────────────────────────
-// Every checkRateLimit call in a route file either passes `failClosed: true`
-// or is annotated `// Fail-open on purpose: <reason>`. The default in
-// lib/security/rate-limit.ts stays fail-open (covered by the behavioural
-// tests above), so a new call that omits the flag shows up here instead of
-// silently inheriting that default.
+// ─── Repo-wide posture lock over app/ and lib/ ─────────────────────────────
+// Every checkRateLimit call either passes `failClosed: true` (inline, or via a
+// known config constant that sets it) or sits directly under its own
+// `// Fail-open on purpose: <reason>` comment AND lives in a file named in
+// FAIL_OPEN_ALLOWED. The default in lib/security/rate-limit.ts stays fail-open
+// (covered by the behavioural tests above), so a new call that omits the flag
+// shows up here instead of silently inheriting that default.
 
-const INVITATIONS_ROUTE = 'app/api/workspaces/[workspaceId]/invitations/route.ts'
+// Files that may keep a fail-open call, with how many such calls they hold.
+// Adding to this list is a deliberate decision: say why in the annotation.
+const FAIL_OPEN_ALLOWED: Record<string, number> = {
+  'app/api/signup/check-invite/route.ts': 2,
+  'app/api/signup/invite/[token]/route.ts': 1,
+  'app/api/waitlist/unsubscribe/route.ts': 1,
+  'app/api/handles/available/route.ts': 1,
+  'app/api/works/[workId]/versions/[versionId]/pins/export/route.ts': 1,
+  'app/api/works/[workId]/versions/[versionId]/comments/export/route.ts': 1,
+}
 
-function listRouteFiles(dir: string): string[] {
+// Config constants passed as the options argument. Each must set failClosed.
+const CONFIG_CONSTANTS: Record<string, { failClosed?: boolean }> = {
+  INVITATION_RATE_LIMIT,
+  'COLLABORATOR_INVITE_RATE_LIMITS.hourly': COLLABORATOR_INVITE_RATE_LIMITS.hourly,
+  'COLLABORATOR_INVITE_RATE_LIMITS.daily': COLLABORATOR_INVITE_RATE_LIMITS.daily,
+}
+
+function listSourceFiles(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
     const full = path.join(dir, entry.name)
-    if (entry.isDirectory()) return listRouteFiles(full)
-    return entry.name === 'route.ts' ? [full] : []
+    if (entry.isDirectory()) return listSourceFiles(full)
+    if (!/\.(ts|tsx)$/.test(entry.name) || /\.test\.(ts|tsx)$/.test(entry.name)) return []
+    return [full]
   })
 }
 
@@ -140,19 +159,21 @@ function isCommentLine(line: string): boolean {
   return trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')
 }
 
-// Returns the full text of each non-comment `checkRateLimit(...)` call.
-function rateLimitCalls(source: string): string[] {
+type LimiterCall = { text: string; line: number }
+
+// Each non-comment `checkRateLimit(...)` call: its full text and 0-based line.
+function rateLimitCalls(source: string): LimiterCall[] {
   const lines = source.split('\n')
-  const calls: string[] = []
+  const calls: LimiterCall[] = []
   const needle = 'checkRateLimit('
   let offset = 0
-  for (const line of lines) {
+  lines.forEach((line, index) => {
     const lineStart = offset
     offset += line.length + 1
-    if (isCommentLine(line)) continue
+    if (isCommentLine(line)) return
     const at = line.indexOf(needle)
-    if (at === -1) continue
-    // Imports and re-exports never contain the call form, so this is a call.
+    if (at === -1) return
+    if (/function\s+checkRateLimit\(/.test(line)) return // the definition
     let i = lineStart + at + needle.length
     let depth = 1
     while (depth > 0 && i < source.length) {
@@ -161,38 +182,83 @@ function rateLimitCalls(source: string): string[] {
       else if (ch === ')') depth -= 1
       i += 1
     }
-    calls.push(source.slice(lineStart + at, i))
-  }
+    calls.push({ text: source.slice(lineStart + at, i), line: index })
+  })
   return calls
 }
 
-const routeFiles = listRouteFiles(path.join(process.cwd(), 'app/api')).map(f =>
-  path.relative(process.cwd(), f)
-)
+// True when `// Fail-open on purpose:` sits in the comment block directly
+// above the call. At most two statement-opener lines (`if (`) may sit between
+// the comment and the call line; any other code in between breaks adjacency.
+function hasAnnotationDirectlyAbove(lines: string[], callLine: number): boolean {
+  let k = callLine - 1
+  let skipped = 0
+  while (k >= 0 && !isCommentLine(lines[k]) && skipped < 2 && lines[k].trim().endsWith('(')) {
+    k -= 1
+    skipped += 1
+  }
+  const block: string[] = []
+  while (k >= 0 && isCommentLine(lines[k])) {
+    block.unshift(lines[k].trim())
+    k -= 1
+  }
+  return block.some(line => line.startsWith('// Fail-open on purpose:'))
+}
 
-describe('every app/api limiter call fails closed or documents why it stays open', () => {
-  it('finds the route files it is meant to check', () => {
-    expect(routeFiles.length).toBeGreaterThan(20)
-    expect(routeFiles.filter(f => rateLimitCalls(fs.readFileSync(f, 'utf8')).length > 0).length).toBeGreaterThan(20)
+// Options argument without string/template contents, to look for an object
+// literal or a config constant.
+function optionsOf(call: string): string {
+  return call
+    .replace(/`[^`]*`/g, '``')
+    .replace(/'[^']*'/g, "''")
+    .replace(/"[^"]*"/g, '""')
+}
+
+const sourceFiles = [
+  ...listSourceFiles(path.join(process.cwd(), 'app')),
+  ...listSourceFiles(path.join(process.cwd(), 'lib')),
+]
+  .map(f => path.relative(process.cwd(), f))
+  .filter(f => f !== 'lib/security/rate-limit.ts')
+  .filter(f => rateLimitCalls(fs.readFileSync(f, 'utf8')).length > 0)
+
+describe('every limiter call in app/ and lib/ fails closed or documents why it stays open', () => {
+  it('finds the files it is meant to check', () => {
+    expect(sourceFiles.length).toBeGreaterThan(20)
+    expect(sourceFiles).toContain('lib/collaborators/invite-quota.ts')
+    expect(sourceFiles.filter(f => f.startsWith('app/api/')).length).toBeGreaterThan(20)
   })
 
-  it.each(routeFiles.filter(f => f !== INVITATIONS_ROUTE))('%s', relativePath => {
+  it.each(sourceFiles)('%s', relativePath => {
     const source = fs.readFileSync(path.join(process.cwd(), relativePath), 'utf8')
-    const calls = rateLimitCalls(source)
-    if (calls.length === 0) return
+    const lines = source.split('\n')
+    let failOpen = 0
 
-    const failOpenCalls = calls.filter(call => !/failClosed:\s*true/.test(call))
-    const annotations = source
-      .split('\n')
-      .filter(line => line.trim().startsWith('// Fail-open on purpose:')).length
+    for (const call of rateLimitCalls(source)) {
+      const args = optionsOf(call.text)
+      if (/failClosed:\s*true/.test(args)) continue
 
-    expect(annotations).toBeGreaterThanOrEqual(failOpenCalls.length)
+      const constant = Object.keys(CONFIG_CONSTANTS).find(name => args.includes(name))
+      if (constant && !args.includes('{')) {
+        expect(CONFIG_CONSTANTS[constant].failClosed).toBe(true)
+        continue
+      }
+
+      failOpen += 1
+      expect({ file: relativePath, line: call.line + 1, annotated: hasAnnotationDirectlyAbove(lines, call.line) }).toEqual({
+        file: relativePath,
+        line: call.line + 1,
+        annotated: true,
+      })
+    }
+
+    expect(failOpen).toBe(FAIL_OPEN_ALLOWED[relativePath] ?? 0)
   })
 
-  it('workspace invitations pass a limit config that fails closed', () => {
-    const source = fs.readFileSync(path.join(process.cwd(), INVITATIONS_ROUTE), 'utf8')
-    expect(rateLimitCalls(source).some(call => call.includes('INVITATION_RATE_LIMIT'))).toBe(true)
-    expect(INVITATION_RATE_LIMIT.failClosed).toBe(true)
+  it('config constants passed as options all fail closed', () => {
+    for (const [name, config] of Object.entries(CONFIG_CONSTANTS)) {
+      expect({ name, failClosed: config.failClosed }).toEqual({ name, failClosed: true })
+    }
   })
 
   it('does not change the helper default: omitting the flag still resolves false on an RPC error', async () => {
