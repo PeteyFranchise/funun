@@ -173,7 +173,8 @@ export async function middleware(req: NextRequest) {
 
   if (isProtected && !user) {
     const url = new URL('/signin', req.url)
-    url.searchParams.set('next', pathname)
+    // Keep the query so the visitor lands back on the same view after sign-in.
+    url.searchParams.set('next', pathname + req.nextUrl.search)
     return respondWithAuthState(NextResponse.redirect(url))
   }
 

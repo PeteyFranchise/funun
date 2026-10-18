@@ -5,13 +5,13 @@ import { isProtectedPath } from './protectedRoutes'
 
 const APP_DIR = path.join(process.cwd(), 'app')
 
-/** Every page.tsx under `dir`, as a path of directory names relative to app/. */
+/** Every page or route file under `dir`, as a path of directory names relative to app/. */
 function pageSegments(dir: string, trail: string[] = []): string[][] {
   const out: string[][] = []
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.isDirectory()) {
       out.push(...pageSegments(path.join(dir, entry.name), [...trail, entry.name]))
-    } else if (entry.name === 'page.tsx') {
+    } else if (/^(page|route)\.(t|j)sx?$/.test(entry.name)) {
       out.push(trail)
     }
   }
@@ -110,6 +110,24 @@ describe('isProtectedPath', () => {
       // A new artist route must be added to lib/auth/protectedRoutes.ts, or be
       // a deliberate public page listed there.
       expect(unprotected).toEqual([])
+    })
+
+    it('protects every page URL under app/(artist) except the listed public ones', () => {
+      // Deliberately public pages under the artist group. Adding one here is a
+      // decision, not a default.
+      const PUBLIC_ARTIST_URLS = ['/ideas/join/sample']
+      const urls = pageSegments(path.join(APP_DIR, '(artist)'), ['(artist)']).map(toUrl)
+      expect(urls.length).toBeGreaterThan(0)
+      const unprotected = urls.filter((url) => !isProtectedPath(url) && !PUBLIC_ARTIST_URLS.includes(url))
+      expect(unprotected).toEqual([])
+    })
+
+    it('runs middleware for every page URL under app/(artist)', async () => {
+      const { config } = await import('@/middleware')
+      const matchers = (config.matcher as string[]).map((m) => new RegExp('^' + m + '$'))
+      const urls = pageSegments(path.join(APP_DIR, '(artist)'), ['(artist)']).map(toUrl)
+      const skipped = urls.filter((url) => !matchers.some((re) => re.test(url)))
+      expect(skipped).toEqual([])
     })
 
     it('serves no page outside app/(artist) under a newly protected prefix, except legacy /admin and /w', () => {
