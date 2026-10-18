@@ -52,7 +52,7 @@ describe('migration 245 - release-documents bucket', () => {
   })
 
   it('documents vault_documents.file_url as a path in either bucket', () => {
-    const comment = code.match(/COMMENT ON COLUMN public\.vault_documents\.file_url IS '([\s\S]*?)';/)?.[1] ?? ''
+    const comment = code.match(/COMMENT ON COLUMN public\.vault_documents\.file_url IS\s+'([\s\S]*?)';/)?.[1] ?? ''
     expect(comment).toMatch(/path/i)
     expect(comment).toContain('vault-contracts')
     expect(comment).toContain('release-documents')
