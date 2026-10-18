@@ -3,7 +3,10 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email'
 import { provisionIndustryAccount, DuplicateIndustryMemberError } from '@/lib/industry/createIndustryMember'
+import * as Sentry from '@sentry/nextjs'
 import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
+import { isTokenFormat } from '@/lib/curators/tokens'
+import { esc } from '@/lib/email/esc'
 
 // ─── POST /api/curators/claim/[token] ────────────────────────────────────
 // Verifies a 72h-expiry, one-time claim token (issued via the admin
@@ -11,7 +14,7 @@ import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
 // Industry account (member_type='industry', badge playlist_curator) —
 // INDUSTRY-04. Public — no session required to call this route; the token
 // itself is the credential. A valid hit can mint a magic link and send an
-// email, so the route is throttled per client address (10 per 15 minutes) and
+// email, so the route is throttled per client address (30 per 15 minutes) and
 // per token (5 per 15 minutes) through the durable limiter. Both checks fail
 // closed: if the limiter is unavailable the route refuses with 429 instead of
 // allowing unlimited sends. A token that is not 64 hex characters gets the
@@ -34,13 +37,14 @@ import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
 // Dedicated curator-claim: namespace so claim attempts never draw on another
 // route's allowance. The per-token key stores a sha256 of the token, so the
 // raw token never lands in the rate_limits table, and its length is fixed.
-const CLAIM_TOKEN_PATTERN = /^[a-f0-9]{64}$/i
 const CLAIM_RATE_WINDOW_MS = 15 * 60 * 1000
-const CLAIM_IP_MAX_ATTEMPTS = 10
+// The per-address cap is the looser one, so a shared network is not locked
+// out by a few bad requests; the per-token cap is the tight one.
+const CLAIM_IP_MAX_ATTEMPTS = 30
 const CLAIM_TOKEN_MAX_ATTEMPTS = 5
 
 function tooManyAttempts() {
-  return NextResponse.json({ error: 'Too many attempts. Please try again later.' }, { status: 429 })
+  return NextResponse.json({ error: 'Too many attempts. Try again in a few minutes.' }, { status: 429 })
 }
 
 function claimTokenKey(token: string) {
@@ -48,7 +52,7 @@ function claimTokenKey(token: string) {
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
-  const ipLimited = await checkRateLimit(`curator-claim:ip:${getClientIp(request)}`, {
+  const ipLimited = await checkRateLimit(`curator-claim:ip:${getClientIp(request).slice(0, 64)}`, {
     windowMs: CLAIM_RATE_WINDOW_MS,
     maxAttempts: CLAIM_IP_MAX_ATTEMPTS,
     failClosed: true,
@@ -56,7 +60,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   if (ipLimited) return tooManyAttempts()
 
   const { token } = await params
-  if (!CLAIM_TOKEN_PATTERN.test(token)) {
+  if (!isTokenFormat(token)) {
     return NextResponse.json({ error: 'Invalid or expired link' }, { status: 404 })
   }
 
@@ -130,12 +134,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     if (claimError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     if (!claimed) return NextResponse.json({ error: 'Already claimed' }, { status: 410 })
 
-    await sendEmail({
-      ...emailPayload,
-      html: `<p>Sign in to your account:</p><p><a href="${existing.properties.action_link}">Sign in</a></p>`,
-    })
+    const emailSent = await sendSignInLink(
+      emailPayload,
+      `<p>Sign in to your account:</p><p><a href="${esc(existing.properties.action_link)}">Sign in</a></p>`
+    )
 
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true, emailSent })
   }
 
   let { data: claimed, error: claimError } = await service
@@ -194,12 +198,43 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     type: 'magiclink',
     email: curator.email,
   })
-  if (link?.properties?.action_link) {
-    await sendEmail({
-      ...emailPayload,
-      html: `<p>Your curator profile is now a Funūn Industry account. Sign in:</p><p><a href="${link.properties.action_link}">Sign in</a></p>`,
+  if (!link?.properties?.action_link) {
+    // The claim already went through and the token is spent, so report the
+    // missing link instead of failing the request. The curator can still
+    // sign in from the sign-in page with their email.
+    Sentry.captureMessage('Curator claim completed without a sign-in link', {
+      level: 'error',
+      tags: { feature: 'curator-claim', operation: 'generate-link' },
     })
+    return NextResponse.json({ ok: true, emailSent: false })
   }
+  const emailSent = await sendSignInLink(
+    emailPayload,
+    `<p>Your curator profile is now a Funūn Industry account. Sign in:</p><p><a href="${esc(link.properties.action_link)}">Sign in</a></p>`
+  )
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, emailSent })
+}
+
+// Sends the sign-in email after the claim has been written. The token is
+// already spent at this point, so a send failure is reported to Sentry and
+// returned as emailSent: false instead of failing the request (a retry would
+// only see a 404).
+async function sendSignInLink(
+  payload: Omit<Parameters<typeof sendEmail>[0], 'html'>,
+  html: string
+): Promise<boolean> {
+  try {
+    const result = await sendEmail({ ...payload, html })
+    if (!result.ok) {
+      Sentry.captureMessage('Curator claim sign-in email was not sent', {
+        level: 'error',
+        tags: { feature: 'curator-claim', operation: 'send-email' },
+      })
+    }
+    return result.ok
+  } catch (err) {
+    Sentry.captureException(err, { tags: { feature: 'curator-claim', operation: 'send-email' } })
+    return false
+  }
 }

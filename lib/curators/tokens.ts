@@ -28,3 +28,13 @@ export function generateClaimToken(): string {
 export function generateResponseToken(): string {
   return randomBytes(32).toString('hex')
 }
+
+/**
+ * True when `token` has the shape generateClaimToken() and
+ * generateResponseToken() produce: 64 lowercase hex characters. Public token
+ * routes and pages check this before any database lookup, so a malformed
+ * value costs no query.
+ */
+export function isTokenFormat(token: string): boolean {
+  return /^[a-f0-9]{64}$/.test(token)
+}

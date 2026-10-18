@@ -11,6 +11,8 @@ import { createNotification } from '@/lib/notifications'
 import { sendEmail } from '@/lib/email'
 import { checkRateLimit } from '@/lib/security/rate-limit'
 
+const RESPONSE_TOKEN = 'c'.repeat(64)
+
 jest.mock('@/lib/supabase/server', () => ({
   createServiceClient: jest.fn(),
   createApiClient: jest.fn(),
@@ -163,7 +165,7 @@ describe('public token routes use atomic unused-state predicates', () => {
     const insertBuilder = {
       insert: jest.fn((rows: unknown[]) => ({
         select: jest.fn(async () => ({
-          data: [{ id: 'pitch-1', curator_id: 'curator-1', response_token: 'response-token' }],
+          data: [{ id: 'pitch-1', curator_id: 'curator-1', response_token: RESPONSE_TOKEN }],
           error: null,
         })),
         rows,
@@ -216,7 +218,7 @@ describe('public token routes use atomic unused-state predicates', () => {
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
     const res = await acceptPitch(new Request('http://test.local', { method: 'POST' }), {
-      params: Promise.resolve({ token: 'response-token' }),
+      params: Promise.resolve({ token: RESPONSE_TOKEN }),
     })
 
     expect(res.status).toBe(200)
@@ -225,7 +227,7 @@ describe('public token routes use atomic unused-state predicates', () => {
     )
     expect(update.eqCalls).toEqual(
       expect.arrayContaining([
-        ['response_token', 'response-token'],
+        ['response_token', RESPONSE_TOKEN],
         ['status', 'pending'],
       ])
     )
@@ -252,7 +254,7 @@ describe('public token routes use atomic unused-state predicates', () => {
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
     const res = await declinePitch(jsonRequest({ reason: 'Not a fit' }), {
-      params: Promise.resolve({ token: 'response-token' }),
+      params: Promise.resolve({ token: RESPONSE_TOKEN }),
     })
 
     expect(res.status).toBe(200)
@@ -261,7 +263,7 @@ describe('public token routes use atomic unused-state predicates', () => {
     )
     expect(update.eqCalls).toEqual(
       expect.arrayContaining([
-        ['response_token', 'response-token'],
+        ['response_token', RESPONSE_TOKEN],
         ['status', 'pending'],
       ])
     )
@@ -279,12 +281,12 @@ describe('public token routes use atomic unused-state predicates', () => {
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
     const res = await unsubscribePitch(new Request('http://test.local', { method: 'POST' }), {
-      params: Promise.resolve({ token: 'response-token' }),
+      params: Promise.resolve({ token: RESPONSE_TOKEN }),
     })
 
     expect(res.status).toBe(200)
     expect(pitchLookup.eqCalls).toEqual(
-      expect.arrayContaining([['response_token', 'response-token']])
+      expect.arrayContaining([['response_token', RESPONSE_TOKEN]])
     )
     expect(pitchLookup.gtCalls).toEqual(
       expect.arrayContaining([['response_token_expires_at', expect.any(String)]])
