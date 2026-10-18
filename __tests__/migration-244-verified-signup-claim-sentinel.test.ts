@@ -50,7 +50,22 @@ function redemptionSpan(fileSql: string): string {
   return body.slice(start, end)
 }
 
-describe('migration 244: claim sentinel for verified signups without an invite token', () => {
+/** The auth.users SELECT ... INTO ... FOR UPDATE block, through its terminating semicolon. */
+function authUserLockBlock(fileSql: string): string {
+  const body = functionBody(fileSql)
+  const start = body.indexOf('SELECT email,')
+  expect(start).toBeGreaterThanOrEqual(0)
+  const marker = 'FOR UPDATE;'
+  const end = body.indexOf(marker, start)
+  expect(end).toBeGreaterThan(start)
+  return body.slice(start, end + marker.length)
+}
+
+/** The dead-end sentinel write: 6-space indent, inside the collaborator_invites NOT FOUND branch. */
+const DEAD_END_SENTINEL =
+  /      UPDATE public\.user_profiles\n {9}SET claimed_at = COALESCE\(claimed_at, now\(\)\)\n {7}WHERE id = p_user_id;\n\n/g
+
+describe('migration 244: claim sentinel for verified signups without a redeemable invite', () => {
   const body = functionBody(code)
 
   it('redefines complete_verified_signup_claim with the same signature and security settings', () => {
@@ -89,8 +104,51 @@ describe('migration 244: claim sentinel for verified signups without an invite t
     expect(write).toBeLessThan(branchEnd)
   })
 
-  it('leaves the token redemption path identical to migration 214', () => {
-    expect(redemptionSpan(sql)).toBe(redemptionSpan(sql214))
+  it('sets the sentinel when a well-formed token matches no redeemable invite and still returns FALSE', () => {
+    const collab = body.indexOf('FROM public.collaborator_invites')
+    expect(collab).toBeGreaterThanOrEqual(0)
+    const deadEnd = body.indexOf('IF NOT FOUND THEN', collab)
+    expect(deadEnd).toBeGreaterThan(collab)
+    const block = body.slice(deadEnd, body.indexOf('END IF;', deadEnd))
+    expect(block).toMatch(
+      /UPDATE public\.user_profiles\s+SET claimed_at = COALESCE\(claimed_at, now\(\)\)\s+WHERE id = p_user_id;\s+RETURN FALSE;/
+    )
+  })
+
+  it('writes the sentinel on exactly two return-FALSE paths plus the 214 success path, never for unconfirmed users', () => {
+    const writes = body.match(/SET claimed_at = COALESCE\(claimed_at, now\(\)\)/g) ?? []
+    // no-token branch, dead-token branch, success path.
+    expect(writes).toHaveLength(3)
+    const guard = body.indexOf('IF NOT FOUND OR v_email IS NULL THEN')
+    expect(body.slice(guard, body.indexOf('END IF;', guard))).not.toContain('claimed_at')
+  })
+
+  it('leaves the token redemption path identical to migration 214 apart from the dead-end sentinel write', () => {
+    const span244 = redemptionSpan(sql)
+    expect(span244.match(DEAD_END_SENTINEL) ?? []).toHaveLength(1)
+    expect(span244.replace(DEAD_END_SENTINEL, '')).toBe(redemptionSpan(sql214))
+  })
+
+  it('locks the auth.users row FOR UPDATE with the exact 214 tail and a hex-gated explicit token', () => {
+    const block244 = authUserLockBlock(sql)
+    const block214 = authUserLockBlock(sql214)
+    const tail = (b: string) => b.slice(b.indexOf('    INTO v_email, v_token'))
+    expect(tail(block244)).toBe(tail(block214))
+    expect(tail(block244)).toBe(
+      [
+        '    INTO v_email, v_token',
+        '    FROM auth.users',
+        '   WHERE id = p_user_id',
+        '     AND email_confirmed_at IS NOT NULL',
+        '   FOR UPDATE;',
+      ].join('\n')
+    )
+    // The explicit parameter wins only when it is 64-hex; otherwise metadata is used.
+    expect(block244).toContain(
+      "WHEN trim(p_invite_token) ~ '^[A-Fa-f0-9]{64}$' THEN trim(p_invite_token)"
+    )
+    expect(block244).toContain("NULLIF(trim(raw_user_meta_data->>'signup_invite_token'), '')")
+    expect(block244).not.toContain('NULLIF(trim(p_invite_token)')
   })
 
   it('keeps the early-return ledger branch as in 214', () => {
@@ -112,23 +170,53 @@ describe('migration 244: claim sentinel for verified signups without an invite t
     expect(code).not.toMatch(/GRANT[^;]*\b(anon|authenticated)\b/)
   })
 
-  it('backfills only confirmed users with no usable token', () => {
+  it('backfills only confirmed users the function would set the sentinel for', () => {
     const backfill = code.match(/UPDATE public\.user_profiles p[\s\S]*?;/)?.[0] ?? ''
     expect(backfill).not.toBe('')
     expect(backfill).toContain('auth.users')
     expect(backfill).toContain('p.claimed_at IS NULL')
     expect(backfill).toContain('u.email_confirmed_at IS NOT NULL')
     expect(backfill).toContain('u.email IS NOT NULL')
+    // Ledger users are skipped: the function returns TRUE for them.
+    expect(backfill).toMatch(
+      /NOT EXISTS \(\s+SELECT 1\s+FROM public\.verified_signup_invite_claims c\s+WHERE c\.user_id = u\.id\s+\)/
+    )
+    // Tokenless or malformed token.
     expect(backfill).toContain("NULLIF(trim(u.raw_user_meta_data->>'signup_invite_token'), '') IS NULL")
     expect(backfill).toContain("trim(u.raw_user_meta_data->>'signup_invite_token') !~ '^[A-Fa-f0-9]{64}$'")
+    // Dead token: neither lookup redeems it, using the function's own predicates.
+    expect(backfill).toMatch(/NOT EXISTS \(\s+SELECT 1\s+FROM public\.artist_invites ai/)
+    expect(backfill).toContain('lower(ai.email) = lower(u.email)')
+    expect(backfill).toContain(
+      "(ai.status = 'pending' AND (ai.token_expires_at IS NULL OR ai.token_expires_at > now()))"
+    )
+    expect(backfill).toContain("(ai.status = 'accepted' AND ai.accepted_user_id = u.id)")
+    expect(backfill).toMatch(/AND NOT EXISTS \(\s+SELECT 1\s+FROM public\.collaborator_invites ci/)
+    expect(backfill).toContain('lower(ci.invited_email) = lower(u.email)')
+    expect(backfill).toContain("(ci.status = 'pending' AND ci.token_expires_at > now())")
+    expect(backfill).toContain("(ci.status = 'accepted' AND ci.accepted_user_id = u.id)")
   })
 
-  it('reloads the schema cache, has no transaction wrapper, and ships owner verification probes', () => {
-    expect(code).toContain("NOTIFY pgrst, 'reload schema';")
-    expect(code).not.toMatch(/^\s*BEGIN;/m)
-    expect(code).not.toMatch(/^\s*COMMIT;/m)
+  it('is atomic: function, backfill and NOTIFY sit inside one BEGIN/COMMIT', () => {
+    const begin = code.search(/^BEGIN;/m)
+    const fn = code.indexOf('CREATE OR REPLACE FUNCTION')
+    const backfillAt = code.indexOf('UPDATE public.user_profiles p')
+    const notify = code.indexOf("NOTIFY pgrst, 'reload schema';")
+    const commit = code.search(/^COMMIT;/m)
+    expect(begin).toBeGreaterThanOrEqual(0)
+    expect(begin).toBeLessThan(fn)
+    expect(fn).toBeLessThan(backfillAt)
+    expect(backfillAt).toBeLessThan(notify)
+    expect(notify).toBeLessThan(commit)
+    expect(code.match(/^BEGIN;/gm)).toHaveLength(1)
+    expect(code.match(/^COMMIT;/gm)).toHaveLength(1)
+  })
+
+  it('ships owner verification probes and states the production count and scope', () => {
     expect(sql).toContain('OWNER-RUN BEHAVIORAL VERIFICATION')
     expect(sql).toContain('Closes #191')
+    expect(sql).toContain('2026-10-18')
+    expect(sql).toContain('preventive')
   })
 
   it('contains no em dashes', () => {

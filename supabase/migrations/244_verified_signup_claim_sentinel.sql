@@ -3,41 +3,73 @@
 -- Closes #191.
 --
 -- Middleware retries POST /api/claim-collaborators on every navigation for as
--- long as user_profiles.claimed_at is NULL. A confirmed account whose auth
--- metadata carries no usable signup invite token never reaches the
--- success-path claimed_at write in migration 214: complete_verified_signup_claim
--- returns FALSE at the combined "not found / no token / malformed token" guard
--- before anything is written. The sentinel never flips, so every request pays
--- for an extra auth round trip and an RPC that cannot succeed.
+-- long as user_profiles.claimed_at is NULL. complete_verified_signup_claim
+-- (migration 214) returns FALSE for a confirmed account on three paths that
+-- write nothing, so the sentinel never flips and every request pays for an
+-- extra auth round trip and an RPC that cannot succeed:
 --
--- This migration sets the sentinel on that one path: the account is confirmed
--- but holds no well-formed token, so there is nothing left to claim. The
--- function still returns FALSE there, because no invitation was redeemed. That
+--   1. the account holds no signup token, or a malformed one (tokenless case);
+--   2. the account holds a well-formed token but no artist_invites row
+--      redeems it and no collaborator_invites row does either, because the
+--      invite expired, was revoked, or was consumed by someone else
+--      (dead-token case).
+--
+-- This migration sets claimed_at = COALESCE(claimed_at, now()) on every
+-- return-FALSE path for a confirmed account that has an email. The function
+-- still returns FALSE on those paths, because no invitation was redeemed. That
 -- keeps /api/claim-collaborators (409 when not completed), the signin page and
 -- the signup page on their current semantics.
 --
+-- Production status: on 2026-10-18 a read-only check found 10 user_profiles
+-- rows and 0 with claimed_at NULL, so no account is stuck today. This change
+-- is preventive. It covers both the tokenless and the dead-token cases, which
+-- is why it keeps "Closes #191".
+--
+-- Why setting the sentinel cannot block a later legitimate claim: claimed_at
+-- is read only by middleware, as a retry sentinel. The function keys on the
+-- verified_signup_invite_claims ledger and on token + email, never on
+-- claimed_at. Later invites are redeemed through an explicit token (signin
+-- ?invite=, /auth/callback metadata, token-bearing POST), all of which reach
+-- the function and are unaffected by the sentinel.
+--
 -- What does not change:
---   - An unconfirmed account still gets FALSE and claimed_at stays NULL, so it
---     keeps retrying until it confirms.
---   - The token path (artist_invites, collaborator_invites, ledger insert,
---     claim_collaborators, success-path claimed_at write, metadata token
---     removal) is copied from migration 214 unchanged.
+--   - An unconfirmed account, or one with no email, still gets FALSE and
+--     claimed_at stays NULL, so it keeps retrying until it confirms.
+--   - The success path (artist_invites, collaborator_invites, ledger insert,
+--     claim_collaborators, claimed_at write, metadata token removal) is
+--     copied from migration 214 unchanged.
 --   - The early-return TRUE branch for an existing ledger row is unchanged.
 --   - Grants stay service_role only.
 --
--- The only edit to the function body is splitting 214's single guard
---   IF NOT FOUND OR v_email IS NULL OR v_token IS NULL OR v_token !~ '...'
--- into two sequential guards, the second of which writes the sentinel.
+-- Edits to the function body relative to 214:
+--   a. The token expression only accepts p_invite_token when it matches the
+--      64-hex pattern. 214 used any non-empty parameter, so a malformed
+--      explicit value overrode a valid metadata token. Now a malformed
+--      parameter is ignored and the metadata token is used.
+--   b. 214's single guard
+--        IF NOT FOUND OR v_email IS NULL OR v_token IS NULL OR v_token !~ '...'
+--      is split into two sequential guards. The second writes the sentinel.
+--   c. The collaborator_invites "IF NOT FOUND" dead-end writes the sentinel.
 --
--- Not changed here, recorded for the owner:
---   - A confirmed account holding a well-formed token whose invite has expired
---     or been revoked still returns FALSE without a sentinel write.
---   - The ledger early-return TRUE branch does not write claimed_at. It is
---     normally unreachable because the success path writes it in the same
---     transaction.
+-- Backfill choice: the one-time UPDATE at the bottom is not "all confirmed
+-- users with NULL claimed_at". That would be wrong, because a confirmed user
+-- whose metadata token still redeems a live invite has a pending redemption
+-- that the middleware retry would complete, and setting the sentinel would
+-- short-circuit it. The backfill instead writes exactly what the redefined
+-- function would write on that user's next navigation: confirmed users with an
+-- email, no ledger row, and either no well-formed metadata token or a
+-- well-formed token that no invite redeems under the same predicates the
+-- function uses (pending and unexpired, or accepted by that same user).
+--
+-- Not changed here, recorded for the owner: the ledger early-return TRUE
+-- branch does not write claimed_at. It is normally unreachable because the
+-- success path writes it in the same transaction. The backfill skips users
+-- with a ledger row for the same reason.
 --
 -- This file is authored but must not be applied automatically. Apply it by
 -- hand, then run the OWNER-RUN BEHAVIORAL VERIFICATION block at the bottom.
+
+BEGIN;
 
 CREATE OR REPLACE FUNCTION public.complete_verified_signup_claim(
   p_user_id UUID,
@@ -62,9 +94,13 @@ BEGIN
     RETURN TRUE;
   END IF;
 
+  -- The explicit parameter wins only when it is a well-formed 64-hex token.
+  -- Anything else (empty, malformed) falls back to the metadata token.
   SELECT email,
          COALESCE(
-           NULLIF(trim(p_invite_token), ''),
+           CASE
+             WHEN trim(p_invite_token) ~ '^[A-Fa-f0-9]{64}$' THEN trim(p_invite_token)
+           END,
            NULLIF(trim(raw_user_meta_data->>'signup_invite_token'), '')
          )
     INTO v_email, v_token
@@ -77,8 +113,8 @@ BEGIN
     RETURN FALSE;
   END IF;
 
-  -- A confirmed account with no usable capability has nothing left to claim,
-  -- so set the middleware sentinel. The function still reports that no
+  -- From here the account is confirmed and has an email, so every FALSE below
+  -- sets the middleware sentinel. The function still reports that no
   -- invitation was redeemed. A malformed token is treated as no token because
   -- nothing can ever match it: the route and this function both reject
   -- non-64-hex values.
@@ -124,6 +160,10 @@ BEGIN
      FOR UPDATE;
 
     IF NOT FOUND THEN
+      UPDATE public.user_profiles
+         SET claimed_at = COALESCE(claimed_at, now())
+       WHERE id = p_user_id;
+
       RETURN FALSE;
     END IF;
 
@@ -173,10 +213,12 @@ GRANT EXECUTE ON FUNCTION public.complete_verified_signup_claim(UUID, TEXT)
 
 -- One-time backfill, following the precedent at the end of migration 214.
 -- It writes exactly the state the redefined function would write on that
--- user's next navigation, and the no-token branch has no other side effect.
--- Users still holding a well-formed token are excluded so a pending
--- redemption is never short-circuited, and unconfirmed users are excluded so
--- they keep retrying until they confirm.
+-- user's next navigation, and the sentinel branches have no other side effect.
+-- Excluded: unconfirmed or email-less users (they keep retrying until they
+-- confirm), users with a ledger row (the function returns TRUE for them), and
+-- users whose metadata token still redeems a live invite (a pending
+-- redemption must not be short-circuited). The redeemable-invite predicates
+-- below mirror the two lookups in the function body.
 UPDATE public.user_profiles p
    SET claimed_at = now()
   FROM auth.users u
@@ -184,12 +226,41 @@ UPDATE public.user_profiles p
    AND p.claimed_at IS NULL
    AND u.email_confirmed_at IS NOT NULL
    AND u.email IS NOT NULL
+   AND NOT EXISTS (
+     SELECT 1
+       FROM public.verified_signup_invite_claims c
+      WHERE c.user_id = u.id
+   )
    AND (
      NULLIF(trim(u.raw_user_meta_data->>'signup_invite_token'), '') IS NULL
      OR trim(u.raw_user_meta_data->>'signup_invite_token') !~ '^[A-Fa-f0-9]{64}$'
+     OR (
+       NOT EXISTS (
+         SELECT 1
+           FROM public.artist_invites ai
+          WHERE ai.invite_token = trim(u.raw_user_meta_data->>'signup_invite_token')
+            AND lower(ai.email) = lower(u.email)
+            AND (
+              (ai.status = 'pending' AND (ai.token_expires_at IS NULL OR ai.token_expires_at > now()))
+              OR (ai.status = 'accepted' AND ai.accepted_user_id = u.id)
+            )
+       )
+       AND NOT EXISTS (
+         SELECT 1
+           FROM public.collaborator_invites ci
+          WHERE ci.invite_token = trim(u.raw_user_meta_data->>'signup_invite_token')
+            AND lower(ci.invited_email) = lower(u.email)
+            AND (
+              (ci.status = 'pending' AND ci.token_expires_at > now())
+              OR (ci.status = 'accepted' AND ci.accepted_user_id = u.id)
+            )
+       )
+     )
    );
 
 NOTIFY pgrst, 'reload schema';
+
+COMMIT;
 
 -- ─── OWNER-RUN BEHAVIORAL VERIFICATION ────────────────────────────────────
 --
@@ -202,18 +273,26 @@ NOTIFY pgrst, 'reload schema';
 --
 --   select count(*) from public.user_profiles where claimed_at is null;
 --
--- The count should drop by the number of confirmed users with no usable token
--- and should not change for unconfirmed users or users holding a well-formed
--- token.
+-- On 2026-10-18 this was 0. If it is still 0 the backfill is a no-op and the
+-- probes below need a synthetic user (create one inside the transaction).
+-- Otherwise the count should drop by the number of confirmed users with no
+-- usable token or a dead token, and should not change for unconfirmed users or
+-- users whose token still redeems a live invite.
 --
 --   C1  MUST SUCCEED  confirmed user, no metadata token: function returns
 --                     false AND user_profiles.claimed_at becomes non-null
+--   C1b MUST SUCCEED  confirmed user whose metadata token is well-formed but
+--                     matches no redeemable invite (expired, revoked or used):
+--                     returns false AND claimed_at becomes non-null
 --   C2  MUST SUCCEED  unconfirmed user, no token: returns false AND claimed_at
 --                     stays null
 --   C3  MUST SUCCEED  confirmed user with a valid pending invite token:
 --                     returns true, invite accepted, ledger row written,
 --                     claimed_at set, metadata token removed (unchanged
 --                     migration 214 behavior)
+--   C3b MUST SUCCEED  confirmed user with a valid pending metadata token and a
+--                     malformed explicit p_invite_token ('not-hex'): returns
+--                     true (the malformed parameter is ignored)
 --   C4  MUST FAIL     42501: the authenticated role calling the function
 --                     directly
 --
@@ -228,6 +307,16 @@ NOTIFY pgrst, 'reload schema';
 --     FROM public.user_profiles WHERE id = '<CONFIRMED_NO_TOKEN_USER_ID>';
 --   -- Expect: true
 --   ROLLBACK TO SAVEPOINT c1;
+--
+--   -- C1b: pick a confirmed user whose metadata token is 64-hex but whose
+--   -- invite is expired, revoked or consumed.
+--   SAVEPOINT c1b;
+--   SELECT public.complete_verified_signup_claim('<CONFIRMED_DEAD_TOKEN_USER_ID>');
+--   -- Expect: false
+--   SELECT claimed_at IS NOT NULL AS sentinel_set
+--     FROM public.user_profiles WHERE id = '<CONFIRMED_DEAD_TOKEN_USER_ID>';
+--   -- Expect: true
+--   ROLLBACK TO SAVEPOINT c1b;
 --
 --   -- C2: pick an unconfirmed user (email_confirmed_at is null).
 --   SAVEPOINT c2;
@@ -244,6 +333,12 @@ NOTIFY pgrst, 'reload schema';
 --   SELECT public.complete_verified_signup_claim('<CONFIRMED_TOKEN_USER_ID>');
 --   -- Expect: true
 --   ROLLBACK TO SAVEPOINT c3;
+--
+--   -- C3b: same user as C3, with a malformed explicit token.
+--   SAVEPOINT c3b;
+--   SELECT public.complete_verified_signup_claim('<CONFIRMED_TOKEN_USER_ID>', 'not-hex');
+--   -- Expect: true
+--   ROLLBACK TO SAVEPOINT c3b;
 --
 --   -- C4: the browser roles must not be able to call it.
 --   SAVEPOINT c4;
