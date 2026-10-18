@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
+import * as Sentry from '@sentry/nextjs'
 import { createServiceClient } from '@/lib/supabase/server'
 
 // ─── POST /api/webhooks/stripe — payment + Connect account state
@@ -19,6 +20,72 @@ import { createServiceClient } from '@/lib/supabase/server'
 // (T-16-32). Handling is idempotent: a redelivered checkout.session.
 // completed for an already-paid deal is a no-op that still returns 200,
 // not a duplicate state change (T-16-37).
+//
+// Handled event types:
+//   - checkout.session.completed and checkout.session.async_payment_succeeded
+//     both run completePaidCheckout(). A completion whose payment_status is
+//     not 'paid' (a delayed method such as ACH) is acknowledged with 200 and
+//     writes nothing: the deal is already awaiting_payment and is completed
+//     later, through the same helper, by async_payment_succeeded.
+//   - checkout.session.async_payment_failed, charge.refunded and
+//     charge.dispute.* are acknowledged with 200 and reported to Sentry
+//     (Stripe ids only, no PII). They are NOT persisted: license_requests
+//     has no refunded/disputed state, and that schema decision is pending.
+//   - account.updated persists Connect capability flags.
+//   - Any other verified event is acknowledged with 200 and ignored.
+type ServiceClient = ReturnType<typeof createServiceClient>
+
+function idOf(value: string | { id: string } | null | undefined): string | null {
+  if (!value) return null
+  return typeof value === 'string' ? value : value.id
+}
+
+// Marks a deal paid from a verified Checkout Session. Returns null on success
+// (or when there is nothing to complete) so the caller falls through to the
+// final 200, or a NextResponse to return as-is.
+async function completePaidCheckout(
+  session: Stripe.Checkout.Session,
+  stripe: Stripe,
+  service: ServiceClient
+): Promise<NextResponse | null> {
+  // Defensive: never complete an unpaid session even if a caller forgets to
+  // gate on payment_status first (T-u5b-03).
+  if (session.payment_status !== 'paid') return null
+
+  const dealId = session.metadata?.license_request_id?.trim() ?? ''
+  const economicsFingerprint = session.metadata?.economics_fingerprint?.trim() ?? ''
+  const paymentIntentId = idOf(session.payment_intent)
+  if (!dealId || !economicsFingerprint || !paymentIntentId) {
+    return NextResponse.json({ error: 'Payment event is missing required reconciliation data.' }, { status: 400 })
+  }
+
+  let paymentIntent: Stripe.PaymentIntent
+  try {
+    paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
+  } catch {
+    return NextResponse.json({ error: 'Payment verification unavailable' }, { status: 503 })
+  }
+  const destination = paymentIntent.transfer_data?.destination
+  const destinationId = typeof destination === 'string' ? destination : destination?.id
+  const { data: completed, error: paidError } = await service.rpc('complete_license_checkout', {
+    p_deal_id: dealId,
+    p_checkout_session_id: session.id,
+    p_economics_fingerprint: economicsFingerprint,
+    p_payment_intent_id: paymentIntentId,
+    p_amount_cents: session.amount_total ?? -1,
+    p_currency: session.currency ?? '',
+    p_application_fee_cents: paymentIntent.application_fee_amount ?? -1,
+    p_transfer_destination: destinationId ?? '',
+  })
+  if (paidError) {
+    return NextResponse.json({ error: 'Persistence failed' }, { status: 503 })
+  }
+  if (completed !== true) {
+    return NextResponse.json({ error: 'Payment reconciliation mismatch' }, { status: 409 })
+  }
+  return null
+}
+
 export async function POST(request: Request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET
   if (!secret) {
@@ -48,40 +115,51 @@ export async function POST(request: Request) {
 
   const service = createServiceClient()
 
-  if (event.type === 'checkout.session.completed') {
+  if (
+    event.type === 'checkout.session.completed' ||
+    event.type === 'checkout.session.async_payment_succeeded'
+  ) {
     const session = event.data.object as Stripe.Checkout.Session
-    const dealId = session.metadata?.license_request_id?.trim() ?? ''
-    const economicsFingerprint = session.metadata?.economics_fingerprint?.trim() ?? ''
-    const paymentIntentId =
-      typeof session.payment_intent === 'string' ? session.payment_intent : (session.payment_intent?.id ?? null)
-    if (!dealId || !economicsFingerprint || !paymentIntentId || session.payment_status !== 'paid') {
-      return NextResponse.json({ error: 'Payment event is missing required reconciliation data.' }, { status: 400 })
+    // Delayed-method completion: acknowledge so Stripe stops retrying. The
+    // deal stays awaiting_payment until async_payment_succeeded arrives.
+    if (session.payment_status !== 'paid') {
+      return NextResponse.json({ ok: true })
     }
+    const failure = await completePaidCheckout(session, stripe, service)
+    if (failure) return failure
+  }
 
-    let paymentIntent: Stripe.PaymentIntent
-    try {
-      paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
-    } catch {
-      return NextResponse.json({ error: 'Payment verification unavailable' }, { status: 503 })
-    }
-    const destination = paymentIntent.transfer_data?.destination
-    const destinationId = typeof destination === 'string' ? destination : destination?.id
-    const { data: completed, error: paidError } = await service.rpc('complete_license_checkout', {
-      p_deal_id: dealId,
-      p_checkout_session_id: session.id,
-      p_economics_fingerprint: economicsFingerprint,
-      p_payment_intent_id: paymentIntentId,
-      p_amount_cents: session.amount_total ?? -1,
-      p_currency: session.currency ?? '',
-      p_application_fee_cents: paymentIntent.application_fee_amount ?? -1,
-      p_transfer_destination: destinationId ?? '',
+  if (event.type === 'checkout.session.async_payment_failed') {
+    const session = event.data.object as Stripe.Checkout.Session
+    Sentry.captureMessage('Stripe async payment failed', {
+      level: 'warning',
+      tags: { stripe_event: event.type },
+      extra: {
+        event_id: event.id,
+        session_id: session.id,
+        payment_intent_id: idOf(session.payment_intent),
+        license_request_id: session.metadata?.license_request_id ?? null,
+      },
     })
-    if (paidError) {
-      return NextResponse.json({ error: 'Persistence failed' }, { status: 503 })
+  }
+
+  if (event.type === 'charge.refunded' || event.type.startsWith('charge.dispute.')) {
+    const object = event.data.object as {
+      id?: string
+      charge?: string | { id: string } | null
+      payment_intent?: string | { id: string } | null
     }
-    if (completed !== true) {
-      return NextResponse.json({ error: 'Payment reconciliation mismatch' }, { status: 409 })
-    }
+    const isDispute = event.type.startsWith('charge.dispute.')
+    Sentry.captureMessage(isDispute ? 'Stripe dispute event' : 'Stripe charge refunded', {
+      level: event.type === 'charge.dispute.created' ? 'error' : 'warning',
+      tags: { stripe_event: event.type },
+      extra: {
+        event_id: event.id,
+        object_id: object.id ?? null,
+        charge_id: isDispute ? idOf(object.charge) : (object.id ?? null),
+        payment_intent_id: idOf(object.payment_intent),
+      },
+    })
   }
 
   if (event.type === 'account.updated') {
