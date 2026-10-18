@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/server'
+import { isTokenFormat } from '@/lib/curators/tokens'
 import AuthLayout from '@/app/(auth)/layout'
 import { ClaimButton } from '@/components/curators/ClaimButton'
 
@@ -18,14 +19,16 @@ type Props = {
 // invalid/expired/already-used token gets muted error copy with no CTA.
 export default async function ClaimPage({ params }: Props) {
   const { token } = await params
-  const service = createServiceClient()
   const now = new Date().toISOString()
 
-  const { data: curator } = await service
-    .from('curators')
-    .select('id, claimed_by, claim_token_expires_at')
-    .eq('claim_token', token)
-    .maybeSingle()
+  // A malformed token can never match, so skip the lookup entirely.
+  const { data: curator } = isTokenFormat(token)
+    ? await createServiceClient()
+        .from('curators')
+        .select('id, claimed_by, claim_token_expires_at')
+        .eq('claim_token', token)
+        .maybeSingle()
+    : { data: null }
 
   const valid =
     !!curator &&
