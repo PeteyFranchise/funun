@@ -7,8 +7,9 @@ import { createBuyerAccount, DuplicateBuyerAccountError } from '@/lib/buyers/cre
 import { resolveLeadershipFallback } from '@/lib/staff/leadershipFallback'
 import { resolveLeadRecipient, buildLeadRoutedNotification } from '@/lib/staff/notifications'
 import { createNotification } from '@/lib/notifications'
-import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
+import { checkRateLimit, getClientIp, peekRateLimit } from '@/lib/security/rate-limit'
 import { turnstileConfigStatus, verifyTurnstileToken } from '@/lib/security/turnstile'
+import { SYNC_CONTACT_EMAIL } from '@/lib/sync-library/contact'
 
 // ─── POST /api/sync/register — public, unauthenticated (23-04 Task 3) ─────
 // The FIRST genuinely public write path in the buyer domain (RESEARCH
@@ -36,10 +37,56 @@ const ORG_SELECT_COLUMNS = 'id, name, ae_user_id'
 // Hand-Roll"). Now backed by the shared durable limiter (audit #7) — the count
 // lives in Postgres, so it holds across serverless instances and cold starts.
 
-// Global daily cap on new registrations, shared across all callers. Module
-// level and not exported: Next route files may only export HTTP handlers.
+// Global daily cap on NEW accounts, shared across all callers. Module level
+// and not exported: Next route files may only export HTTP handlers.
+//
+// Only successful account creations count. check_rate_limit() records every
+// allowed call and cannot peek, so the cap is read with peekRateLimit() before
+// the insert and a slot is recorded with checkRateLimit() only after a new
+// account exists. Duplicate-email attempts and failed creates never consume
+// one. Accepted tradeoff: requests that peek at the same moment can all pass,
+// so the cap can be overshot by the number of in-flight registrations.
 const GLOBAL_DAILY_REGISTRATION_CAP = 200
+const GLOBAL_CAP_KEY = 'sync-register:global'
 const DAY_MS = 24 * 60 * 60 * 1000
+
+// Turnstile action the Register widget is rendered with
+// (components/buyer/LoginRegisterModal.tsx).
+const TURNSTILE_ACTION = 'sync-register'
+
+// Own keyspace for this route so other routes' `ip:` / `email:` budgets are
+// not shared with buyer signup.
+const IP_KEY_PREFIX = 'sync-register:ip:'
+const EMAIL_KEY_PREFIX = 'sync-register:email:'
+
+// ─── Operator signals (no PII) ─────────────────────────────────────────────
+// Reported at most once per interval per server instance, so a tripped cap or
+// a half-configured bot check cannot flood Sentry with one event per request.
+// performance.now() is monotonic, so a wall-clock change cannot skew the gap.
+const CAP_SIGNAL_INTERVAL_MS = 10 * 60 * 1000
+const lastSignalAt = new Map<string, number>()
+
+function reportOnce(
+  signal: string,
+  intervalMs: number,
+  message: string,
+  tags: Record<string, string>
+): void {
+  const now = performance.now()
+  const last = lastSignalAt.get(signal)
+  if (last !== undefined && now - last < intervalMs) return
+  lastSignalAt.set(signal, now)
+  Sentry.captureMessage(message, { level: 'error', tags })
+}
+
+function registrationUnavailable() {
+  return NextResponse.json(
+    {
+      error: `Registration is temporarily unavailable. Please try again later, or email ${SYNC_CONTACT_EMAIL}.`,
+    },
+    { status: 429 }
+  )
+}
 
 // ─── Best-effort lead routing (Phase 25 hook) ──────────────────────────────
 // Never throws — any failure here must never fail the signup it's attached
@@ -81,7 +128,7 @@ async function routeLead(
 
 export async function POST(request: Request) {
   const ip = getClientIp(request)
-  if (await checkRateLimit(`ip:${ip}`, { failClosed: true })) {
+  if (await checkRateLimit(`${IP_KEY_PREFIX}${ip}`, { failClosed: true })) {
     return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
   }
 
@@ -103,41 +150,49 @@ export async function POST(request: Request) {
 
   const payload = result.body
 
-  // Second rate-limit dimension — same visitor retrying with a different
-  // IP (or behind a shared IP) is still capped per email.
-  if (await checkRateLimit(`email:${payload.email}`, { failClosed: true })) {
-    return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
-  }
-
-  // Bot check, fail-closed and BEFORE any DB write. Mirrors POST /api/waitlist:
-  // only the half-configured states are reported to Sentry, and the client
-  // response is identical in every config state.
+  // Bot check, fail-closed and BEFORE the email counter and any DB write, so
+  // unverified requests cannot use up a victim email's budget. Mirrors
+  // POST /api/waitlist: only the half-configured states are reported to Sentry
+  // (once per server instance), and the client response is identical in every
+  // config state.
   const turnstileToken = typeof raw.turnstileToken === 'string' ? raw.turnstileToken : ''
-  const verified = await verifyTurnstileToken(turnstileToken, ip)
+  const verified = await verifyTurnstileToken(turnstileToken, ip, { expectedAction: TURNSTILE_ACTION })
   if (!verified) {
     const configStatus = turnstileConfigStatus()
     if (configStatus === 'secret-missing' || configStatus === 'site-key-missing') {
-      Sentry.captureMessage('Buyer signup Turnstile verification failed due to misconfiguration', {
-        level: 'error',
-        tags: { feature: 'sync-register-turnstile', configStatus },
-      })
+      reportOnce(
+        'turnstile-misconfigured',
+        Number.POSITIVE_INFINITY,
+        'Buyer signup Turnstile verification failed due to misconfiguration',
+        { feature: 'sync-register-turnstile', configStatus }
+      )
     }
     return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 400 })
   }
 
-  // Global daily cap. Deliberately AFTER the bot check: requests that fail
-  // verification must not be able to use up the shared daily allowance.
-  if (
-    await checkRateLimit('sync-register:global', {
-      windowMs: DAY_MS,
-      maxAttempts: GLOBAL_DAILY_REGISTRATION_CAP,
-      failClosed: true,
-    })
-  ) {
-    return NextResponse.json(
-      { error: 'Registration is temporarily unavailable. Please try again later.' },
-      { status: 429 }
+  // Second rate-limit dimension — same visitor retrying with a different
+  // IP (or behind a shared IP) is still capped per email.
+  if (await checkRateLimit(`${EMAIL_KEY_PREFIX}${payload.email}`, { failClosed: true })) {
+    return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
+  }
+
+  // Global daily cap, read WITHOUT using a slot (see the cap comment above).
+  // Deliberately after the bot check: requests that fail verification must not
+  // be able to trip it. Fails closed: if the count cannot be read, refuse.
+  const capState = await peekRateLimit(GLOBAL_CAP_KEY, {
+    windowMs: DAY_MS,
+    maxAttempts: GLOBAL_DAILY_REGISTRATION_CAP,
+  })
+  if (capState !== 'allowed') {
+    reportOnce(
+      `cap-${capState}`,
+      CAP_SIGNAL_INTERVAL_MS,
+      capState === 'limited'
+        ? 'Buyer signup daily registration cap reached'
+        : 'Buyer signup refused because the rate limiter is unavailable',
+      { feature: 'sync-register-cap', state: capState }
     )
+    return registrationUnavailable()
   }
 
   const service = createServiceClient()
@@ -171,6 +226,15 @@ export async function POST(request: Request) {
       orgId: org.id,
       buyerRole: 'approver',
       isOrgAdmin: true,
+    })
+
+    // A new account exists: record one slot against the global cap. The result
+    // is ignored on purpose - the account is already created, and an exhausted
+    // or unreachable limiter will refuse the NEXT registration at the peek.
+    await checkRateLimit(GLOBAL_CAP_KEY, {
+      windowMs: DAY_MS,
+      maxAttempts: GLOBAL_DAILY_REGISTRATION_CAP,
+      failClosed: true,
     })
 
     await routeLead(service, org)

@@ -33,4 +33,18 @@ describe('LoginRegisterModal bot check wiring', () => {
   it('does not redeclare the global window.turnstile typing', () => {
     expect(source).not.toContain('declare global')
   })
+
+  it('renders the widget with the action the register route verifies', () => {
+    const route = readFileSync(join(process.cwd(), 'app/api/sync/register/route.ts'), 'utf8')
+    expect(source).toContain("action: 'sync-register'")
+    expect(route).toContain("const TURNSTILE_ACTION = 'sync-register'")
+    expect(route).toContain('expectedAction: TURNSTILE_ACTION')
+  })
+
+  it('pairs the waitlist widget action with the waitlist route', () => {
+    const page = readFileSync(join(process.cwd(), 'app/(auth)/signup/page.tsx'), 'utf8')
+    const route = readFileSync(join(process.cwd(), 'app/api/waitlist/route.ts'), 'utf8')
+    expect(page).toContain("action: 'turnstile-spin-v2'")
+    expect(route).toContain("expectedAction: 'turnstile-spin-v2'")
+  })
 })

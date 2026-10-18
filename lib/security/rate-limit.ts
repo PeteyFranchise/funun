@@ -52,6 +52,48 @@ export async function checkRateLimit(
   }
 }
 
+export type RateLimitPeek = 'allowed' | 'limited' | 'unavailable'
+
+// Read-only look at a key's current window: counts the recorded hits without
+// recording one. check_rate_limit() always records an allowed attempt, so it
+// cannot answer "is there room?" without using a slot. This is for callers that
+// want to count only completed work: peek first, do the work, then record with
+// checkRateLimit() on success. Two requests that peek at the same moment can
+// both proceed, so the cap can be overshot by the number of in-flight requests.
+//
+// Same window semantics as the RPC (hit_at within the window, at/over max is
+// limited). 'unavailable' means the count could not be read; the caller decides
+// whether that is a refusal.
+export async function peekRateLimit(
+  key: string,
+  options: { windowMs: number; maxAttempts: number }
+): Promise<RateLimitPeek> {
+  const { windowMs, maxAttempts } = options
+  if (!key.trim() || key.trim().length > RATE_LIMIT_MAX_KEY_LENGTH) {
+    throw new RangeError(`Rate-limit key must contain 1 to ${RATE_LIMIT_MAX_KEY_LENGTH} characters`)
+  }
+  if (!Number.isFinite(windowMs) || windowMs < 1 || windowMs > RATE_LIMIT_MAX_WINDOW_MS) {
+    throw new RangeError('Rate-limit window must be between 1ms and 24 hours')
+  }
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > RATE_LIMIT_MAX_ATTEMPTS_LIMIT) {
+    throw new RangeError('Rate-limit maximum must be an integer between 1 and 10000')
+  }
+
+  try {
+    const service = createServiceClient()
+    const since = new Date(Date.now() - windowMs).toISOString()
+    const { count, error } = await service
+      .from('rate_limit_hits')
+      .select('key', { count: 'exact', head: true })
+      .eq('key', key.trim())
+      .gte('hit_at', since)
+    if (error || typeof count !== 'number') return 'unavailable'
+    return count >= maxAttempts ? 'limited' : 'allowed'
+  } catch {
+    return 'unavailable'
+  }
+}
+
 // Resolve the client IP for rate-limit keys. On Vercel, `x-real-ip` is set by
 // the platform to the true client IP and is NOT client-controllable at the app
 // layer — prefer it. Fall back to the LAST `x-forwarded-for` entry (the hop the
