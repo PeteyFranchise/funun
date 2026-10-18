@@ -66,7 +66,11 @@ export async function POST(request: Request) {
   }
 
   const turnstileToken = typeof raw.turnstileToken === 'string' ? raw.turnstileToken : ''
-  const verified = await verifyTurnstileToken(turnstileToken, ip)
+  // The action must match the one the signup page renders the widget with
+  // (app/(auth)/signup/page.tsx).
+  const verified = await verifyTurnstileToken(turnstileToken, ip, {
+    expectedAction: 'turnstile-spin-v2',
+  })
   if (!verified) {
     const configStatus = turnstileConfigStatus()
     // Only the HALF-configured states are the invisible case worth paging
