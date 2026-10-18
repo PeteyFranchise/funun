@@ -20,6 +20,9 @@ export const MAX_DOC_SIZE = 5 * 1024 * 1024 // 5MB
 
 export const ALLOWED_DOC_TYPES = ['application/pdf'] as const
 
+// "%PDF-" - every PDF starts with these five bytes.
+const PDF_MAGIC = [0x25, 0x50, 0x44, 0x46, 0x2d]
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export type VaultDocument = {
@@ -52,12 +55,42 @@ export function vaultDocumentBucket(source: string | null | undefined): string {
   return source === 'uploaded' ? CONTRACT_BUCKET : DOC_BUCKET
 }
 
+// ─── Path checks ─────────────────────────────────────────────────────────────
+
+/**
+ * True when a stored value is a plain, relative object path: non-empty, no
+ * leading or trailing slash, no empty segment, no '.' or '..' segment and no
+ * backslash. The /file route signs whatever file_url holds, so it refuses
+ * anything else even though migration 245 stops clients writing the column.
+ */
+export function isSafeObjectPath(value: string): boolean {
+  if (!value || value.includes('\\')) return false
+  return value.split('/').every((segment) => segment !== '' && segment !== '.' && segment !== '..')
+}
+
+/**
+ * True when a storage error means the object does not exist. storage-js
+ * reports a missing object as status/statusCode 404 and an "Object not found"
+ * message; accept any of the three.
+ */
+export function isMissingObjectError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const e = error as { status?: unknown; statusCode?: unknown; message?: unknown }
+  return (
+    String(e.status) === '404' ||
+    String(e.statusCode) === '404' ||
+    (typeof e.message === 'string' && /not found/i.test(e.message))
+  )
+}
+
 // ─── Upload helper ────────────────────────────────────────────────────────────
 
 /**
  * Validates and uploads a signed PDF to the given private bucket (use
- * vaultDocumentBucket(row.source)). Validates MIME type and size before any
- * storage write. Returns the storage path; there is no public URL.
+ * vaultDocumentBucket(row.source)). Validates MIME type, size and the leading
+ * "%PDF-" bytes before any storage write; the MIME type is client-declared, so
+ * the magic check is what confirms the content looks like a PDF. Returns the
+ * storage path; there is no public URL.
  *
  * Auth is the caller's responsibility and must be checked BEFORE calling:
  * this uses the service client, which bypasses storage policies, so nothing
@@ -75,6 +108,10 @@ export async function uploadSignedPdf(params: {
   }
   if (params.file.size > MAX_DOC_SIZE) {
     throw new Error('Document must be under 5MB')
+  }
+  const head = new Uint8Array(await params.file.slice(0, PDF_MAGIC.length).arrayBuffer())
+  if (head.length !== PDF_MAGIC.length || !PDF_MAGIC.every((byte, i) => head[i] === byte)) {
+    throw new Error('Document must be a PDF file')
   }
 
   const path = `${params.userId}/${params.projectId}/${params.docId}-${Date.now()}.pdf`
