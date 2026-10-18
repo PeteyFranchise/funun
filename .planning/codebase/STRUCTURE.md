@@ -1,460 +1,314 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-06-26
+**Analysis Date:** 2026-10-18
 
 ## Directory Layout
 
 ```
 funun/
-├── app/                          # Next.js App Router — pages, layouts, API routes
-│   ├── layout.tsx                # Root layout (metadata, fonts, globals)
-│   ├── page.tsx                  # Root → redirects to /dashboard
-│   ├── globals.css               # Global styles, CSS variables
-│   ├── (artist)/                 # Route group for artist workspace (URL path ignored)
-│   │   ├── layout.tsx            # Wraps artist pages with sidebar nav
-│   │   ├── dashboard/page.tsx    # Artist home — stats, project summary
-│   │   ├── vault/page.tsx        # Sound Vault main — project browser
-│   │   ├── releases/page.tsx     # Release schedule (projects with dates)
-│   │   ├── earnings/page.tsx     # Revenue dashboard (if applicable)
-│   │   ├── antenna/page.tsx      # Opportunity matching inbox
-│   │   ├── benchmarks/page.tsx   # Spotify metrics input
-│   │   ├── launchpad/page.tsx    # Release coordination hub
-│   │   ├── contracts/page.tsx    # Contract verification
-│   │   ├── coach/page.tsx        # Career coaching (placeholder)
-│   │   ├── tools/pitchplug/page.tsx  # PitchPlug UI
-│   │   ├── settings/page.tsx     # Artist account settings
-│   │   └── vault/                # Nested routes for project detail
-│   ├── (auth)/                   # Route group for auth flows
-│   │   ├── layout.tsx            # Minimal layout (no nav)
-│   │   ├── signin/page.tsx       # Login page
-│   │   └── signup/page.tsx       # Registration page
-│   ├── (industry)/               # Route group for industry professional workspace
-│   │   ├── opportunities/page.tsx    # Opportunity board (create/view)
-│   │   └── opportunities/[opportunityId]/  # Opportunity detail, applications
-│   ├── (marketing)/              # Route group for public pages (landing, etc.)
-│   ├── api/                      # All API routes — RESTful endpoints
-│   │   ├── vault/
-│   │   │   ├── route.ts          # GET (list all), POST (create)
-│   │   │   └── [projectId]/
-│   │   │       ├── route.ts      # PATCH (update), DELETE (remove)
-│   │   │       ├── tracks/
-│   │   │       │   ├── route.ts  # POST (add track)
-│   │   │       │   └── [trackId]/
-│   │   │       │       ├── route.ts       # PATCH (edit), DELETE (remove)
-│   │   │       │       ├── audio/route.ts # POST (upload), DELETE (remove audio)
-│   │   │       │       ├── isrc/route.ts  # POST (generate ISRC)
-│   │   │       │       ├── metadata/      # Embed, sidecar, format handlers
-│   │   │       │       └── lyrics/route.ts # GET (fetch lyrics)
-│   │   │       ├── assets/route.ts        # POST (upload cover art, visuals)
-│   │   │       ├── documents/
-│   │   │       │   ├── route.ts  # GET (list), POST (upload doc)
-│   │   │       │   ├── [docId]/  # PATCH (update), DELETE (remove)
-│   │   │       │   └── generate/ # POST (AI-generate document)
-│   │   │       ├── metadata/
-│   │   │       │   ├── export/   # GET (download metadata bundle)
-│   │   │       │   ├── cwr/      # GET (CISAC CWR format export)
-│   │   │       │   └── registrations/ # GET (current registration status)
-│   │   │   └── lyrics/route.ts           # GET (lyrics for project)
-│   │   ├── releases/route.ts     # GET (projects with release_date)
-│   │   ├── tools/
-│   │   │   ├── pitchplug/
-│   │   │   │   ├── route.ts      # POST (generate pitches)
-│   │   │   │   └── send/route.ts # POST (record submission)
-│   │   │   ├── [slug]/route.ts   # POST (other tools: sampleclear, contentid, etc.)
-│   │   │   └── [toolSlug]/route.ts # Legacy endpoint
-│   │   ├── profile/route.ts      # PATCH (update artist profile)
-│   │   ├── benchmarks/route.ts   # POST (save metrics)
-│   │   ├── submissions/route.ts  # POST (record pitch submission)
-│   │   ├── pitches/route.ts      # POST (direct pitch API), GET (check credits)
-│   │   ├── antenna/
-│   │   │   ├── opportunities/
-│   │   │   │   ├── route.ts      # GET (list), POST (create)
-│   │   │   │   ├── [opportunityId]/
-│   │   │   │   │   ├── route.ts  # PATCH (edit), DELETE (remove)
-│   │   │   │   │   └── apply/route.ts # POST (artist applies)
-│   │   │   └── match/route.ts    # POST (run matching algorithm)
-│   │   ├── wall/route.ts         # POST (create post), DELETE (remove)
-│   │   ├── release-comments/route.ts # POST (comment), DELETE (remove)
-│   │   ├── endorsements/route.ts # POST (endorse), DELETE (withdraw)
-│   │   ├── follows/route.ts      # POST (follow), DELETE (unfollow)
-│   │   ├── dm/
-│   │   │   ├── messages/route.ts # GET (fetch messages)
-│   │   │   └── send/route.ts     # POST (send message)
-│   │   ├── contracts/verify/route.ts   # POST (verify contract signature)
-│   │   ├── earnings/import/route.ts    # POST (import DSR data)
-│   │   ├── stripe/                     # Webhook handlers (if used)
-│   │   ├── user/                       # User metadata endpoints
-│   │   ├── assets/                     # Generic asset endpoints
-│   │   └── [other domain areas]/
-│   ├── auth/callback/            # Supabase OAuth callback
-│   ├── profile/page.tsx          # Public fallback profile
-│   ├── status/page.tsx           # Status page
-│   ├── r/[projectId]/page.tsx    # Project release — public link
-│   └── u/[handle]/page.tsx       # Artist profile — public link
-
-├── components/                   # React components — client & server
-│   ├── layout/
-│   │   ├── Topbar.tsx           # Top navigation with search
-│   │   └── Sidebar.tsx          # Side navigation (if used)
-│   ├── nav/
-│   │   ├── ArtistNav.tsx        # Main sidebar nav (artist routes)
-│   │   └── icons.tsx            # Icon library
-│   ├── vault/                   # Sound Vault UI
-│   │   ├── VaultBrowser.tsx     # Tab-based project list
-│   │   ├── VaultProjectCard.tsx # Individual project card
-│   │   ├── EditProjectForm.tsx  # Modal to create/edit project
-│   │   ├── AddTrackForm.tsx     # Add track to project
-│   │   ├── TrackList.tsx        # Display tracks in project
-│   │   ├── CoverArtUpload.tsx   # Upload cover art
-│   │   ├── AssetUpload.tsx      # Upload visual assets
-│   │   ├── DocumentManager.tsx  # Upload, list, download documents
-│   │   ├── DocumentCard.tsx     # Single document UI
-│   │   ├── DocumentStage.tsx    # Document status tracker
-│   │   ├── MetadataStudio.tsx   # Edit metadata (CWR, identifiers, etc.)
-│   │   ├── PlaybackView.tsx     # Preview tracks
-│   │   ├── SubmissionHistory.tsx # Track outbound pitches
-│   │   ├── ToolSidePanel.tsx    # Display tool outputs
-│   │   ├── ProjectTabs.tsx      # Tabs for detail view (metadata, docs, etc.)
-│   │   ├── DistributorPicker.tsx # Select release distributor
-│   │   ├── SampleFlagToggle.tsx # Mark as sample-based
-│   │   ├── CopyrightFiling.tsx  # Copyright registration status
-│   │   └── [other vault components]
-│   ├── tools/
-│   │   ├── ToolsPanel.tsx       # Tools sidebar/panel
-│   │   ├── PitchPlugForm.tsx    # Select curator types for pitches
-│   │   ├── PitchCard.tsx        # Display generated pitch
-│   │   └── [other tool UIs]
-│   ├── antenna/
-│   │   ├── AntennaBrowser.tsx   # Opportunity list view
-│   │   ├── OpportunityCard.tsx  # Single opportunity card
-│   │   ├── OpportunityForm.tsx  # Create/edit opportunity
-│   │   ├── ApplicationInbox.tsx # View applications to own opportunity
-│   │   ├── ApplyButton.tsx      # Submit application
-│   │   ├── MatchScoreBreakdown.tsx # Show match algorithm details
-│   │   └── [other antenna components]
-│   ├── benchmarks/
-│   │   ├── [benchmarking UI components]
-│   ├── contracts/
-│   │   ├── [contract signing UI]
-│   ├── earnings/
-│   │   ├── [earnings display components]
-│   ├── coach/
-│   │   ├── [coaching UI]
-│   ├── profile/
-│   │   ├── [artist profile components]
-│   ├── auth/
-│   │   ├── SignOutButton.tsx    # Sign out action
-│   │   └── [auth UI]
-│   └── layout/
-│       ├── Topbar.tsx           # Top bar with search, user menu
-│       └── [layout helpers]
-
-├── lib/                         # Business logic, utilities, domain services
-│   ├── supabase/
-│   │   ├── server.ts            # createServerClient(), createApiClient(), createServiceClient()
-│   │   └── client.ts            # createClient() for browser
-│   ├── vault/                   # Sound Vault feature logic
-│   │   ├── readiness.ts         # Calculate readiness score per project
-│   │   ├── stage3.ts            # Stage 3 release workflow
-│   │   ├── demo.ts              # Demo project templates
-│   │   ├── demo-store.ts        # In-memory store for DEMO mode
-│   │   └── [other vault services]
-│   ├── metadata/                # Music metadata handling
-│   │   ├── schema.ts            # Metadata object structure
-│   │   ├── validate.ts          # Validation rules
-│   │   ├── export.ts            # Export to various formats (JSON, CSV)
-│   │   ├── cwr.ts               # CISAC CWR format handling
-│   │   ├── rdr.ts               # Royalty-bearing metadata (RDR)
-│   │   ├── rdr-export.ts        # RDR export
-│   │   ├── registration.ts      # Copyright registration workflow
-│   │   ├── identifiers.ts       # ISRC, ISWC, CID handling
-│   │   ├── bundle.ts            # Create metadata bundles for distribution
-│   │   └── [other metadata utilities]
-│   ├── tools/
-│   │   ├── registry.ts          # Tool plugin definitions (PitchPlug, SampleClear, ContentID, etc.)
-│   │   ├── pitchplug.ts         # PitchPlug email generation logic
-│   │   ├── sampleclear.ts       # Sample clearance check
-│   │   ├── contentid.ts         # ContentID registration
-│   │   ├── copyrightkit.ts      # Copyright kit assembly
-│   │   ├── hireright.ts         # Hire Right (session musician) tracking
-│   │   ├── splitsheet.ts        # Split sheet generation
-│   │   ├── documents.ts         # Document helpers
-│   │   └── [other tool implementations]
-│   ├── anthropic/               # Anthropic SDK wrapper
-│   │   └── [Claude integration helpers]
-│   ├── storage/                 # File upload/download
-│   │   └── index.ts             # Supabase Storage helpers (signed URLs, uploads)
-│   ├── stripe/                  # Stripe integration
-│   │   └── index.ts             # Subscription management
-│   ├── email/                   # Email sending
-│   │   └── index.ts             # Resend integration
-│   ├── submissions/             # Pitch submission tracking
-│   │   └── index.ts             # Create submission record
-│   ├── social/                  # Social features (wall, DM, endorsements)
-│   │   ├── activity.ts          # Activity feed calculation
-│   │   ├── activity-emit.ts     # Emit activity events
-│   │   ├── wall.ts              # Wall post logic
-│   │   ├── dm.ts                # Direct message logic
-│   │   ├── endorsements.ts      # Endorsement logic
-│   │   └── comments.ts          # Comment threading
-│   ├── antenna/                 # Opportunity matching
-│   │   ├── demo.ts              # Demo opportunities
-│   │   └── [antenna logic]
-│   ├── matching/                # Matching algorithm
-│   │   ├── antenna.ts           # Match artists to opportunities
-│   │   └── run.ts               # Run matching batch job
-│   ├── benchmarks/              # Spotify metrics
-│   │   ├── engine.ts            # Scoring engine
-│   │   ├── opportunity-map.ts   # Map metrics to opportunity compatibility
-│   │   └── [benchmark logic]
-│   ├── notifications/           # In-app notifications
-│   │   └── index.ts
-│   ├── profile/                 # Artist profile
-│   │   └── load.ts              # Load and hydrate profile
-│   ├── contracts/               # Contract management
-│   │   ├── verify.ts            # Verify contract signatures
-│   │   └── [contract logic]
-│   ├── esign/                   # E-signature (DocuSign, etc.)
-│   │   └── provider.ts
-│   ├── dsr/                     # Digital Service Report (earnings)
-│   │   └── parse.ts             # Parse DSR files
-│   ├── eligibility/             # Rights eligibility checking
-│   │   └── direct-overlay.ts    # Direct licensing eligibility
-│   ├── launchpad/               # Release coordination
-│   │   └── [launchpad logic]
-│   └── [other feature modules]
-
-├── types/
-│   └── index.ts                 # Global TypeScript types (VaultProject, Track, ReadinessItem, etc.)
-
-├── supabase/
-│   ├── migrations/
-│   │   ├── 001_initial_schema.sql          # Artist, industry profiles, vault core
-│   │   ├── 002_vault_assets_storage.sql    # Asset storage setup
-│   │   ├── 003_readiness_triggers_full_events.sql  # Auto-calculate readiness
-│   │   ├── 004_track_audio_storage.sql     # Audio bucket
-│   │   ├── 005_stage3_additions.sql        # Release features
-│   │   ├── 006_metadata_studio.sql         # Metadata fields on projects
-│   │   ├── 007_isrc_registrant.sql         # ISRC registration state
-│   │   ├── 008_readiness_metadata_cwr.sql  # CWR readiness check
-│   │   ├── 009_antenna_notifications.sql   # Opportunity matching
-│   │   ├── 010_public_showcase_profile.sql # Public artist profile
-│   │   ├── 011_contract_verification.sql   # Contract signing
-│   │   ├── 012_social_layer.sql            # Wall, endorsements, DM
-│   │   ├── 013_readiness_activity_trigger.sql  # Activity stream
-│   │   ├── 014_dm_realtime.sql             # Real-time DM
-│   │   ├── 015_dsr_imports.sql             # DSR earnings import
-│   │   ├── 016_release_distribution.sql    # Distributor field
-│   │   └── 017_readiness_distributor_trigger.sql # Readiness on distributor change
-│   └── [Supabase CLI config]
-
-├── public/                      # Static assets (favicon, images)
-│   └── [assets]
-
-├── .planning/                   # GSD planning directory (generated)
-│   ├── codebase/                # Architecture docs
-│   └── [phases, milestones]
-
-├── docs/                        # Documentation
-│   └── [setup guides, etc.]
-
-├── .claude/                     # Claude IDE config
-├── middleware.ts                # Next.js auth middleware
-├── tailwind.config.ts           # Tailwind CSS config (design tokens)
-├── tsconfig.json                # TypeScript config (path aliases: @/*)
-├── package.json                 # Dependencies
-├── next.config.js               # Next.js config
-└── [build, config files]
+├── app/                      # Next.js App Router: pages, layouts, route handlers (338 route.ts, 148 page.tsx)
+│   ├── (admin)/              # Funūn staff console (66 files)
+│   ├── (artist)/             # Artist Sound Vault, dashboard, settings (52 files)
+│   ├── (auth)/               # signin, signup, forgot/update password (12 files)
+│   ├── (curator-portal)/     # Curator portal, role = curator (2 files)
+│   ├── api/                  # Route handlers (411 files incl. tests)
+│   ├── sync/                 # Client Partner / buyer surface (9 files)
+│   ├── w/[workspaceId]/      # Workspace rooms (8 files)
+│   ├── r/ u/ selects/ pitch/ approve/ join/ curators/   # Token and public routes
+│   ├── help/ status/ team-fit/ unsubscribe/ profile/ profile-preview/
+│   ├── marketing-document/   # Route handler serving the anonymous homepage
+│   ├── layout.tsx page.tsx globals.css global-error.tsx
+│   └── opengraph-image.tsx
+├── components/               # Client and shared React components, one folder per domain (32 folders)
+├── lib/                      # Domain logic and service modules (59 domain folders, plus root files)
+├── types/                    # Shared ambient and domain types (index.ts, catalogue.ts, fontkit.d.ts)
+├── supabase/                 # config.toml and migrations/ (238 SQL files)
+├── __tests__/                # Cross-cutting Jest tests (298 files, feature-named, for example `writer-room-*`)
+├── scripts/                  # tsx and node CLI tools and verifiers
+├── docs/                     # Markdown docs: design, observability, security, verification, marketing, sales
+├── research/                 # Contract research (research/contracts/) and related notes
+├── assets/                   # Runtime-read assets: fonts/ (PDF), marketing/ (landing.html, manifest.json)
+├── public/                   # Static files served at site root: marketing/ (54), buyer-catalogue/ (7), favicon.ico
+├── .planning/                # GSD planning artifacts (phases, quick tasks, todos, research, codebase maps)
+├── .agents/skills/           # Agent skill definitions (112 files)
+├── .claude/                  # Claude Code config: CLAUDE.md, launch.json, skills/ (27 files)
+├── .github/                  # GitHub configuration
+├── middleware.ts             # Request entry: CSP, session, route guards
+├── instrumentation.ts        # Sentry server and edge registration
+├── instrumentation-client.ts # Sentry browser init
+├── sentry.server.config.ts   sentry.edge.config.ts
+├── next.config.mjs           # Next config, headers, outputFileTracingIncludes
+├── vercel.json               # Cron schedules
+├── package.json              # Scripts, dependencies, overrides
+├── tsconfig.json             # strict, paths: "@/*" -> "./*"
+├── jest.config.js            # Jest, node environment
+├── tailwind.config.ts postcss.config.js .eslintrc.json
+└── README.md, AGENTS.md, and other root-level docs
 ```
+
+Generated or local directories, not source: `.next/`, `node_modules/`, `playwright-report/`, `test-results/`, `tsconfig.tsbuildinfo`. `tests/e2e/` holds Playwright specs that are present on disk but not tracked in git.
 
 ## Directory Purposes
 
-**app/:**
-- Purpose: Next.js App Router — contains all routes, pages, and API endpoints
-- Contains: TSX pages, API route handlers, layouts, CSS
-- Key pattern: File-based routing; `page.tsx` = route, `route.ts` = API endpoint
+**`app/(admin)/`:**
+- Purpose: Funūn team console, grouped by room
+- Contains: `admin/` pages (`deals`, `members`, `playbook`, `sync-library`, `client-partners`, `verification`, `workspaces`, `esign-usage`, and about 40 others), `checklist/`, `tips/`
+- Key files: `app/(admin)/layout.tsx` (any staff role), `app/(admin)/admin/playbook/layout.tsx` (playbook gate), `app/(admin)/admin/deals/[id]/page.tsx`
+- The playbook is the largest room: `app/(admin)/admin/playbook/` has 2 layout and page files plus about 30 room subpages (`access`, `activation`, `ask`, `governance`, `inbox`, `it/*`, `learning-paths`, `publication`, and more)
 
-**app/(artist)/, (auth), (industry), (marketing):**
-- Purpose: Logical route groups that organize pages without affecting URL structure
-- Contains: Pages specific to user role (artist workspace, auth flows, industry tools)
-- Key pattern: Middleware enforces auth before accessing (artist) routes
+**`app/(artist)/`:**
+- Purpose: Member (artist) workspace: Sound Vault, collaborators, split sheets, sync library, earnings, settings
+- Contains: `vault/` (projects, new, works, producer-inbox), `split-sheets/`, `sync-library/`, `settings/` (own layout), `launchpad/`, `antenna/`, `opportunities/`, `ideas/`, `green-room/`, `tools/pitchplug/`
+- Key files: `app/(artist)/layout.tsx` (account and handle gate, nav data), `app/(artist)/vault/[projectId]/page.tsx`, `app/(artist)/dashboard/page.tsx`
+- Project sub-rooms: `vault/[projectId]/{documents,metadata,pitch,play,readiness,rights}/`, and `metadata/{cwr,identifiers,onesheet,registrations}/`
 
-**app/api/:**
-- Purpose: RESTful API — CRUD endpoints for vault projects, social, tools, integrations
-- Contains: `route.ts` files with GET/POST/PATCH/DELETE handlers
-- Key pattern: Follows domain structure (api/vault/[projectId]/tracks/[trackId])
+**`app/(auth)/`:**
+- Purpose: Authentication screens
+- Contains: `signin/`, `signup/` (5 files), `forgot-password/`, `update-password/`
+- Key files: `app/(auth)/layout.tsx`
 
-**components/:**
-- Purpose: Reusable React components — mostly client-side with 'use client' directive
-- Contains: UI components for pages, forms, cards, modals
-- Key pattern: Grouped by feature (vault/, tools/, antenna/) to mirror app structure
+**`app/(curator-portal)/`:**
+- Purpose: Curator-only portal (`/portal`)
+- Key files: `app/(curator-portal)/layout.tsx` (requires `app_metadata.role === 'curator'`), `app/(curator-portal)/portal/page.tsx`
 
-**lib/:**
-- Purpose: Business logic, domain services, utilities — zero JSX, framework-agnostic
-- Contains: Data transformations, calculations, API integrations, DB helpers
-- Key pattern: One module per domain (lib/vault/, lib/metadata/, lib/tools/)
+**`app/api/`:**
+- Purpose: All HTTP endpoints
+- Top-level segments (file counts include tests): `admin` (126), `works` (51), `vault` (28), `workspaces` (23), `sync-library` (21), `ideas` (14), `split-sheets` (10), `cron` (12), `waitlist` (6), `roster` (6), `green-room` (6), `launchpad` (6), `buyer` (8), `dm` (7), `collaborators` (7), `producer-handoffs` (5), `selects` (5), `settings` (5), `signup` (4), `antenna` (4), `profile` (4), `webhooks` (4), plus smaller folders
+- Key files: `app/api/vault/route.ts`, `app/api/workspaces/[workspaceId]/members/route.ts`, `app/api/admin/deals/[id]/pay/route.ts`, `app/api/cron/process-jobs/route.ts`, `app/api/webhooks/stripe/route.ts`
+- Convention: `route.ts` beside `route.test.ts` (75 pairs)
 
-**lib/supabase/:**
-- Purpose: Supabase client configuration and factories
-- Contains: Client creation functions (createServerClient, createApiClient, createServiceClient)
-- Key pattern: Centralizes auth/RLS enforcement; clients passed to lib modules
+**`app/sync/`:**
+- Purpose: Client Partner (buyer) surface, the catalogue and requests side of Sync Library
+- Contains: `catalog/`, `requests/` (with `[id]` and `new`), `shortlists/`, `brief/`, `access/`
+- Key files: `app/sync/layout.tsx` (buyer shell, no redirect), `app/sync/catalog/page.tsx`
 
-**types/:**
-- Purpose: Shared TypeScript types and domain constants
-- Contains: VaultProject, Track, ReadinessItem, Tier, UserRole, etc.
-- Key pattern: Source of truth for data shapes; imported throughout app
+**`app/w/[workspaceId]/`:**
+- Purpose: Workspace rooms (activity, contracts, master claims, plan, roster)
+- Key files: `app/w/[workspaceId]/layout.tsx`, `app/w/[workspaceId]/page.tsx`
 
-**supabase/migrations/:**
-- Purpose: Database schema — PostgreSQL table definitions, RLS policies, triggers
-- Contains: SQL migration files numbered sequentially
-- Key pattern: Each migration is idempotent; run via `supabase db push`
+**`components/`:**
+- Purpose: Client components and shared UI, one folder per domain
+- Largest folders: `playbook` (54), `catalogue` (61), `admin` (41), `vault` (32), `profile` (19), `nav` (14), `workspaces` (7 in components, 67 in lib), `buyer` (11), `launchpad` (10)
+- Shared chrome: `components/nav/` (ArtistNav, AdminNav, NotificationBell, MessagesIcon, PresenceTracker, ArtistLayoutClient), `components/auth/SessionIdentityGuard.tsx`, `components/ui/`, `components/layout/`
+- Feature folders: `antenna`, `auth`, `benchmarks`, `buyer`, `catalogue`, `coach`, `collaborators`, `contracts`, `curators`, `deals`, `earnings`, `green-room`, `handles`, `ideas`, `launchpad`, `messages`, `network`, `onboarding`, `playbook`, `profile`, `selects-player`, `settings`, `split-sheets`, `sync-library`, `team-tier`, `tools`, `vault`, `workspaces`
 
-**middleware.ts:**
-- Purpose: Request-level authentication and route protection
-- Contains: Session checks, redirects for auth routes
-- Key pattern: Runs before pages/API; can block or modify requests
+**`lib/`:**
+- Purpose: Domain modules that route handlers and pages call
+- Root files: `lib/genres.ts`, `lib/industry-roles.ts`, `lib/phone.ts` (with `phone.test.ts`)
+- Largest domains: `workspaces` (67 files), `catalogue` (85), `playbook` (60), `split-sheets` (30), `vault` (22), `deals` (22), `client-partners` (20), `metadata` (19), `song-passport` (17), `selects` (13), `email` (13), `auth` (13), `staff` (12)
+- Infrastructure domains: `supabase/` (client and server factories), `jobs/` (queue, run, handlers), `observability/` (alerts, config, logger, scrub, vendor-health), `logging/` (correlation IDs), `security/` (rate limit, turnstile, upload admission, escape-html), `storage/`, `webhooks/`
+- Provider domains: `stripe/` (Connect), `esign/` (provider, DocuSeal adapter, webhook), `anthropic/`, `ai/`, `email/` (Resend templates)
+- Shared domain vocabulary: `admin/staff-role.ts` (client-safe role helpers), `accounts/account-context.ts`, `capabilities/check.ts`
+
+**`lib/vault/`:**
+- Purpose: Sound Vault business rules
+- Key files: `lib/vault/readiness.ts` (score), `lib/vault/readiness-tiers.ts`, `lib/vault/membership.ts`, `lib/vault/access.ts`, `lib/vault/demo-store.ts` (demo mode), `lib/vault/pdf/` (9 files; document rendering), `lib/vault/export-*.ts`, `lib/vault/hire-credits.ts`
+
+**`lib/workspaces/`:**
+- Purpose: Workspace model, membership, grants, rosters, requests, and ownership
+- Key files: `types.ts` (vocabulary), `membership.ts`, `access.ts` (`requireWorkspaceAccess`, `requireWorkspaceRole`, `requireWorkspaceMutationAccess`), `permissions.ts`, `grant-service.ts`, `request-service.ts`, `roster-service.ts`, `ownership-transfer.ts`, `access-kill-switch.ts`, `audit.ts`
+- Each service module has a sibling `.test.ts`
+
+**`lib/catalogue/`:**
+- Purpose: Work and lyric records, lyric lift and lyric snapshots, the Writer's Room data
+- Key files: `lib/catalogue/access.ts` (one access decision for every `/api/works` route), `lyric-lift-queue.ts`, `lyric-lift-service.ts`
+
+**`lib/playbook/`:**
+- Purpose: Staff playbook content, access grants, activation checks, reading and review reminders
+- Key files: `access-grants.ts`, `read-doc.ts` (reads `docs/observability/*.md` at runtime)
+
+**`lib/jobs/`:**
+- Purpose: Durable background queue
+- Files: `queue.ts` (enqueue, claim, fail), `run.ts` (dispatch), `handlers.ts` (`JOB_HANDLERS`: `lyric_lift`, `watermark_preview`, `vault_export`)
+
+**`lib/auth/`:**
+- Purpose: Sign-in routing and session identity
+- Key files: `postSignInPath.ts`, `session-identity.ts`, `client-diagnostics.ts`, `diagnostics.ts`, `health.ts`, `public-errors.ts`
+
+**`types/`:**
+- Purpose: Shared type declarations
+- Files: `index.ts` (shared domain types), `catalogue.ts` (catalogue types), `fontkit.d.ts` (ambient module declaration for the PDF font library)
+- `types/supabase.ts` is the target of `npm run db:types` but is not tracked in the repository
+
+**`supabase/migrations/`:**
+- Purpose: Schema, RLS, RPCs, triggers, and storage setup
+- Naming: `NNN_snake_case_description.sql`, zero-padded to three digits. Numbers run 001 to 242 with gaps. Latest: `242_collaboration_surface_lockdown.sql`. The next migration is `243_`.
+
+**`__tests__/`:**
+- Purpose: Jest tests that cover several modules or a product flow. Filenames are kebab-case and usually name the feature, for example `writer-room-vocal-direction-api.test.ts`.
+- Other tests sit next to their source: 365 `*.test.ts(x)` files live outside `__tests__/`.
+
+**`scripts/`:**
+- Purpose: Operational and verification tooling run through `tsx` or `node`
+- Files: `audit-gate.ts`, `break-glass.ts`, `build-marketing-artifact.ts`, `marketing-assets.ts`, `check-playbook-activation.ts`, `print-audition-sample.ts`, `verify-beta-security-migrations.mjs`, `verify-064-split-sheet-rls.mjs`, `verify-115-split-sheet-token-privacy.mjs`, `verify-228-identity-provenance.mjs`, `provision-test-admin.mjs`, `load/` (6 files), `__fixtures__/` (4 files)
+
+**`docs/`:**
+- Purpose: Design and operations documentation. Some of it is read at runtime.
+- Subfolders: `design/` (19), `observability/` (9, read at runtime by Playbook IT pages), `marketing/`, `security/`, `verification/`, `catalogue/`, `architecture/`, `playbook/`, `sales/`
+- Top-level notes include `DOMAIN-SETUP.md`, `BREAK-GLASS.md`, `e-sign-integration.md`, `split-sheets.md`, `cwr-plan.md`, `release-journey.md`
+
+**`.planning/`:**
+- Purpose: GSD workflow artifacts for planning and execution. Not imported by application code. Some paths are read at runtime (see Special Directories).
+- Subfolders: `phases/`, `quick/`, `todos/`, `deliberations/`, `research/`, `reviews/`, `sketches/`, `design/`, `spikes/`, `milestones/`, `codebase/` (this document set), plus `security/` and `security-audit-260818/`
+- Top-level files: `PROJECT.md`, `ROADMAP.md`, `REQUIREMENTS.md`, `STATE.md`, `MILESTONES.md`, `config.json`
 
 ## Key File Locations
 
 **Entry Points:**
-- `app/layout.tsx`: Root layout (metadata, fonts)
-- `app/page.tsx`: Root page (redirects to /dashboard)
-- `middleware.ts`: Auth middleware (runs on every request)
-
-**Core Vault Feature:**
-- `app/(artist)/vault/page.tsx`: Vault browser (list all projects)
-- `app/api/vault/route.ts`: Vault CRUD API
-- `lib/vault/readiness.ts`: Readiness score calculation
-- `components/vault/VaultBrowser.tsx`: Project list UI
-- `components/vault/VaultProjectCard.tsx`: Individual project card
-
-**Metadata/Distribution:**
-- `lib/metadata/schema.ts`: Metadata structure
-- `lib/metadata/export.ts`: Export to JSON/CSV/CWR
-- `app/api/vault/[projectId]/metadata/export/route.ts`: Download metadata
-- `lib/metadata/cwr.ts`: CISAC CWR format
-
-**AI Tools (PitchPlug):**
-- `lib/tools/pitchplug.ts`: Pitch generation logic
-- `app/api/tools/pitchplug/route.ts`: Generate pitches
-- `components/tools/PitchPlugForm.tsx`: UI for curator selection
-- `lib/tools/registry.ts`: All tool definitions
-
-**Opportunity Matching (Antenna):**
-- `lib/matching/antenna.ts`: Matching algorithm
-- `app/api/antenna/match/route.ts`: Run matching
-- `lib/benchmarks/opportunity-map.ts`: Map metrics to opportunities
-- `components/antenna/AntennaBrowser.tsx`: Opportunity list UI
-
-**Supabase & Database:**
-- `lib/supabase/server.ts`: Server client factories
-- `lib/supabase/client.ts`: Browser client
-- `supabase/migrations/001_initial_schema.sql`: Core schema
-- `supabase/migrations/003_readiness_triggers_full_events.sql`: Readiness calculation
+- `middleware.ts`: request gate, CSP, route guards
+- `app/layout.tsx`: root HTML shell and font
+- `app/page.tsx`: role router for `/`
+- `instrumentation.ts`: Sentry server and edge init
+- `app/api/cron/process-jobs/route.ts`: background worker
 
 **Configuration:**
-- `tsconfig.json`: Path alias `@/*` → root
-- `tailwind.config.ts`: Design tokens (colors, fonts, shadows)
-- `app/globals.css`: Global CSS variables
-- `middleware.ts`: Auth routes, route protection
+- `next.config.mjs`: Next config, security headers, `outputFileTracingIncludes`, Sentry wrap
+- `vercel.json`: eight cron schedules
+- `tsconfig.json`: strict mode, `@/*` alias
+- `package.json`: scripts (`dev`, `build`, `test`, `typecheck`, `lint`, `db:types`, `db:push`, `audit:gate`)
+- `.env.example`: documented environment variables (`.env.local` is gitignored and not read here)
+- `supabase/config.toml`: local Supabase stack
+- `jest.config.js`, `tailwind.config.ts`, `postcss.config.js`, `.eslintrc.json`, `sentry.server.config.ts`, `sentry.edge.config.ts`
+
+**Core Logic:**
+- `lib/workspaces/access.ts`: workspace authorization
+- `lib/admin/gate.ts`: staff authorization for route handlers
+- `lib/stripe/connect.ts`: payment split and checkout
+- `lib/jobs/queue.ts`: job enqueue and claim
+- `lib/vault/readiness.ts`: readiness score
 
 **Testing:**
-- Not currently in use (no test files found)
+- `__tests__/`: cross-cutting Jest tests
+- Co-located `*.test.ts(x)` files, including 75 `route.test.ts` files
+- `tests/e2e/`: Playwright specs (untracked)
 
 ## Naming Conventions
 
 **Files:**
-- Pages: `page.tsx` (Next.js convention)
-- API routes: `route.ts` (Next.js convention)
-- Components: `PascalCase.tsx` (React convention, exported as function)
-- Utilities/modules: `camelCase.ts` (exported as named/default functions)
-- Types: `index.ts` if re-exported, or named export in `types/index.ts`
+- Route segments: `page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`, `route.ts`, `route.test.ts` (Next.js reserved names)
+- Dynamic segments: `[id]`, `[projectId]`, `[workspaceId]`, `[token]`, `[inviteToken]`, `[room]`, `[slug]`, `[workId]`, `[listingId]`, `[orgId]`
+- Route groups: `(admin)`, `(artist)`, `(auth)`, `(curator-portal)` (not in URLs)
+- Library modules: kebab-case, for example `access-kill-switch.ts`, `lyric-lift-service.ts`, `session-identity.ts`, `date-schemas.ts`. A few are camelCase: `postSignInPath.ts`, `rootRewrite.ts`, `nonceInjection.ts`
+- Components: PascalCase files, for example `ArtistNav.tsx`, `SessionIdentityGuard.tsx`, `TimedTrackPlayer.tsx`
+- Tests: `<module>.test.ts` next to the module, `route.test.ts` next to `route.ts`, or a feature name in `__tests__/`
+- Migrations: `NNN_snake_case.sql`, for example `242_collaboration_surface_lockdown.sql`
 
 **Directories:**
-- Feature domains: `kebab-case` (vault, metadata, tools, antenna)
-- Dynamic routes: `[squareBrackets]` (Next.js convention, e.g., [projectId])
-- Route groups: `(parentheses)` (Next.js convention, e.g., (artist))
+- All `lib/` and `components/` domain folders are kebab-case: `client-partners`, `sync-library`, `split-sheets`, `green-room`, `selects-player`
+- API folders match URL segments: `app/api/sync-library/mint-agreement/route.ts` serves `/api/sync-library/mint-agreement`
 
-**Functions & Variables:**
-- Page components: Suffix `Page` (e.g., `VaultPage`)
-- Client components: Suffix with component type (e.g., `VaultBrowser`, `EditProjectForm`)
-- Hooks: Prefix `use` (e.g., `useVaultData`)
-- Constants: `UPPER_SNAKE_CASE` (e.g., `VALID_TYPES`, `DEMO`)
-- Database queries: Start with method name (e.g., `getVaultProjects`, `updateProject`)
+**Identifiers:**
+- Constants: SCREAMING_SNAKE_CASE. Enum values use a `_VALUES` suffix and labels use a `_LABELS` suffix, for example `WORKSPACE_ROLE_VALUES`, `WORKSPACE_TYPE_LABELS` (`lib/workspaces/types.ts`)
+- Types: PascalCase. Unions are derived from value arrays with `typeof X_VALUES[number]`
+- Functions: camelCase. Predicates start with `is`, `can`, or `has`
+- Design-decision IDs (`D-01`, `R-05`, `F15`) appear in comments and point to planning records in `.planning/`. Keep them when you change the code they describe.
 
-**Database/API:**
-- Tables: `snake_case` plural (vault_projects, artist_profiles)
-- Columns: `snake_case` (release_date, cover_art_url)
-- API endpoints: `/api/domain/resource` (e.g., `/api/vault/[projectId]`)
+**Imports:**
+- Use the `@/` alias for every import (`tsconfig.json` paths)
 
 ## Where to Add New Code
 
-**New Feature (e.g., New Tool):**
-1. **Define tool in registry:** `lib/tools/registry.ts` — add entry with slug, name, description
-2. **Implement tool logic:** `lib/tools/[toolName].ts` — functions for tool operation
-3. **Create API route:** `app/api/tools/[toolName]/route.ts` — POST handler for execution
-4. **Create UI component:** `components/tools/[ToolName]Form.tsx` — form to invoke tool
-5. **Add to ToolsPanel:** Include in `components/vault/ToolSidePanel.tsx`
-6. **Add readiness item (if applicable):** Update `types/index.ts` READINESS_ITEMS if tool gates release
+**New artist feature page:**
+- Page: `app/(artist)/<feature>/page.tsx` (server component, uses `createServerClient`)
+- Components: `components/<feature>/`
+- Domain logic: `lib/<feature>/` (pure functions first, plus a service module that takes a Supabase client)
+- Route handler: `app/api/<feature>/route.ts` with `route.test.ts` beside it
+- If the page must require sign-in, add its path prefix to `isProtected` in `middleware.ts` (see the anti-pattern in ARCHITECTURE.md)
 
-**New Page/Workspace Section (e.g., New Artist Feature):**
-1. **Create page:** `app/(artist)/[feature]/page.tsx` (server component, fetch data)
-2. **Add nav link:** Update `components/nav/ArtistNav.tsx` with route
-3. **Create supporting components:** `components/[feature]/*.tsx` for UI
-4. **Add API routes (if needed):** `app/api/[feature]/route.ts` for CRUD
-5. **Add business logic:** `lib/[feature]/index.ts` or `lib/[feature]/[operation].ts`
+**New admin room or tool:**
+- Page: `app/(admin)/admin/<room>/page.tsx`. The group layout already admits any staff role. Add a leadership or role check inline when the page needs one.
+- API: `app/api/admin/<room>/route.ts`, gated with `verifyAdmin()` or `requireStaff([...roles])` from `lib/admin/gate.ts`
+- Playbook content: `lib/playbook/` and `components/playbook/`, with a sub-route under `app/(admin)/admin/playbook/`
 
-**New Component:**
-1. **Determine if client or server:** Most are client ('use client'); server components for data fetching
-2. **Location:** `components/[domain]/[ComponentName].tsx`
-3. **Typing:** Import from `types/index.ts` or define inline
-4. **Styling:** Use Tailwind classes (see `app/globals.css` for custom vars)
+**New workspace capability:**
+- Route: `app/api/workspaces/[workspaceId]/<capability>/route.ts`, starting with `requireWorkspaceAccess` from `lib/workspaces/access.ts`
+- Vocabulary changes: `lib/workspaces/types.ts`, plus a matching migration CHECK constraint
+- Stateful writes: add or extend a database RPC, and call it from the route. Do not write `workspace_members` directly from a route.
 
-**New Database Table (Major Feature):**
-1. **Create migration:** `supabase/migrations/NNN_[feature]_[description].sql`
-2. **Define schema:** CREATE TABLE, indexes, RLS policies
-3. **Update types:** Add TypeScript type to `types/index.ts` or new file
-4. **Add RLS:** Ensure Row Level Security policies gate access by user
-5. **Update Supabase types (optional):** Run `npm run db:types` after migration pushed
+**New database change:**
+- Migration: `supabase/migrations/243_<description>.sql` (the next free number). Enable RLS on new tables and add policies in the same file.
+- Generated types: run `npm run db:types`. Output goes to `types/supabase.ts`.
 
-**New Utility/Helper:**
-1. **Location:** `lib/[domain]/[helper].ts`
-2. **Export:** Named exports for reusability across modules
-3. **No JSX:** Keep lib modules framework-agnostic
-4. **Type everything:** Use TypeScript for library code
+**New background job:**
+- Handler: add a key to `JOB_HANDLERS` in `lib/jobs/handlers.ts`, implemented in `lib/<domain>/`
+- Enqueue: `enqueueJob({ type, payload, dedupKey })` from `lib/jobs/queue.ts`. Pass a `dedupKey` for any work a user can trigger twice.
+
+**New cron job:**
+- Route: `app/api/cron/<name>/route.ts`, with the fail-closed `CRON_SECRET` bearer check used by the existing cron routes
+- Schedule: add an entry to `vercel.json`
+
+**New webhook receiver:**
+- Route: `app/api/webhooks/<provider>/route.ts`. Verify the signature before parsing the body, as `app/api/webhooks/stripe/route.ts` does.
+
+**New third-party provider:**
+- Adapter: `lib/<provider>/` (plain `fetch` adapter, as in `lib/esign/docuseal.ts`), behind an interface file such as `lib/esign/provider.ts`
+
+**New runtime-read file (fonts, markdown, templates):**
+- Place it under `assets/` or `docs/`, read it with a `process.cwd()` path, and add it to `outputFileTracingIncludes` in `next.config.mjs`. Otherwise it is missing from the deployed bundle.
+
+**New shared utility:**
+- Cross-domain pure helper: `lib/<name>.ts` at the root (examples: `lib/phone.ts`, `lib/genres.ts`)
+- Security helper: `lib/security/`
+- Client-side role helper: `lib/admin/staff-role.ts` only. Do not import `lib/admin/gate.ts` from a client component.
+
+**New UI component shared across features:**
+- `components/ui/` for primitives, `components/nav/` for chrome
+
+**New tests:**
+- Next to the module as `<name>.test.ts`. Route tests go next to `route.ts` as `route.test.ts`. Cross-cutting or flow-level tests go in `__tests__/`.
 
 ## Special Directories
 
-**supabase/migrations/:**
-- Purpose: Database schema versioning
-- Generated: No (manually written SQL)
-- Committed: Yes (version control)
-- Pattern: Numbered sequentially (001, 002, etc.); each is a complete schema change
-
-**.next/:**
+**`.next/`:**
 - Purpose: Next.js build output
-- Generated: Yes (by `npm run build`)
-- Committed: No (in .gitignore)
-- Pattern: Do not manually edit; regenerate with build
+- Generated: Yes
+- Committed: No
 
-**node_modules/:**
-- Purpose: Installed dependencies
-- Generated: Yes (by `npm install`)
-- Committed: No (in .gitignore)
-- Pattern: Lock file (package-lock.json) is committed; modules are not
+**`node_modules/`:**
+- Purpose: npm dependencies (`package-lock.json` is the lockfile)
+- Generated: Yes
+- Committed: No
 
-**.planning/:**
-- Purpose: GSD project planning and docs
-- Generated: Yes (by GSD commands)
-- Committed: Yes (contains architecture decisions, phase plans)
-- Pattern: Created by `/gsd-map-codebase`, `/gsd-plan-phase`, etc.
-
-**public/:**
-- Purpose: Static assets served directly
-- Generated: No (manually added)
+**`assets/fonts/`:**
+- Purpose: Noto Sans TTF files for PDF rendering, read at runtime by `lib/vault/pdf/fonts.ts`
+- Generated: No
 - Committed: Yes
-- Pattern: Favicon, images, fonts — referenced by pages without bundling
+
+**`assets/marketing/`:**
+- Purpose: `landing.html` and `manifest.json` for the anonymous homepage, served through `app/marketing-document/route.ts`
+- Generated: No. Build and verify scripts are `scripts/build-marketing-artifact.ts` and `scripts/verify-marketing-artifact.ts`.
+- Committed: Yes
+
+**`public/marketing/` and `public/buyer-catalogue/`:**
+- Purpose: Static images, fonts, and HTML served from the site root. The `marketing/` prefix is excluded from middleware.
+- Generated: Partly, by `scripts/marketing-assets.ts`
+- Committed: Yes
+
+**`docs/observability/`:**
+- Purpose: Runbook text shown on Playbook IT pages, read at runtime
+- Generated: No
+- Committed: Yes
+
+**`.planning/deliberations/`:**
+- Purpose: Organizational doctrine documents read at runtime by the Playbook publication and adopt routes
+- Generated: No
+- Committed: Yes
+
+**`playwright-report/` and `test-results/`:**
+- Purpose: Playwright output
+- Generated: Yes
+- Committed: No (untracked in the current working tree)
+
+**`tests/e2e/`:**
+- Purpose: End-to-end Playwright specs
+- Generated: No
+- Committed: No (untracked in the current working tree)
+
+**`.claude/` and `.agents/`:**
+- Purpose: Agent configuration and skill definitions
+- Generated: Partly (`skills-lock.json` at the root pins installed skills)
+- Committed: Yes
 
 ---
 
-*Structure analysis: 2026-06-26*
+*Structure analysis: 2026-10-18*
