@@ -1,10 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Script from 'next/script'
 import { createClient } from '@/lib/supabase/client'
 import { postSignInPath } from '@/lib/auth/postSignInPath'
 import { buildRegisterPayload, type RegisterSource } from '@/lib/buyers/register'
+import { waitlistSubmitState } from '@/app/(auth)/signup/waitlist-gate'
 
 // ─── LoginRegisterModal (23-07 Task 1) ─────────────────────────────────────
 // The Funūn light `.fnbl` Login/Register modal — mirrors the Marmoset
@@ -22,6 +24,14 @@ import { buildRegisterPayload, type RegisterSource } from '@/lib/buyers/register
 // framing copy and the `source` discriminant differ. Login authenticates via
 // signInWithPassword (23-05 wired real password auth for buyers) and routes
 // through postSignInPath's role-aware, open-redirect-safe resolver.
+//
+// Register also carries a Cloudflare Turnstile bot check, wired the same way
+// as the waitlist form in app/(auth)/signup/page.tsx: the submit stays
+// disabled (via the shared waitlistSubmitState gate) until a token exists, and
+// with no NEXT_PUBLIC_TURNSTILE_SITE_KEY it stays disabled with an honest
+// message, because POST /api/sync/register refuses any request without a
+// verified token. The global `window.turnstile` typing is declared in
+// app/(auth)/signup/page.tsx and applies project-wide.
 
 const REMEMBER_EMAIL_KEY = 'funun_sync_remember_email'
 
@@ -71,6 +81,57 @@ export function LoginRegisterModal({ open, onClose, initialTab = 'login', initia
   const [registerSubmitting, setRegisterSubmitting] = useState(false)
   const [registerError, setRegisterError] = useState<string | null>(null)
   const [registerSuccess, setRegisterSuccess] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const [turnstileScriptError, setTurnstileScriptError] = useState(false)
+  const turnstileRendered = useRef(false)
+  const turnstileNode = useRef<HTMLDivElement | null>(null)
+  const turnstileWidgetId = useRef<string | null>(null)
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+
+  // Single render() call site (both the callback-ref attach and the <Script>
+  // onLoad race to render first), so the widget options live in one place.
+  // Declared above the `if (!open) return null` early return to keep hook
+  // order stable.
+  const renderTurnstileWidget = useCallback(
+    (node: HTMLDivElement) => {
+      if (!siteKey || !window.turnstile || turnstileRendered.current) return
+      turnstileRendered.current = true
+      turnstileWidgetId.current = window.turnstile.render(node, {
+        sitekey: siteKey,
+        action: 'sync-register',
+        callback: token => setTurnstileToken(token),
+        'error-callback': () => setTurnstileToken(''),
+        'expired-callback': () => setTurnstileToken(''),
+      })
+    },
+    [siteKey]
+  )
+
+  // The widget node only exists while the register form is mounted. When it
+  // unmounts (tab switch, success view, modal closed) clear the render flags
+  // so reopening or switching back renders a fresh widget.
+  const attachTurnstile = useCallback(
+    (node: HTMLDivElement | null) => {
+      turnstileNode.current = node
+      if (node) {
+        renderTurnstileWidget(node)
+      } else {
+        turnstileRendered.current = false
+        turnstileWidgetId.current = null
+        setTurnstileToken('')
+      }
+    },
+    [renderTurnstileWidget]
+  )
+
+  // Single-use token: any failed submit must reset the widget and clear the
+  // stale token so the next attempt gets a fresh one.
+  function resetTurnstile() {
+    if (turnstileWidgetId.current && window.turnstile) {
+      window.turnstile.reset(turnstileWidgetId.current)
+    }
+    setTurnstileToken('')
+  }
 
   // Reset transient state and re-apply initialTab every time the modal opens
   // (not on every render) so a stale error/success state never leaks into a
@@ -150,14 +211,18 @@ export function LoginRegisterModal({ open, onClose, initialTab = 'login', initia
       const res = await fetch('/api/sync/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(result.body),
+        body: JSON.stringify({ ...result.body, turnstileToken }),
       })
       const json = (await res.json().catch(() => ({}))) as { error?: string }
       if (!res.ok) {
         setRegisterError(json.error ?? 'Something went wrong. Please try again.')
+        resetTurnstile()
         return
       }
       setRegisterSuccess(true)
+    } catch {
+      setRegisterError('Something went wrong. Please try again.')
+      resetTurnstile()
     } finally {
       setRegisterSubmitting(false)
     }
@@ -374,9 +439,30 @@ export function LoginRegisterModal({ open, onClose, initialTab = 'login', initia
                 </select>
               </div>
 
+              <div ref={attachTurnstile} style={{ minHeight: 65 }}>
+                {!siteKey && (
+                  <p className="err">
+                    Verification isn&rsquo;t available right now, so we can&rsquo;t accept
+                    registrations at the moment. Please try again later.
+                  </p>
+                )}
+                {siteKey && turnstileScriptError && (
+                  <p className="err">
+                    Couldn&rsquo;t load verification. Refresh the page and try again.
+                  </p>
+                )}
+              </div>
+
               {registerError && <p className="err">{registerError}</p>}
 
-              <button className="lr-submit" type="submit" disabled={registerSubmitting}>
+              <button
+                className="lr-submit"
+                type="submit"
+                disabled={
+                  waitlistSubmitState({ submitting: registerSubmitting, siteKey, turnstileToken })
+                    .disabled
+                }
+              >
                 {registerSubmitting
                   ? 'Submitting…'
                   : source === 'sales_rep'
@@ -395,6 +481,16 @@ export function LoginRegisterModal({ open, onClose, initialTab = 'login', initia
           )}
         </div>
       </div>
+      {siteKey && (
+        <Script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+          strategy="afterInteractive"
+          onLoad={() => {
+            if (turnstileNode.current) renderTurnstileWidget(turnstileNode.current)
+          }}
+          onError={() => setTurnstileScriptError(true)}
+        />
+      )}
     </div>
   )
 }

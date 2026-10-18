@@ -29,7 +29,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
   if (!process.env.OPENAI_API_KEY) {
     return NextResponse.json({ error: LYRIC_LIFT_UNAVAILABLE_MESSAGE }, { status: 503 })
   }
-  if (await checkRateLimit(`lyric-lift:${user.id}`, { maxAttempts: 12, windowMs: 24 * 60 * 60 * 1000 })) {
+  if (await checkRateLimit(`lyric-lift:${user.id}`, { maxAttempts: 12, windowMs: 24 * 60 * 60 * 1000, failClosed: true })) {
     return NextResponse.json({ error: 'You have started several lyric transcriptions today. Try again tomorrow.' }, { status: 429 })
   }
 

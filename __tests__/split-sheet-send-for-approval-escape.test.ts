@@ -25,6 +25,11 @@ jest.mock('@/lib/supabase/server', () => ({
 }))
 
 jest.mock('@/lib/email', () => ({ sendEmail: jest.fn() }))
+// The per-sender send limit is covered in send-for-approval/route.test.ts.
+jest.mock('@/lib/security/rate-limit', () => ({
+  ...jest.requireActual('@/lib/security/rate-limit'),
+  checkRateLimit: jest.fn(async () => false),
+}))
 
 import { POST } from '@/app/api/split-sheets/[id]/send-for-approval/route'
 import { sendEmail } from '@/lib/email'

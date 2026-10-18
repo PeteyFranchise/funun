@@ -36,7 +36,7 @@ export async function DELETE(_request: Request, { params }: RouteCtx) {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  if (await checkRateLimit(`work-note-delete:${user.id}`, { maxAttempts: 60, windowMs: 15 * 60 * 1000 })) {
+  if (await checkRateLimit(`work-note-delete:${user.id}`, { maxAttempts: 60, windowMs: 15 * 60 * 1000, failClosed: true })) {
     return NextResponse.json({ error: 'Too many requests. Please slow down.' }, { status: 429 })
   }
 

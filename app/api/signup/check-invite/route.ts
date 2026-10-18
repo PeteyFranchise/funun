@@ -17,6 +17,7 @@ function tooManyRequests() {
 
 export async function POST(request: Request) {
   const ip = getClientIp(request)
+  // Fail-open on purpose: low-cost onboarding check; a limiter outage must not block legitimate signups.
   if (await checkRateLimit(`ip:${ip}`)) {
     return tooManyRequests()
   }
@@ -25,6 +26,7 @@ export async function POST(request: Request) {
   const email = typeof raw.email === 'string' ? raw.email.trim().toLowerCase() : ''
   const inviteToken = typeof raw.inviteToken === 'string' ? raw.inviteToken.trim() : ''
 
+  // Fail-open on purpose: low-cost onboarding check; a limiter outage must not block legitimate signups.
   if (await checkRateLimit(`email:${email}`)) {
     return tooManyRequests()
   }

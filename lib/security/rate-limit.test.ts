@@ -4,19 +4,40 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 // via the service client) and getClientIp is hardened against XFF spoofing.
 
 const mockRpc = jest.fn()
+const mockPeekResult = jest.fn()
+type PeekChain = {
+  select: jest.Mock
+  eq: jest.Mock
+  gte: jest.Mock
+}
+const mockPeekChain: PeekChain = {
+  select: jest.fn(() => mockPeekChain),
+  eq: jest.fn(() => mockPeekChain),
+  gte: jest.fn(async () => mockPeekResult()),
+}
+const mockFrom = jest.fn((_table: string) => mockPeekChain)
 jest.mock('@/lib/supabase/server', () => ({
-  createServiceClient: () => ({ rpc: (...a: unknown[]) => mockRpc(...a) }) as unknown as SupabaseClient,
+  createServiceClient: () =>
+    ({ rpc: (...a: unknown[]) => mockRpc(...a), from: (table: string) => mockFrom(table) }) as unknown as SupabaseClient,
 }))
+
+const mockCaptureMessage = jest.fn()
+jest.mock('@sentry/nextjs', () => ({ captureMessage: (...a: unknown[]) => mockCaptureMessage(...a) }))
 
 import {
   checkRateLimit,
+  resetLimiterReportThrottleForTests,
+  peekRateLimit,
   getClientIp,
   RATE_LIMIT_WINDOW_MS,
   RATE_LIMIT_MAX_ATTEMPTS,
   RATE_LIMIT_MAX_KEY_LENGTH,
 } from './rate-limit'
 
-beforeEach(() => jest.clearAllMocks())
+beforeEach(() => {
+  jest.clearAllMocks()
+  resetLimiterReportThrottleForTests()
+})
 
 // ─── checkRateLimit ───────────────────────────────────────────────────────
 describe('checkRateLimit', () => {
@@ -60,6 +81,24 @@ describe('checkRateLimit', () => {
     expect(await checkRateLimit('ip:1.2.3.4')).toBe(false)
   })
 
+  it('reports a limiter outage to Sentry with tags only, at most once a minute', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: { message: 'down' } })
+    await checkRateLimit('email:someone@example.com', { failClosed: true })
+    await checkRateLimit('email:someone@example.com', { failClosed: true })
+    expect(mockCaptureMessage).toHaveBeenCalledTimes(1)
+    expect(mockCaptureMessage).toHaveBeenCalledWith('Rate limiter unavailable', {
+      level: 'error',
+      tags: { feature: 'rate-limit', posture: 'fail-closed' },
+    })
+    expect(JSON.stringify(mockCaptureMessage.mock.calls)).not.toContain('someone@example.com')
+  })
+
+  it('does not report when the limiter answers normally', async () => {
+    mockRpc.mockResolvedValue({ data: true, error: null })
+    await checkRateLimit('ip:1.2.3.4')
+    expect(mockCaptureMessage).not.toHaveBeenCalled()
+  })
+
   it('rejects invalid inputs before calling the database', async () => {
     await expect(checkRateLimit('x'.repeat(RATE_LIMIT_MAX_KEY_LENGTH + 1))).rejects.toThrow(
       RangeError
@@ -67,6 +106,45 @@ describe('checkRateLimit', () => {
     await expect(checkRateLimit('ip:test', { windowMs: 0 })).rejects.toThrow(RangeError)
     await expect(checkRateLimit('ip:test', { maxAttempts: 1.5 })).rejects.toThrow(RangeError)
     expect(mockRpc).not.toHaveBeenCalled()
+  })
+})
+
+// ─── peekRateLimit ────────────────────────────────────────────────────────
+describe('peekRateLimit', () => {
+  const opts = { windowMs: 60_000, maxAttempts: 3 }
+
+  it('reads the window without calling the recording RPC', async () => {
+    mockPeekResult.mockReturnValue({ count: 1, error: null })
+    expect(await peekRateLimit('g:key', opts)).toBe('allowed')
+    expect(mockFrom).toHaveBeenCalledWith('rate_limit_hits')
+    expect(mockPeekChain.eq).toHaveBeenCalledWith('key', 'g:key')
+    expect(mockPeekChain.gte).toHaveBeenCalledWith('hit_at', expect.any(String))
+    expect(mockRpc).not.toHaveBeenCalled()
+  })
+
+  it('is limited at or over the maximum', async () => {
+    mockPeekResult.mockReturnValue({ count: 3, error: null })
+    expect(await peekRateLimit('g:key', opts)).toBe('limited')
+  })
+
+  it('reports unavailable on a read error or a missing count', async () => {
+    mockPeekResult.mockReturnValue({ count: null, error: { message: 'down' } })
+    expect(await peekRateLimit('g:key', opts)).toBe('unavailable')
+    mockPeekResult.mockReturnValue({ count: null, error: null })
+    expect(await peekRateLimit('g:key', opts)).toBe('unavailable')
+  })
+
+  it('reports unavailable when the client throws', async () => {
+    mockFrom.mockImplementationOnce(() => {
+      throw new Error('network')
+    })
+    expect(await peekRateLimit('g:key', opts)).toBe('unavailable')
+  })
+
+  it('rejects invalid inputs before reading', async () => {
+    await expect(peekRateLimit('  ', opts)).rejects.toThrow(RangeError)
+    await expect(peekRateLimit('g:key', { windowMs: 0, maxAttempts: 3 })).rejects.toThrow(RangeError)
+    expect(mockFrom).not.toHaveBeenCalled()
   })
 })
 

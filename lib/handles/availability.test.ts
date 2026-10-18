@@ -1,4 +1,4 @@
-import { handleFieldState } from '@/lib/handles/availability'
+import { handleFieldState, readHandleAvailability } from '@/lib/handles/availability'
 
 describe('handleFieldState', () => {
   it('is idle, blocking, with no message when nothing has been typed', () => {
@@ -67,5 +67,47 @@ describe('handleFieldState', () => {
     })
     expect(result.status).toBe('invalid')
     expect(result.blocksSubmit).toBe(true)
+  })
+})
+
+describe('readHandleAvailability', () => {
+  const ok = (body: unknown) => ({ ok: true, json: async () => body })
+
+  it('passes a clean verdict through', async () => {
+    await expect(readHandleAvailability(ok({ available: false, reason: 'unavailable' }))).resolves.toEqual({
+      available: false,
+      reason: 'unavailable',
+    })
+    await expect(readHandleAvailability(ok({ available: true, reason: null }))).resolves.toEqual({
+      available: true,
+      reason: null,
+    })
+  })
+
+  it('maps a 429 to unknown, never taken, and the field state does not block submit', async () => {
+    const verdict = await readHandleAvailability({
+      ok: false,
+      json: async () => ({ available: null, reason: 'unavailable' }),
+    })
+    expect(verdict).toEqual({ available: null, reason: null })
+    expect(handleFieldState({ raw: 'maya-reyes', checking: false, remote: verdict }).blocksSubmit).toBe(false)
+  })
+
+  it('maps a 5xx with an error body to unknown even if the body lacks available', async () => {
+    await expect(
+      readHandleAvailability({ ok: false, json: async () => ({ error: 'boom' }) })
+    ).resolves.toEqual({ available: null, reason: null })
+  })
+
+  it('maps a malformed or non-JSON 200 to unknown', async () => {
+    await expect(readHandleAvailability(ok({ nope: 1 }))).resolves.toEqual({ available: null, reason: null })
+    await expect(
+      readHandleAvailability({
+        ok: true,
+        json: async () => {
+          throw new Error('not json')
+        },
+      })
+    ).resolves.toEqual({ available: null, reason: null })
   })
 })

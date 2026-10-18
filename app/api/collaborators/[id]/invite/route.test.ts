@@ -2,6 +2,7 @@ import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email'
 import { requireMemberApiAccount } from '@/lib/accounts/member-api-gate'
 import { BLOCKED_ACTION_ERROR } from '@/lib/trust-safety/block-check'
+import { checkRateLimit } from '@/lib/security/rate-limit'
 import { POST } from './route'
 
 // ─── POST /api/collaborators/[id]/invite (M6 fix 27-CODEX-REVIEW.md) ──────
@@ -23,6 +24,11 @@ jest.mock('@/lib/email', () => ({
 
 jest.mock('@/lib/accounts/member-api-gate', () => ({
   requireMemberApiAccount: jest.fn(),
+}))
+
+jest.mock('@/lib/security/rate-limit', () => ({
+  ...jest.requireActual('@/lib/security/rate-limit'),
+  checkRateLimit: jest.fn(),
 }))
 
 const USER_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
@@ -120,6 +126,7 @@ function mockSupabase(
 
 beforeEach(() => {
   jest.clearAllMocks()
+  ;(checkRateLimit as jest.Mock).mockResolvedValue(false)
   ;(requireMemberApiAccount as jest.Mock).mockImplementation(async (_client: unknown, user: { id: string } | null) =>
     user
       ? { ok: true, user }
@@ -444,5 +451,49 @@ describe('POST /api/collaborators/[id]/invite — block gate', () => {
 
     expect(res.status).toBe(200)
     expect(sendEmail).toHaveBeenCalled()
+  })
+})
+
+describe('POST /api/collaborators/[id]/invite - per-sender limits', () => {
+  it('returns 429 when the sender is over the invite limit, with no email and no invite row', async () => {
+    const supabase = mockSupabase()
+    ;(createApiClient as jest.Mock).mockResolvedValue(supabase)
+    ;(checkRateLimit as jest.Mock).mockResolvedValue(true)
+
+    const res = await POST(postRequest(), { params: Promise.resolve({ id: COLLAB_ID }) })
+
+    expect(res.status).toBe(429)
+    expect(await res.json()).toEqual({ error: 'You have sent too many invites recently. Try again later.' })
+    expect(supabase.from).not.toHaveBeenCalled()
+    expect(supabase.insertSpy).not.toHaveBeenCalled()
+    expect(sendEmail).not.toHaveBeenCalled()
+  })
+
+  it('checks the per-sender hourly and daily keys with the fail-closed flag', async () => {
+    ;(createApiClient as jest.Mock).mockResolvedValue(mockSupabase())
+
+    await POST(postRequest(), { params: Promise.resolve({ id: COLLAB_ID }) })
+
+    expect(checkRateLimit).toHaveBeenCalledWith(
+      `collab-invite:hour:${USER_ID}`,
+      expect.objectContaining({ failClosed: true })
+    )
+    expect(checkRateLimit).toHaveBeenCalledWith(
+      `collab-invite:day:${USER_ID}`,
+      expect.objectContaining({ failClosed: true })
+    )
+  })
+
+  it('refuses with 429 when the limiter is unavailable', async () => {
+    const supabase = mockSupabase()
+    ;(createApiClient as jest.Mock).mockResolvedValue(supabase)
+    ;(checkRateLimit as jest.Mock).mockImplementation(
+      async (_key: string, opts?: { failClosed?: boolean }) => opts?.failClosed === true
+    )
+
+    const res = await POST(postRequest(), { params: Promise.resolve({ id: COLLAB_ID }) })
+
+    expect(res.status).toBe(429)
+    expect(sendEmail).not.toHaveBeenCalled()
   })
 })

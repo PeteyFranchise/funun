@@ -224,6 +224,7 @@ export async function POST(
   const limited = await checkRateLimit(`workspace-roster-propose:${workspaceId}`, {
     windowMs: ROSTER_PROPOSAL_RATE_LIMIT.windowMs,
     maxAttempts: ROSTER_PROPOSAL_RATE_LIMIT.maxAttempts,
+    failClosed: true,
   })
   if (limited) {
     return NextResponse.json(

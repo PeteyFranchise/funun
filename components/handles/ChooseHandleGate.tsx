@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { SignOutButton } from '@/components/auth/SignOutButton'
-import { handleFieldState } from '@/lib/handles/availability'
+import { handleFieldState, readHandleAvailability } from '@/lib/handles/availability'
 import { HANDLE_MIN_LENGTH, HANDLE_MAX_LENGTH, handleFormatError } from '@/lib/handles/validate'
 
 // ─── D-09's hard gate: choose a handle to continue ────────────────────────
@@ -68,7 +68,7 @@ export function ChooseHandleGate({ userId }: { userId: string }) {
     debounceTimer.current = setTimeout(() => {
       setChecking(true)
       fetch(`/api/handles/available?handle=${encodeURIComponent(handle.trim())}`)
-        .then(r => r.json())
+        .then(r => readHandleAvailability(r))
         .then((data: HandleRemote) => {
           if (requestId !== requestCounter.current) return
           setRemote({ available: data.available, reason: data.reason })
