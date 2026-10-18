@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { createNotification } from '@/lib/notifications'
+import { isTokenFormat } from '@/lib/curators/tokens'
 
 const DECLINE_REASON_MAX_LENGTH = 500
 
@@ -21,6 +22,10 @@ type DeclineBody = { reason?: string }
 // (empty textarea + Decline IS the skip, per the UI contract).
 export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
+  // Malformed tokens can never match a pitch, so they cost no query.
+  if (!isTokenFormat(token)) {
+    return NextResponse.json({ error: 'Invalid or expired link' }, { status: 404 })
+  }
   const service = createServiceClient()
   const now = new Date().toISOString()
 
