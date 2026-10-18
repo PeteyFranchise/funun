@@ -68,6 +68,7 @@ import {
   vaultDocumentBucket,
 } from '@/lib/vault/documents'
 import { POST as uploadRoute } from '@/app/api/vault/[projectId]/documents/[docId]/upload/route'
+import { GET as fileRoute } from '@/app/api/vault/[projectId]/documents/[docId]/file/route'
 
 const PROJECT = '11111111-1111-4111-8111-111111111111'
 const DOC = '22222222-2222-4222-8222-222222222222'
@@ -173,5 +174,90 @@ describe('POST upload route', () => {
     const res = await uploadRoute(req(), ctx)
     expect(res.status).toBe(404)
     expect(mockUpload).not.toHaveBeenCalled()
+  })
+})
+
+describe('GET /file route', () => {
+  const ctx = (projectId = PROJECT, docId = DOC) => ({ params: Promise.resolve({ projectId, docId }) })
+  const req = () => new Request('http://x/api/file')
+
+  beforeEach(() => {
+    mockRowRead.mockImplementation(async () => ({
+      data: { id: DOC, source: 'generated', file_url: 'u1/p/d-1.pdf' },
+      error: null,
+    }))
+    mockCreateSignedUrl.mockResolvedValue({ data: { signedUrl: 'https://signed/doc' }, error: null })
+  })
+
+  it('400s when a param is not a UUID', async () => {
+    expect((await fileRoute(req(), ctx('nope', DOC))).status).toBe(400)
+    expect((await fileRoute(req(), ctx(PROJECT, 'nope'))).status).toBe(400)
+  })
+
+  it('401s without a session', async () => {
+    mockUser = null
+    expect((await fileRoute(req(), ctx())).status).toBe(401)
+    expect(mockCreateSignedUrl).not.toHaveBeenCalled()
+  })
+
+  it('404s when RLS hides the row, and never reads the table with the service client', async () => {
+    mockRowRead.mockImplementation(async () => ({ data: null, error: null }))
+    const res = await fileRoute(req(), ctx())
+    expect(res.status).toBe(404)
+    expect(mockServiceFrom).not.toHaveBeenCalled()
+    expect(mockCreateSignedUrl).not.toHaveBeenCalled()
+  })
+
+  it('404s when the row query errors', async () => {
+    mockRowRead.mockImplementation(async () => ({ data: null, error: { message: 'x' } }))
+    expect((await fileRoute(req(), ctx())).status).toBe(404)
+  })
+
+  it.each([null, ''])('404s when file_url is %p', async (file_url) => {
+    mockRowRead.mockImplementation(async () => ({ data: { id: DOC, source: 'generated', file_url }, error: null }))
+    expect((await fileRoute(req(), ctx())).status).toBe(404)
+    expect(mockCreateSignedUrl).not.toHaveBeenCalled()
+  })
+
+  it('404s on a legacy http(s) URL instead of redirecting to it', async () => {
+    mockRowRead.mockImplementation(async () => ({
+      data: { id: DOC, source: 'generated', file_url: 'https://evil.example/x.pdf' },
+      error: null,
+    }))
+    const res = await fileRoute(req(), ctx())
+    expect(res.status).toBe(404)
+    expect(mockCreateSignedUrl).not.toHaveBeenCalled()
+  })
+
+  it('302s to a 600 second signed URL on release-documents for generated rows', async () => {
+    const res = await fileRoute(req(), ctx())
+    expect(res.status).toBe(302)
+    expect(res.headers.get('location')).toBe('https://signed/doc')
+    expect(res.headers.get('cache-control')).toBe('no-store')
+    expect(mockStorageFrom).toHaveBeenCalledWith('release-documents')
+    expect(mockCreateSignedUrl).toHaveBeenCalledWith('u1/p/d-1.pdf', 600)
+  })
+
+  it('signs on vault-contracts for uploaded rows', async () => {
+    mockRowRead.mockImplementation(async () => ({
+      data: { id: DOC, source: 'uploaded', file_url: 'u1/contract.pdf' },
+      error: null,
+    }))
+    const res = await fileRoute(req(), ctx())
+    expect(res.status).toBe(302)
+    expect(mockStorageFrom).toHaveBeenCalledWith('vault-contracts')
+    expect(mockCreateSignedUrl).toHaveBeenCalledWith('u1/contract.pdf', 600)
+  })
+
+  it('500s with a generic message when signing fails', async () => {
+    mockCreateSignedUrl.mockResolvedValue({ data: null, error: { message: 'secret detail' } })
+    const res = await fileRoute(req(), ctx())
+    expect(res.status).toBe(500)
+    expect(JSON.stringify(await res.json())).not.toContain('secret detail')
+  })
+
+  it('500s when signing returns no data', async () => {
+    mockCreateSignedUrl.mockResolvedValue({ data: null, error: null })
+    expect((await fileRoute(req(), ctx())).status).toBe(500)
   })
 })
