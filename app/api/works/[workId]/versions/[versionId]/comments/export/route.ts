@@ -79,6 +79,7 @@ export async function GET(request: Request, { params }: RouteContext) {
   // hundreds over the shared fifteen-minute window, left fail-open like the
   // other read paths in this subsystem. A writer exporting a take a few
   // times while comparing DAW imports should never notice this limit.
+  // Fail-open on purpose: read-only export of the caller's own data; no writes or messages.
   if (await checkRateLimit(`work-version-comments-export:${user.id}`, { maxAttempts: 200, windowMs: 15 * 60 * 1000 })) {
     return NextResponse.json({ error: 'Too many exports. Please slow down.' }, { status: 429 })
   }

@@ -61,11 +61,11 @@ export async function createNotification(
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;')
     const linkHtml = args.link
-      ? `<p><a href="${appUrl}${args.link}">Open in Funūn →</a></p>`
+      ? `<p><a href="${esc(`${appUrl}${args.link}`)}">Open in Funūn →</a></p>`
       : ''
     const res = await sendEmail({
       to: args.email,
-      subject: args.title,
+      subject: args.title.replace(/[\r\n]+/g, ' '),
       html: `<h2>${esc(args.title)}</h2>${args.body ? `<p>${esc(args.body)}</p>` : ''}${linkHtml}`,
       text: `${args.title}\n\n${args.body ?? ''}${args.link ? `\n\n${appUrl}${args.link}` : ''}`,
     })

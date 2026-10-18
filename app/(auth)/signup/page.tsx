@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { waitlistSubmitState } from './waitlist-gate'
 import { signupCompletionState } from './completion'
-import { handleFieldState } from '@/lib/handles/availability'
+import { handleFieldState, readHandleAvailability } from '@/lib/handles/availability'
 import { HANDLE_MIN_LENGTH, HANDLE_MAX_LENGTH, handleFormatError } from '@/lib/handles/validate'
 import { postSignInPath } from '@/lib/auth/postSignInPath'
 import { publicAuthError } from '@/lib/auth/public-errors'
@@ -204,7 +204,7 @@ function SignUpFlow() {
     handleDebounceTimer.current = setTimeout(() => {
       setHandleChecking(true)
       fetch(`/api/handles/available?handle=${encodeURIComponent(handle.trim())}`)
-        .then(res => res.json())
+        .then(res => readHandleAvailability(res))
         .then((data: HandleRemote) => {
           if (requestId !== handleRequestCounter.current) return
           setHandleRemote({ available: data.available, reason: data.reason })

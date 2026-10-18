@@ -49,7 +49,7 @@ function errorResponse(message: string, status: number) {
 
 export async function POST(request: Request) {
   const ip = getClientIp(request)
-  if (await checkRateLimit(`ip:${ip}`)) {
+  if (await checkRateLimit(`ip:${ip}`, { failClosed: true })) {
     return errorResponse('Too many requests. Please try again later.', 429)
   }
 
@@ -61,12 +61,16 @@ export async function POST(request: Request) {
   }
   const entry = result.value
 
-  if (await checkRateLimit(`email:${entry.email}`)) {
+  if (await checkRateLimit(`email:${entry.email}`, { failClosed: true })) {
     return errorResponse('Too many requests. Please try again later.', 429)
   }
 
   const turnstileToken = typeof raw.turnstileToken === 'string' ? raw.turnstileToken : ''
-  const verified = await verifyTurnstileToken(turnstileToken, ip)
+  // The action must match the one the signup page renders the widget with
+  // (app/(auth)/signup/page.tsx).
+  const verified = await verifyTurnstileToken(turnstileToken, ip, {
+    expectedAction: 'turnstile-spin-v2',
+  })
   if (!verified) {
     const configStatus = turnstileConfigStatus()
     // Only the HALF-configured states are the invisible case worth paging

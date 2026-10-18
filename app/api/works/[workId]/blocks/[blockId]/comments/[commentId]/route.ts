@@ -18,7 +18,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  if (await checkRateLimit(`work-comment-resolution:${user.id}`, { maxAttempts: 120, windowMs: 15 * 60 * 1000 })) {
+  if (await checkRateLimit(`work-comment-resolution:${user.id}`, { maxAttempts: 120, windowMs: 15 * 60 * 1000, failClosed: true })) {
     return NextResponse.json({ error: 'Too many requests. Please slow down.' }, { status: 429 })
   }
 

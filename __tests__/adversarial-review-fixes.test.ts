@@ -9,6 +9,9 @@ import { POST as claimCurator } from '@/app/api/curators/claim/[token]/route'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { createNotification } from '@/lib/notifications'
 import { sendEmail } from '@/lib/email'
+import { checkRateLimit } from '@/lib/security/rate-limit'
+
+const RESPONSE_TOKEN = 'c'.repeat(64)
 
 jest.mock('@/lib/supabase/server', () => ({
   createServiceClient: jest.fn(),
@@ -22,6 +25,16 @@ jest.mock('@/lib/notifications', () => ({
 jest.mock('@/lib/email', () => ({
   sendEmail: jest.fn(),
 }))
+
+// The claim route throttles through the durable limiter, which builds its own
+// service client. Keep it out of the way here; true would mean limited.
+jest.mock('@/lib/security/rate-limit', () => ({
+  ...jest.requireActual('@/lib/security/rate-limit'),
+  checkRateLimit: jest.fn(async () => false),
+}))
+
+// Same shape generateClaimToken() produces: 32 random bytes as hex.
+const CLAIM_TOKEN = 'c'.repeat(32) + 'd'.repeat(32)
 
 type EqCall = [string, unknown]
 type IsCall = [string, unknown]
@@ -86,6 +99,7 @@ function makeBuilder(result: unknown = { data: null, error: null }) {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  ;(checkRateLimit as jest.Mock).mockResolvedValue(false)
   ;(createNotification as jest.Mock).mockResolvedValue(undefined)
   ;(sendEmail as jest.Mock).mockResolvedValue({ ok: true })
   ;(createApiClient as jest.Mock).mockResolvedValue({
@@ -151,7 +165,7 @@ describe('public token routes use atomic unused-state predicates', () => {
     const insertBuilder = {
       insert: jest.fn((rows: unknown[]) => ({
         select: jest.fn(async () => ({
-          data: [{ id: 'pitch-1', curator_id: 'curator-1', response_token: 'response-token' }],
+          data: [{ id: 'pitch-1', curator_id: 'curator-1', response_token: RESPONSE_TOKEN }],
           error: null,
         })),
         rows,
@@ -204,7 +218,7 @@ describe('public token routes use atomic unused-state predicates', () => {
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
     const res = await acceptPitch(new Request('http://test.local', { method: 'POST' }), {
-      params: Promise.resolve({ token: 'response-token' }),
+      params: Promise.resolve({ token: RESPONSE_TOKEN }),
     })
 
     expect(res.status).toBe(200)
@@ -213,7 +227,7 @@ describe('public token routes use atomic unused-state predicates', () => {
     )
     expect(update.eqCalls).toEqual(
       expect.arrayContaining([
-        ['response_token', 'response-token'],
+        ['response_token', RESPONSE_TOKEN],
         ['status', 'pending'],
       ])
     )
@@ -240,7 +254,7 @@ describe('public token routes use atomic unused-state predicates', () => {
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
     const res = await declinePitch(jsonRequest({ reason: 'Not a fit' }), {
-      params: Promise.resolve({ token: 'response-token' }),
+      params: Promise.resolve({ token: RESPONSE_TOKEN }),
     })
 
     expect(res.status).toBe(200)
@@ -249,7 +263,7 @@ describe('public token routes use atomic unused-state predicates', () => {
     )
     expect(update.eqCalls).toEqual(
       expect.arrayContaining([
-        ['response_token', 'response-token'],
+        ['response_token', RESPONSE_TOKEN],
         ['status', 'pending'],
       ])
     )
@@ -267,12 +281,12 @@ describe('public token routes use atomic unused-state predicates', () => {
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
     const res = await unsubscribePitch(new Request('http://test.local', { method: 'POST' }), {
-      params: Promise.resolve({ token: 'response-token' }),
+      params: Promise.resolve({ token: RESPONSE_TOKEN }),
     })
 
     expect(res.status).toBe(200)
     expect(pitchLookup.eqCalls).toEqual(
-      expect.arrayContaining([['response_token', 'response-token']])
+      expect.arrayContaining([['response_token', RESPONSE_TOKEN]])
     )
     expect(pitchLookup.gtCalls).toEqual(
       expect.arrayContaining([['response_token_expires_at', expect.any(String)]])
@@ -363,14 +377,14 @@ describe('public token routes use atomic unused-state predicates', () => {
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
     const res = await claimCurator(new Request('http://test.local', { method: 'POST' }), {
-      params: Promise.resolve({ token: 'claim-token' }),
+      params: Promise.resolve({ token: CLAIM_TOKEN }),
     })
 
     expect(res.status).toBe(200)
     expect(curatorClaim.eqCalls).toEqual(
       expect.arrayContaining([
         ['id', 'curator-1'],
-        ['claim_token', 'claim-token'],
+        ['claim_token', CLAIM_TOKEN],
       ])
     )
     expect(curatorClaim.isCalls).toEqual(expect.arrayContaining([['claimed_by', null]]))
