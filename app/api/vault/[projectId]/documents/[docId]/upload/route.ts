@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
 import { parseAdmittedFormData } from '@/lib/security/upload-admission'
-import { MAX_DOC_SIZE, uploadSignedPdf } from '@/lib/vault/documents'
+import { MAX_DOC_SIZE, uploadSignedPdf, vaultDocumentBucket } from '@/lib/vault/documents'
 
 // POST /api/vault/[projectId]/documents/[docId]/upload
-// Accepts a multipart PDF, stores it in the release-documents bucket,
-// and atomically transitions the document to status='signed'.
+// Accepts a multipart PDF, stores it in the private bucket that matches the
+// document's source (vault-contracts for 'uploaded', release-documents
+// otherwise), and atomically transitions the document to status='signed'.
+// vault_documents.file_url receives the storage path, never a URL; readers go
+// through GET .../documents/[docId]/file, which issues a signed link.
 // Uploading a PDF IS the signing action — no manual status override accepted.
 export async function POST(
   request: Request,
@@ -22,7 +25,7 @@ export async function POST(
   // Verify ownership before touching storage
   const { data: existing } = await supabase
     .from('vault_documents')
-    .select('id, status')
+    .select('id, status, source')
     .eq('id', docId)
     .eq('project_id', projectId)
     .eq('user_id', user.id)
@@ -46,10 +49,16 @@ export async function POST(
     return NextResponse.json({ error: 'No file provided' }, { status: 400 })
   }
 
-  let url: string
+  let path: string
   try {
-    const result = await uploadSignedPdf({ file, userId: user.id, projectId, docId })
-    url = result.url
+    const result = await uploadSignedPdf({
+      file,
+      userId: user.id,
+      projectId,
+      docId,
+      bucket: vaultDocumentBucket(existing.source),
+    })
+    path = result.path
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Upload failed'
     const isValidation = message.startsWith('Document must')
@@ -64,7 +73,7 @@ export async function POST(
     .update({
       status: 'signed',
       signed_at: new Date().toISOString(),
-      file_url: url,
+      file_url: path,
       signed_by: user.email ?? user.id,
     })
     .eq('id', docId)

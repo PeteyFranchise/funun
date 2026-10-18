@@ -34,6 +34,8 @@ type StageProject = {
     status: string
     track_id: string | null
     document_data: Record<string, unknown> | null
+    file_url: string | null
+    signed_at: string | null
   }[]
 }
 
@@ -62,7 +64,7 @@ export default async function DocumentsPage({
         id, title, type, vault_readiness_score,
         content_id_registered, content_id_dismissed_until,
         tracks (id, title, writers, producers, mixing_engineer, mastering_engineer, has_sample, sample_details),
-        vault_documents (id, type, status, track_id, document_data)
+        vault_documents (id, type, status, track_id, document_data, file_url, signed_at)
       `
       )
       .eq('id', projectId)

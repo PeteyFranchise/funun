@@ -3,12 +3,18 @@
 // The upload route (POST /api/vault/[projectId]/documents/[docId]/upload)
 // calls uploadSignedPdf() after auth/ownership checks are confirmed.
 
-import { createApiClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server'
 import { DOC_BUCKET as _DOC_BUCKET } from '@/lib/storage'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 export const DOC_BUCKET = _DOC_BUCKET
+
+// Private bucket for Contract Locker files (migration 011).
+export const CONTRACT_BUCKET = 'vault-contracts'
+
+// Lifetime of the signed links issued by GET /api/vault/[projectId]/documents/[docId]/file.
+export const DOC_LINK_TTL_SECONDS = 600
 
 export const MAX_DOC_SIZE = 5 * 1024 * 1024 // 5MB
 
@@ -23,28 +29,47 @@ export type VaultDocument = {
   user_id: string
   type: string
   status: 'pending' | 'signed' | 'verified'
+  source: 'generated' | 'uploaded'
   document_data: Record<string, unknown> | null
   signed_at: string | null
+  // Storage object path, not a URL (see migration 245). Bucket: vaultDocumentBucket(source).
   file_url: string | null
   signed_by: string | null
   created_at: string
 }
 
+// ─── Bucket choice ───────────────────────────────────────────────────────────
+
+/**
+ * Returns the private bucket that holds a vault document's file, chosen by the
+ * row's source. Invariant: every writer of vault_documents.file_url stores a
+ * path in the bucket this function returns for that row's source. The writers
+ * are app/api/contracts/verify (source 'uploaded', vault-contracts),
+ * lib/split-sheets/distribution.ts (source 'generated', release-documents) and
+ * the signed PDF upload route (either, chosen here).
+ */
+export function vaultDocumentBucket(source: string | null | undefined): string {
+  return source === 'uploaded' ? CONTRACT_BUCKET : DOC_BUCKET
+}
+
 // ─── Upload helper ────────────────────────────────────────────────────────────
 
 /**
- * Validates and uploads a signed PDF to the release-documents storage bucket.
- * Validates MIME type and size before any storage write.
- * Returns the public URL and storage path on success.
+ * Validates and uploads a signed PDF to the given private bucket (use
+ * vaultDocumentBucket(row.source)). Validates MIME type and size before any
+ * storage write. Returns the storage path; there is no public URL.
  *
- * Auth is the caller's responsibility — this function handles storage only.
+ * Auth is the caller's responsibility and must be checked BEFORE calling:
+ * this uses the service client, which bypasses storage policies, so nothing
+ * here stops an unowned docId.
  */
 export async function uploadSignedPdf(params: {
   file: File
   userId: string
   projectId: string
   docId: string
-}): Promise<{ url: string; path: string }> {
+  bucket: string
+}): Promise<{ path: string }> {
   if (params.file.type !== 'application/pdf') {
     throw new Error('Document must be a PDF file')
   }
@@ -53,17 +78,14 @@ export async function uploadSignedPdf(params: {
   }
 
   const path = `${params.userId}/${params.projectId}/${params.docId}-${Date.now()}.pdf`
-  const supabase = await createApiClient()
+  const supabase = createServiceClient()
 
+  // upsert: false - the path carries Date.now(), so a collision is a bug to surface.
   const { error } = await supabase.storage
-    .from(DOC_BUCKET)
-    .upload(path, params.file, { upsert: true, contentType: 'application/pdf' })
+    .from(params.bucket)
+    .upload(path, params.file, { upsert: false, contentType: 'application/pdf' })
 
   if (error) throw new Error(`Upload failed: ${error.message}`)
 
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from(DOC_BUCKET).getPublicUrl(path)
-
-  return { url: publicUrl, path }
+  return { path }
 }
