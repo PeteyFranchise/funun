@@ -11,8 +11,10 @@ jest.mock('@/lib/stripe', () => ({
 }))
 
 const mockCaptureMessage = jest.fn()
+const mockFlush = jest.fn()
 jest.mock('@sentry/nextjs', () => ({
   captureMessage: (...args: unknown[]) => mockCaptureMessage(...args),
+  flush: (...args: unknown[]) => mockFlush(...args),
 }))
 
 const mockCreateServiceClient = jest.fn()
@@ -21,6 +23,7 @@ jest.mock('@/lib/supabase/server', () => ({
 }))
 
 import { POST } from '@/app/api/webhooks/stripe/route'
+import { scrubKnownSensitiveKeys } from '@/lib/observability/scrub'
 
 function makeService(
   opts: {
@@ -90,6 +93,7 @@ function accountEvent() {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  mockFlush.mockResolvedValue(true)
   process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test_secret_do_not_use_live'
   mockRetrievePaymentIntent.mockResolvedValue({
     id: 'pi_1',
@@ -206,15 +210,59 @@ describe('stripe webhook — account.updated persistence', () => {
   })
 })
 
-describe('stripe webhook - delayed payments, refunds and disputes', () => {
-  it('acknowledges an unpaid (delayed method) completion without completing the deal', async () => {
+const COMPLETE_ARGS = {
+  p_deal_id: 'd1',
+  p_checkout_session_id: 'cs_1',
+  p_economics_fingerprint: 'fingerprint-1',
+  p_payment_intent_id: 'pi_1',
+  p_amount_cents: 10_000,
+  p_currency: 'usd',
+  p_application_fee_cents: 1_500,
+  p_transfer_destination: 'acct_artist_1',
+}
+
+type Captured = { message: string; level: string; tags: Record<string, string>; extra: Record<string, unknown> }
+
+function captured(index = 0): Captured {
+  const [message, options] = mockCaptureMessage.mock.calls[index] as [
+    string,
+    { level: string; tags: Record<string, string>; extra: Record<string, unknown> },
+  ]
+  return { message, ...options }
+}
+
+describe('stripe webhook - delayed payments', () => {
+  it('acknowledges an unpaid (delayed method) completion, writes nothing, and reports at info', async () => {
     mockConstructEvent.mockReturnValue(checkoutEvent({ payment_status: 'unpaid' }))
     const service = makeService()
     mockCreateServiceClient.mockReturnValue(service.client)
     expect((await POST(makeRequest())).status).toBe(200)
     expect(service.rpc).not.toHaveBeenCalled()
     expect(mockRetrievePaymentIntent).not.toHaveBeenCalled()
-    expect(mockCaptureMessage).not.toHaveBeenCalled()
+    expect(mockCaptureMessage).toHaveBeenCalledTimes(1)
+    const call = captured()
+    expect(call.level).toBe('info')
+    expect(call.tags).toEqual({ stripe_event: 'checkout.session.completed' })
+    expect(call.extra).toMatchObject({
+      event_id: 'evt_1',
+      checkout_ref: 'cs_1',
+      payment_intent_id: 'pi_1',
+      license_request_id: 'd1',
+    })
+    expect(mockFlush).toHaveBeenCalledWith(2000)
+  })
+
+  it('acknowledges any other non-paid status with a warning and never completes', async () => {
+    mockConstructEvent.mockReturnValue(checkoutEvent({ payment_status: 'no_payment_required' }))
+    const service = makeService()
+    mockCreateServiceClient.mockReturnValue(service.client)
+    expect((await POST(makeRequest())).status).toBe(200)
+    expect(service.rpc).not.toHaveBeenCalled()
+    expect(mockRetrievePaymentIntent).not.toHaveBeenCalled()
+    expect(mockCaptureMessage).toHaveBeenCalledTimes(1)
+    const call = captured()
+    expect(call.level).toBe('warning')
+    expect(call.extra).toMatchObject({ checkout_ref: 'cs_1', payment_status: 'no_payment_required' })
   })
 
   it('completes the deal on async_payment_succeeded through the paid-completion path', async () => {
@@ -225,30 +273,8 @@ describe('stripe webhook - delayed payments, refunds and disputes', () => {
     expect((await POST(makeRequest())).status).toBe(200)
     expect(mockRetrievePaymentIntent).toHaveBeenCalledWith('pi_1')
     expect(service.rpc).toHaveBeenCalledTimes(1)
-    expect(service.rpc).toHaveBeenCalledWith('complete_license_checkout', {
-      p_deal_id: 'd1',
-      p_checkout_session_id: 'cs_1',
-      p_economics_fingerprint: 'fingerprint-1',
-      p_payment_intent_id: 'pi_1',
-      p_amount_cents: 10_000,
-      p_currency: 'usd',
-      p_application_fee_cents: 1_500,
-      p_transfer_destination: 'acct_artist_1',
-    })
-  })
-
-  it('returns 409 on async_payment_succeeded when the database rejects the economics', async () => {
-    mockConstructEvent.mockReturnValue(checkoutEvent({}, 'checkout.session.async_payment_succeeded'))
-    mockCreateServiceClient.mockReturnValue(makeService({ rpcResult: { data: false, error: null } }).client)
-    expect((await POST(makeRequest())).status).toBe(409)
-  })
-
-  it('returns 400 on async_payment_succeeded with missing metadata', async () => {
-    mockConstructEvent.mockReturnValue(checkoutEvent({ metadata: {} }, 'checkout.session.async_payment_succeeded'))
-    const service = makeService()
-    mockCreateServiceClient.mockReturnValue(service.client)
-    expect((await POST(makeRequest())).status).toBe(400)
-    expect(service.rpc).not.toHaveBeenCalled()
+    expect(service.rpc).toHaveBeenCalledWith('complete_license_checkout', COMPLETE_ARGS)
+    expect(mockCaptureMessage).not.toHaveBeenCalled()
   })
 
   it('does not complete on async_payment_succeeded unless the session is paid', async () => {
@@ -260,19 +286,89 @@ describe('stripe webhook - delayed payments, refunds and disputes', () => {
     expect((await POST(makeRequest())).status).toBe(200)
     expect(service.rpc).not.toHaveBeenCalled()
     expect(mockRetrievePaymentIntent).not.toHaveBeenCalled()
+    expect(captured().level).toBe('warning')
   })
 
-  it('acknowledges async_payment_failed, writes nothing and reports to Sentry', async () => {
-    mockConstructEvent.mockReturnValue(checkoutEvent({ payment_status: 'unpaid' }, 'checkout.session.async_payment_failed'))
+  it('returns 409 on a paid completion the database rejects, and alerts at error', async () => {
+    mockConstructEvent.mockReturnValue(checkoutEvent({}, 'checkout.session.async_payment_succeeded'))
+    mockCreateServiceClient.mockReturnValue(makeService({ rpcResult: { data: false, error: null } }).client)
+    expect((await POST(makeRequest())).status).toBe(409)
+    expect(mockCaptureMessage).toHaveBeenCalledTimes(1)
+    expect(captured().level).toBe('error')
+    expect(captured().extra).toMatchObject({ checkout_ref: 'cs_1', payment_intent_id: 'pi_1' })
+  })
+
+  it('returns 400 on a paid completion with missing metadata, and alerts at error', async () => {
+    mockConstructEvent.mockReturnValue(checkoutEvent({ metadata: {} }, 'checkout.session.async_payment_succeeded'))
+    const service = makeService()
+    mockCreateServiceClient.mockReturnValue(service.client)
+    expect((await POST(makeRequest())).status).toBe(400)
+    expect(service.rpc).not.toHaveBeenCalled()
+    expect(captured().level).toBe('error')
+  })
+})
+
+describe('stripe webhook - dead checkout reset', () => {
+  it('resets the deal on async_payment_failed, reports a warning, and returns 200', async () => {
+    mockConstructEvent.mockReturnValue(
+      checkoutEvent({ payment_status: 'unpaid' }, 'checkout.session.async_payment_failed')
+    )
+    const service = makeService({ rpcResult: { data: true, error: null } })
+    mockCreateServiceClient.mockReturnValue(service.client)
+    expect((await POST(makeRequest())).status).toBe(200)
+    expect(service.rpc).toHaveBeenCalledTimes(1)
+    expect(service.rpc).toHaveBeenCalledWith('reset_license_checkout', {
+      p_deal_id: 'd1',
+      p_checkout_session_id: 'cs_1',
+    })
+    expect(service.client.from).not.toHaveBeenCalled()
+    expect(mockRetrievePaymentIntent).not.toHaveBeenCalled()
+    expect(mockCaptureMessage).toHaveBeenCalledTimes(1)
+    expect(captured().level).toBe('warning')
+  })
+
+  it('resets the deal on checkout.session.expired and returns 200 without a Sentry report', async () => {
+    mockConstructEvent.mockReturnValue(checkoutEvent({ payment_status: 'unpaid' }, 'checkout.session.expired'))
+    const service = makeService()
+    mockCreateServiceClient.mockReturnValue(service.client)
+    expect((await POST(makeRequest())).status).toBe(200)
+    expect(service.rpc).toHaveBeenCalledWith('reset_license_checkout', {
+      p_deal_id: 'd1',
+      p_checkout_session_id: 'cs_1',
+    })
+    expect(mockCaptureMessage).not.toHaveBeenCalled()
+  })
+
+  it('returns 200 when the reset matches no row (paid deal or newer session)', async () => {
+    mockConstructEvent.mockReturnValue(checkoutEvent({ payment_status: 'unpaid' }, 'checkout.session.expired'))
+    mockCreateServiceClient.mockReturnValue(makeService({ rpcResult: { data: false, error: null } }).client)
+    expect((await POST(makeRequest())).status).toBe(200)
+  })
+
+  it.each(['checkout.session.async_payment_failed', 'checkout.session.expired'])(
+    'returns 503 on %s when the reset RPC errors so Stripe retries, and alerts at error',
+    async (type) => {
+      mockConstructEvent.mockReturnValue(checkoutEvent({ payment_status: 'unpaid' }, type))
+      mockCreateServiceClient.mockReturnValue(
+        makeService({ rpcResult: { data: null, error: { message: 'db unavailable' } } }).client
+      )
+      expect((await POST(makeRequest())).status).toBe(503)
+      const last = captured(mockCaptureMessage.mock.calls.length - 1)
+      expect(last.level).toBe('error')
+    }
+  )
+
+  it('skips the reset when the session carries no deal id', async () => {
+    mockConstructEvent.mockReturnValue(checkoutEvent({ metadata: {} }, 'checkout.session.expired'))
     const service = makeService()
     mockCreateServiceClient.mockReturnValue(service.client)
     expect((await POST(makeRequest())).status).toBe(200)
     expect(service.rpc).not.toHaveBeenCalled()
-    expect(service.client.from).not.toHaveBeenCalled()
-    expect(mockCaptureMessage).toHaveBeenCalledTimes(1)
   })
+})
 
-  it('acknowledges charge.refunded, writes nothing and reports the charge id to Sentry', async () => {
+describe('stripe webhook - refunds, disputes and unknown events', () => {
+  it('acknowledges charge.refunded, writes nothing and reports the charge id at warning', async () => {
     mockConstructEvent.mockReturnValue(chargeEvent('charge.refunded', { id: 'ch_1', payment_intent: 'pi_1' }))
     const service = makeService()
     mockCreateServiceClient.mockReturnValue(service.client)
@@ -280,10 +376,11 @@ describe('stripe webhook - delayed payments, refunds and disputes', () => {
     expect(service.rpc).not.toHaveBeenCalled()
     expect(service.updates).toHaveLength(0)
     expect(mockCaptureMessage).toHaveBeenCalledTimes(1)
+    expect(captured().level).toBe('warning')
     expect(JSON.stringify(mockCaptureMessage.mock.calls[0])).toContain('ch_1')
   })
 
-  it('acknowledges charge.dispute.created, writes nothing and reports to Sentry', async () => {
+  it('reports charge.dispute.created at error and writes nothing', async () => {
     mockConstructEvent.mockReturnValue(
       chargeEvent('charge.dispute.created', { id: 'dp_1', charge: 'ch_1', payment_intent: 'pi_1' })
     )
@@ -292,7 +389,16 @@ describe('stripe webhook - delayed payments, refunds and disputes', () => {
     expect((await POST(makeRequest())).status).toBe(200)
     expect(service.rpc).not.toHaveBeenCalled()
     expect(service.updates).toHaveLength(0)
-    expect(mockCaptureMessage).toHaveBeenCalledTimes(1)
+    expect(captured().level).toBe('error')
+  })
+
+  it('reports other dispute subtypes at warning', async () => {
+    mockConstructEvent.mockReturnValue(
+      chargeEvent('charge.dispute.closed', { id: 'dp_1', charge: 'ch_1', payment_intent: 'pi_1' })
+    )
+    mockCreateServiceClient.mockReturnValue(makeService().client)
+    expect((await POST(makeRequest())).status).toBe(200)
+    expect(captured().level).toBe('warning')
   })
 
   it('still returns 200 with no side effects for an unknown event type', async () => {
@@ -304,3 +410,95 @@ describe('stripe webhook - delayed payments, refunds and disputes', () => {
     expect(mockCaptureMessage).not.toHaveBeenCalled()
   })
 })
+
+describe('stripe webhook - Sentry delivery', () => {
+  it('flushes after a capture', async () => {
+    mockConstructEvent.mockReturnValue(chargeEvent('charge.refunded', { id: 'ch_1', payment_intent: 'pi_1' }))
+    mockCreateServiceClient.mockReturnValue(makeService().client)
+    await POST(makeRequest())
+    expect(mockFlush).toHaveBeenCalledWith(2000)
+    expect(mockFlush.mock.invocationCallOrder[0]).toBeGreaterThan(mockCaptureMessage.mock.invocationCallOrder[0])
+  })
+
+  it('flushes before returning the 409 and 400 responses', async () => {
+    mockConstructEvent.mockReturnValue(checkoutEvent())
+    mockCreateServiceClient.mockReturnValue(makeService({ rpcResult: { data: false, error: null } }).client)
+    expect((await POST(makeRequest())).status).toBe(409)
+    expect(mockFlush).toHaveBeenCalledTimes(1)
+
+    mockFlush.mockClear()
+    mockConstructEvent.mockReturnValue(checkoutEvent({ metadata: {} }))
+    mockCreateServiceClient.mockReturnValue(makeService().client)
+    expect((await POST(makeRequest())).status).toBe(400)
+    expect(mockFlush).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not change the response when flush rejects', async () => {
+    mockFlush.mockRejectedValue(new Error('network down'))
+    mockConstructEvent.mockReturnValue(checkoutEvent({ payment_status: 'unpaid' }))
+    mockCreateServiceClient.mockReturnValue(makeService().client)
+    expect((await POST(makeRequest())).status).toBe(200)
+
+    mockConstructEvent.mockReturnValue(checkoutEvent())
+    mockCreateServiceClient.mockReturnValue(makeService({ rpcResult: { data: false, error: null } }).client)
+    expect((await POST(makeRequest())).status).toBe(409)
+  })
+
+  it('does not change the response when captureMessage throws', async () => {
+    mockCaptureMessage.mockImplementation(() => {
+      throw new Error('sentry broke')
+    })
+    mockConstructEvent.mockReturnValue(chargeEvent('charge.refunded', { id: 'ch_1', payment_intent: 'pi_1' }))
+    mockCreateServiceClient.mockReturnValue(makeService().client)
+    expect((await POST(makeRequest())).status).toBe(200)
+    mockCaptureMessage.mockReset()
+  })
+
+  it('keeps every Stripe id readable after the Sentry scrubber runs', async () => {
+    const scenarios: { event: unknown; service: ReturnType<typeof makeService>; ids: string[] }[] = [
+      {
+        event: checkoutEvent({ payment_status: 'unpaid' }),
+        service: makeService(),
+        ids: ['evt_1', 'cs_1', 'pi_1', 'd1'],
+      },
+      {
+        event: checkoutEvent({ payment_status: 'unpaid' }, 'checkout.session.async_payment_failed'),
+        service: makeService(),
+        ids: ['evt_1', 'cs_1', 'pi_1', 'd1'],
+      },
+      {
+        event: checkoutEvent(),
+        service: makeService({ rpcResult: { data: false, error: null } }),
+        ids: ['evt_1', 'cs_1', 'pi_1', 'd1'],
+      },
+      {
+        event: checkoutEvent({ metadata: {} }),
+        service: makeService(),
+        ids: ['evt_1', 'cs_1', 'pi_1'],
+      },
+      {
+        event: chargeEvent('charge.dispute.created', { id: 'dp_1', charge: 'ch_1', payment_intent: 'pi_1' }),
+        service: makeService(),
+        ids: ['evt_2', 'dp_1', 'ch_1', 'pi_1'],
+      },
+      {
+        event: chargeEvent('charge.refunded', { id: 'ch_1', payment_intent: 'pi_1' }),
+        service: makeService(),
+        ids: ['evt_2', 'ch_1', 'pi_1'],
+      },
+    ]
+
+    for (const scenario of scenarios) {
+      mockCaptureMessage.mockClear()
+      mockConstructEvent.mockReturnValue(scenario.event)
+      mockCreateServiceClient.mockReturnValue(scenario.service.client)
+      await POST(makeRequest())
+      expect(mockCaptureMessage).toHaveBeenCalledTimes(1)
+
+      const scrubbed = JSON.stringify(scrubKnownSensitiveKeys(captured() as unknown as Record<string, unknown>))
+      expect(scrubbed).not.toContain('[redacted]')
+      for (const id of scenario.ids) expect(scrubbed).toContain(id)
+    }
+  })
+})
+
