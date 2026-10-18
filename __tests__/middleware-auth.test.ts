@@ -16,6 +16,14 @@ describe('middleware auth validation', () => {
     expect(source).not.toContain('isAccountTransitionSignIn')
   })
 
+  it('decides which pages require sign-in through the shared isProtectedPath predicate', () => {
+    const source = readFileSync(path.join(process.cwd(), 'middleware.ts'), 'utf8')
+
+    expect(source).toContain("import { isProtectedPath } from '@/lib/auth/protectedRoutes'")
+    expect(source).toContain('const isProtected = isProtectedPath(pathname)')
+    expect(source).not.toContain("pathname.startsWith('/vault') ||")
+  })
+
   it('authenticates admin APIs in middleware before route body parsing', () => {
     const source = readFileSync(path.join(process.cwd(), 'middleware.ts'), 'utf8')
 
