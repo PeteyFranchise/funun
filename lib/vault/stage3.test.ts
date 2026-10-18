@@ -236,3 +236,32 @@ describe('findRequirementByKey — pure lookup by reference', () => {
     expect(findRequirementByKey([first, second], 'dup')).toBe(first)
   })
 })
+
+describe('computeStage3 - the storage path never reaches the browser', () => {
+  const twoWriterTrack = { ...CLEAN_TRACK, writers: ['Jane Writer', 'Joe Writer'] }
+  const doc = {
+    id: 'doc-1',
+    type: 'split_sheet',
+    status: 'signed',
+    track_id: 'track-1',
+    document_data: null,
+    file_url: 'user-1/proj-1/doc-1-1700000000000.pdf',
+    signed_at: '2026-10-01T00:00:00.000Z',
+  }
+
+  it('exposes a has_file flag and no file_url on any requirement', () => {
+    const stage3 = computeStage3(PROJECT, [twoWriterTrack], [doc], 100)
+    const all = [...stage3.required, ...stage3.recommended, ...stage3.complete]
+    expect(all.find(r => r.documentId === 'doc-1')?.has_file).toBe(true)
+    for (const r of all) {
+      expect(r).not.toHaveProperty('file_url')
+    }
+    expect(JSON.stringify(stage3)).not.toContain('doc-1-1700000000000.pdf')
+  })
+
+  it('reports has_file false when the document carries no stored file', () => {
+    const stage3 = computeStage3(PROJECT, [twoWriterTrack], [{ ...doc, file_url: null }], 100)
+    const all = [...stage3.required, ...stage3.recommended, ...stage3.complete]
+    expect(all.find(r => r.documentId === 'doc-1')?.has_file).toBe(false)
+  })
+})

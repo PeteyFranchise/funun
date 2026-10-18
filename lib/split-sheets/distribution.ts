@@ -30,9 +30,9 @@ export type FanoutSheet = {
 export type BuildFanoutRowsInput = {
   parties: FanoutParty[]
   sheet: FanoutSheet
-  /** Storage URL of the DocuSeal-executed, combined PDF. Shared by every row. */
+  /** Storage object path (in release-documents, not a URL) of the DocuSeal-executed, combined PDF. Shared by every row. */
   executedFileUrl: string
-  /** Storage URL of the Certificate of Signature / audit log. Shared by every row. */
+  /** Storage object path (in release-documents, not a URL) of the Certificate of Signature / audit log. Shared by every row. */
   auditTrailUrl: string
   completedAt: string
   /** DocuSeal's submission id — maps to EsignState.requestId. */
