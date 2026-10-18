@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'fs'
 import path from 'path'
 
-const file = path.join(process.cwd(), 'supabase/migrations/243_email_suppressions.sql')
+const file = path.join(process.cwd(), 'supabase/migrations/246_email_suppressions.sql')
 const sql = existsSync(file) ? readFileSync(file, 'utf8') : ''
 
 // Header prose may mention CREATE POLICY / GRANT; strip line comments before
@@ -11,7 +11,7 @@ const code = sql
   .filter((line) => !line.trim().startsWith('--'))
   .join('\n')
 
-describe('243 email_suppressions', () => {
+describe('246 email_suppressions', () => {
   it('exists', () => {
     expect(existsSync(file)).toBe(true)
   })

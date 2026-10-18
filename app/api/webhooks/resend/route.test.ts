@@ -145,7 +145,7 @@ describe('POST /api/webhooks/resend', () => {
 
   it('returns 500 so Resend retries when the suppression write fails, after the curator flag was still applied', async () => {
     hardBounce('curator@example.com')
-    // Simulates migration 243 being unapplied: the suppression write errors,
+    // Simulates migration 246 being unapplied: the suppression write errors,
     // but the pre-existing curator invalidation must not regress.
     const service = serviceWithUpdateError(null, [{ id: 'curator-1' }], {
       message: 'relation "public.email_suppressions" does not exist',

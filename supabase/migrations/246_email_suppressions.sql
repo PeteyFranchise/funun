@@ -1,6 +1,6 @@
 -- ============================================================
 -- Funun - Quick task 261017-u5c (suppress hard-bounced addresses, GH #190)
--- Migration 243 - email_suppressions
+-- migration 246 - email_suppressions
 --
 -- WHY: the Resend webhook (app/api/webhooks/resend/route.ts) used to record
 -- a hard bounce only on curators.email_valid. Every other recipient class
@@ -35,7 +35,7 @@
 --
 -- HUMAN-GATED - never `supabase db push` from an agent (matches migrations
 -- 089/095/097/229's standing convention). Draft + text-tested only
--- (__tests__/migration-243-email-suppressions.test.ts); the owner reviews
+-- (__tests__/migration-246-email-suppressions.test.ts); the owner reviews
 -- and applies it.
 -- ============================================================
 

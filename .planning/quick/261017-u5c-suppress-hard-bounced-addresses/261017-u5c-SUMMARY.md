@@ -11,11 +11,11 @@ commits:
 
 # Quick 261017-u5c: Suppress hard-bounced addresses (GH #190)
 
-Migration 243 is authored and committed but **NOT applied**. Nothing was pushed.
+migration 246 is authored and committed but **NOT applied**. Nothing was pushed.
 
 ## What changed
 
-- `supabase/migrations/243_email_suppressions.sql`: service-role-only `public.email_suppressions` (email PK with normalized CHECK, reason, source_event_id, created_at; RLS on, zero policies, REVOKE ALL).
+- `supabase/migrations/246_email_suppressions.sql`: service-role-only `public.email_suppressions` (email PK with normalized CHECK, reason, source_event_id, created_at; RLS on, zero policies, REVOKE ALL).
 - `app/api/webhooks/resend/route.ts`: a verified HardBounce for any address upserts the normalized recipient into `email_suppressions` (`onConflict: 'email', ignoreDuplicates: true`, `source_event_id` = svix-id). 500 on failure so Resend retries.
 - `lib/email/index.ts`: `sendEmail` filters suppressed recipients after the config gate. All suppressed returns `{ ok: false, error: 'Recipient suppressed', suppressed }`; mixed lists send to the rest. Lookup fails open with a Sentry report (no address in payload). `to` widened to `string | string[]`.
 
@@ -30,9 +30,9 @@ Other deviations: none. Branch is the worktree branch, not `fix/audit-2026-10` a
 - Webhook: hard bounces return 500 until the table exists, so Resend keeps retrying and no bounce is lost. Curator invalidation keeps working meanwhile.
 - `sendEmail`: lookup fails open (Sentry `feature: email`, `operation: suppression-lookup`), so mail keeps flowing. Expect Sentry noise on every send until the migration is applied.
 
-## Owner step: apply migration 243
+## Owner step: apply migration 246
 
-Apply `supabase/migrations/243_email_suppressions.sql` via the normal path (`supabase db push` against production, or paste into the Supabase SQL editor), then verify:
+Apply `supabase/migrations/246_email_suppressions.sql` via the normal path (`supabase db push` against production, or paste into the Supabase SQL editor), then verify:
 
 ```sql
 select relrowsecurity from pg_class where oid = 'public.email_suppressions'::regclass;  -- expect true
@@ -53,7 +53,7 @@ on conflict do nothing;
 
 ## Verification
 
-- Target tests: `migration-243-email-suppressions` (7), `rls-helper-callsites` + `beta-security-migration-harness` (51 passed, 0 failed combined with the 243 file), webhook route (10), `lib/email/index` (10). All green.
+- Target tests: `migration-246-email-suppressions` (7), `rls-helper-callsites` + `beta-security-migration-harness` (51 passed, 0 failed combined with the 243 file), webhook route (10), `lib/email/index` (10). All green.
 - RED confirmed before each GREEN (migration test: file missing; webhook: 4 failing; email: 5 failing).
 - Full `npm test`: 666 suites passed, 8358 tests passed, 0 failed.
 - `npm run lint` (max-warnings=0): exit 0, clean.
@@ -67,3 +67,4 @@ None.
 ## Self-Check: PASSED
 
 All three commits exist on the worktree branch; migration, webhook and email files present.
+> Renumbered to 246 on 2026-10-18 because 245 (private documents bucket) is applied first.

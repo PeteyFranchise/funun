@@ -52,7 +52,7 @@ export async function POST(request: Request) {
         // App-wide suppression (GH #190): sendEmail() skips every address in
         // email_suppressions, for any recipient class, not just curators.
         // This runs AFTER the curator flag on purpose: if the table is
-        // missing (migration 243 unapplied) the curator invalidation that
+        // missing (migration 246 unapplied) the curator invalidation that
         // already worked must not regress. Both writes are idempotent, so a
         // Resend retry after a failure here redoes them safely;
         // ignoreDuplicates keeps the first event id on conflict. A missing
