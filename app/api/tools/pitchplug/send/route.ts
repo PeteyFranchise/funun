@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email'
+import { esc } from '@/lib/email/esc'
 import { createSubmission } from '@/lib/submissions'
 import { getCurator } from '@/lib/tools/pitchplug'
 
@@ -11,7 +12,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 function bodyToHtml(body: string): string {
   return body
     .split(/\n{2,}/)
-    .map(p => `<p>${p.replace(/\n/g, '<br>').replace(/</g, '&lt;')}</p>`)
+    .map(p => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`)
     .join('')
 }
 
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
 
   const sent = await sendEmail({
     to: b.recipientEmail,
-    subject: b.subject,
+    subject: b.subject.replace(/[\r\n]+/g, ' '),
     html: bodyToHtml(b.body),
     text: b.body,
     replyTo,
