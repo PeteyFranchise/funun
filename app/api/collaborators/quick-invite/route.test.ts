@@ -1,6 +1,7 @@
 import { createApiClient } from '@/lib/supabase/server'
 import { sendCollaboratorInvite } from '@/lib/collaborators/invite'
 import { MEMBER_ACCOUNT_REQUIRED, requireMemberApiAccount } from '@/lib/accounts/member-api-gate'
+import { checkRateLimit } from '@/lib/security/rate-limit'
 import { POST } from './route'
 
 // ─── POST /api/collaborators/quick-invite ──────────────────────────────────
@@ -32,6 +33,11 @@ jest.mock('@/lib/collaborators/invite', () => ({
 jest.mock('@/lib/accounts/member-api-gate', () => ({
   MEMBER_ACCOUNT_REQUIRED: 'This action requires a Member account. Sign in with your personal Member account.',
   requireMemberApiAccount: jest.fn(),
+}))
+
+jest.mock('@/lib/security/rate-limit', () => ({
+  ...jest.requireActual('@/lib/security/rate-limit'),
+  checkRateLimit: jest.fn(),
 }))
 
 const USER_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
@@ -85,6 +91,7 @@ function mockSupabase(
 
 beforeEach(() => {
   jest.clearAllMocks()
+  ;(checkRateLimit as jest.Mock).mockResolvedValue(false)
   ;(requireMemberApiAccount as jest.Mock).mockImplementation(async (_client: unknown, user: { id: string } | null) =>
     user
       ? { ok: true, user }
@@ -356,5 +363,58 @@ describe('POST /api/collaborators/quick-invite', () => {
     const body = await res.json()
     expect(body.error).toBe('insert boom')
     expect(body.data.collaborator).toEqual(insertedRow)
+  })
+
+  it('returns 429 when the sender is over the invite limit, before any lookup, insert or send', async () => {
+    const supabase = mockSupabase()
+    ;(createApiClient as jest.Mock).mockResolvedValue({
+      auth: { getUser: jest.fn(async () => ({ data: { user: { id: USER_ID } } })) },
+      ...supabase,
+    })
+    ;(checkRateLimit as jest.Mock).mockResolvedValue(true)
+
+    const res = await POST(postRequest({ first_name: 'Jamie', email: 'jamie@example.com' }))
+
+    expect(res.status).toBe(429)
+    expect(await res.json()).toEqual({ error: 'You have sent too many invites recently. Try again later.' })
+    expect(supabase.from).not.toHaveBeenCalled()
+    expect(supabase.insertSpy).not.toHaveBeenCalled()
+    expect(sendCollaboratorInvite).not.toHaveBeenCalled()
+  })
+
+  it('checks the per-sender hourly and daily keys with the fail-closed flag', async () => {
+    const supabase = mockSupabase({ existing: { id: EXISTING_ROW_ID, user_id: USER_ID, name: 'Jamie', email: 'jamie@example.com' } })
+    ;(createApiClient as jest.Mock).mockResolvedValue({
+      auth: { getUser: jest.fn(async () => ({ data: { user: { id: USER_ID } } })) },
+      ...supabase,
+    })
+
+    await POST(postRequest({ first_name: 'Jamie', email: 'jamie@example.com' }))
+
+    expect(checkRateLimit).toHaveBeenCalledWith(
+      `collab-invite:hour:${USER_ID}`,
+      expect.objectContaining({ failClosed: true })
+    )
+    expect(checkRateLimit).toHaveBeenCalledWith(
+      `collab-invite:day:${USER_ID}`,
+      expect.objectContaining({ failClosed: true })
+    )
+  })
+
+  it('refuses with 429 when the limiter is unavailable', async () => {
+    const supabase = mockSupabase()
+    ;(createApiClient as jest.Mock).mockResolvedValue({
+      auth: { getUser: jest.fn(async () => ({ data: { user: { id: USER_ID } } })) },
+      ...supabase,
+    })
+    // Mirror the real helper's failure branch: fail-closed callers get "limited".
+    ;(checkRateLimit as jest.Mock).mockImplementation(
+      async (_key: string, opts?: { failClosed?: boolean }) => opts?.failClosed === true
+    )
+
+    const res = await POST(postRequest({ first_name: 'Jamie', email: 'jamie@example.com' }))
+
+    expect(res.status).toBe(429)
+    expect(sendCollaboratorInvite).not.toHaveBeenCalled()
   })
 })

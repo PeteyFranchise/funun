@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { createApiClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
+import { CONTRACT_BUCKET } from '@/lib/vault/documents'
 import type { DocumentType } from '@/types'
 import { readComposers } from '@/lib/metadata/schema'
 import { verifyContractPdf, type VerifyContext } from '@/lib/contracts/verify'
@@ -91,7 +92,7 @@ export async function POST(request: Request) {
   const bytes = Buffer.from(await file.arrayBuffer())
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-80)
   const path = `${user.id}/${projectId}/${Date.now()}-${safeName}`
-  const { error: upErr } = await supabase.storage.from('vault-contracts').upload(path, bytes, {
+  const { error: upErr } = await supabase.storage.from(CONTRACT_BUCKET).upload(path, bytes, {
     contentType: 'application/pdf',
     upsert: false,
   })
@@ -108,14 +109,16 @@ export async function POST(request: Request) {
     result = await verifyContractPdf(bytes.toString('base64'), ctx, aiProviderSignal())
     generationSucceeded = true
   } catch {
-    await supabase.storage.from('vault-contracts').remove([path])
+    await supabase.storage.from(CONTRACT_BUCKET).remove([path])
     return NextResponse.json({ error: 'Contract verification failed' }, { status: 502 })
   } finally {
     await finishAiUsage(supabase, admission.claimId, generationSucceeded)
   }
 
-  // Persist as an uploaded, verified document.
-  const { data: doc, error } = await supabase
+  // Persist as an uploaded, verified document. The service client writes the
+  // row because migration 245 lets only the service role set file_url. The
+  // project ownership check above and the user_id set here stand in for RLS.
+  const { data: doc, error } = await createServiceClient()
     .from('vault_documents')
     .insert({
       user_id: user.id,
@@ -134,7 +137,7 @@ export async function POST(request: Request) {
     .single()
 
   if (error) {
-    await supabase.storage.from('vault-contracts').remove([path])
+    await supabase.storage.from(CONTRACT_BUCKET).remove([path])
     return NextResponse.json({ error: 'Could not save the verified contract' }, { status: 500 })
   }
   return NextResponse.json({ data: { document: doc, result } })

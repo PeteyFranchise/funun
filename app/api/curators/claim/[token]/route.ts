@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email'
+import { esc } from '@/lib/email/esc'
 import { provisionIndustryAccount, DuplicateIndustryMemberError } from '@/lib/industry/createIndustryMember'
 
 // ─── POST /api/curators/claim/[token] ────────────────────────────────────
@@ -89,7 +90,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ to
 
     await sendEmail({
       ...emailPayload,
-      html: `<p>Sign in to your account:</p><p><a href="${existing.properties.action_link}">Sign in</a></p>`,
+      html: `<p>Sign in to your account:</p><p><a href="${esc(existing.properties.action_link)}">Sign in</a></p>`,
     })
 
     return NextResponse.json({ ok: true })
@@ -154,7 +155,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ to
   if (link?.properties?.action_link) {
     await sendEmail({
       ...emailPayload,
-      html: `<p>Your curator profile is now a Funūn Industry account. Sign in:</p><p><a href="${link.properties.action_link}">Sign in</a></p>`,
+      html: `<p>Your curator profile is now a Funūn Industry account. Sign in:</p><p><a href="${esc(link.properties.action_link)}">Sign in</a></p>`,
     })
   }
 

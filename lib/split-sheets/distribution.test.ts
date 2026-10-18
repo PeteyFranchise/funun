@@ -7,8 +7,8 @@ const BASE: BuildFanoutRowsInput = {
     { user_id: null, name: 'Cleo (no account)', email: 'cleo@example.com' },
   ],
   sheet: { id: 'sheet-1', vault_project_id: 'project-1' },
-  executedFileUrl: 'release-documents/sheet-1/executed.pdf',
-  auditTrailUrl: 'release-documents/sheet-1/certificate.pdf',
+  executedFileUrl: 'initiator-1/split-sheets/sheet-1/executed-envelope-1.pdf',
+  auditTrailUrl: 'initiator-1/split-sheets/sheet-1/certificate-envelope-1.pdf',
   completedAt: '2026-07-20T12:00:00.000Z',
   requestId: 'docuseal-submission-1',
 }

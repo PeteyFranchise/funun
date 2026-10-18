@@ -29,6 +29,7 @@ export async function POST(request: Request) {
     await checkRateLimit(`playbook-ask:${auth.user.id}`, {
       maxAttempts: 30,
       windowMs: 60 * 60 * 1000,
+      failClosed: true,
     })
   ) {
     return NextResponse.json(

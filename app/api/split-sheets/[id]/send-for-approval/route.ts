@@ -6,6 +6,8 @@ import {
   APPROVAL_TOKEN_EXPIRY_DAYS,
 } from '@/lib/split-sheets/approval'
 import { sendEmail } from '@/lib/email'
+import { esc } from '@/lib/email/esc'
+import { checkRateLimit } from '@/lib/security/rate-limit'
 
 // ─── POST /api/split-sheets/[id]/send-for-approval ───────────────────
 // Generates a per-party approval token and emails each party the link to
@@ -21,6 +23,11 @@ export async function POST(
     data: { user },
   } = await apiClient.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // Per-sender send limit: 20 per hour, fail-closed, before any token or email.
+  if (await checkRateLimit(`split-approval-send:${user.id}`, { windowMs: 60 * 60 * 1000, maxAttempts: 20, failClosed: true })) {
+    return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
+  }
 
   const { id } = await params
 
@@ -87,10 +94,14 @@ export async function POST(
   // ── 6. Send approval emails (best-effort) ─────────────────────────
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
   const songName = sheet.song_name as string
+  // User-supplied strings are escaped before landing in email HTML; the text part stays raw.
+  const songNameHtml = esc(songName)
+  // Subject is plain text: keep it on one line instead of HTML-escaping it.
+  const songNameSubject = songName.replace(/[\r\n]+/g, ' ')
 
   // Build a summary of all parties for the email body
   const splitSummaryRows = parties
-    .map(p => `<tr><td style="padding:4px 8px">${p.name}</td><td style="padding:4px 8px;text-align:right">${p.split_percentage}%</td></tr>`)
+    .map(p => `<tr><td style="padding:4px 8px">${esc(p.name)}</td><td style="padding:4px 8px;text-align:right">${esc(String(p.split_percentage))}%</td></tr>`)
     .join('')
   const splitSummaryHtml = `<table style="border-collapse:collapse;width:100%;max-width:400px"><tbody>${splitSummaryRows}</tbody></table>`
 
@@ -104,13 +115,13 @@ export async function POST(
 
     const result = await sendEmail({
       to: party.email,
-      subject: `Split sheet approval requested for "${songName}"`,
+      subject: `Split sheet approval requested for "${songNameSubject}"`,
       html: `
         <h2>You've been sent a split sheet for approval</h2>
-        <p>The song <strong>${songName}</strong> has the following proposed splits:</p>
+        <p>The song <strong>${songNameHtml}</strong> has the following proposed splits:</p>
         ${splitSummaryHtml}
         <p>Click the link below to approve or propose a different split:</p>
-        <p><a href="${approveUrl}" style="display:inline-block;padding:10px 20px;background:#818CF8;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Review split sheet</a></p>
+        <p><a href="${esc(approveUrl)}" style="display:inline-block;padding:10px 20px;background:#818CF8;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Review split sheet</a></p>
         <p style="color:#888;font-size:12px">This link expires in ${APPROVAL_TOKEN_EXPIRY_DAYS} days.</p>
       `,
       text: `Split sheet approval for "${songName}"\n\n${parties.map(p => `${p.name}: ${p.split_percentage}%`).join('\n')}\n\nReview: ${approveUrl}`,
