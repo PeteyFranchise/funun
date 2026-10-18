@@ -44,3 +44,8 @@ tmp/
 # pattern costs nothing and makes the accident structurally impossible.
 private/
 *.docx
+
+# Playwright: saved auth state (session cookies) and local run output.
+tests/e2e/.auth/
+playwright-report/
+test-results/
