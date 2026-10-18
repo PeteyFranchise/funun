@@ -33,13 +33,14 @@ export async function POST(request: Request) {
       const recipient = event.data.to?.[0] ?? event.data.email
       if (recipient) {
         const service = createServiceClient()
+        const normalized = recipient.trim().toLowerCase()
         // Curator emails are normalized to lowercase everywhere they're
         // written; match the same normalization here so casing differences
         // in what Resend reports don't silently match zero rows (WR-09).
         const { data: updated, error } = await service
           .from('curators')
           .update({ email_valid: false })
-          .eq('email', recipient.trim().toLowerCase())
+          .eq('email', normalized)
           .select('id')
 
         if (error) {
@@ -47,9 +48,37 @@ export async function POST(request: Request) {
           // the bounce because Resend retries only non-2xx deliveries.
           return NextResponse.json({ error: 'Could not record the hard bounce' }, { status: 500 })
         }
+
+        // App-wide suppression (GH #190): sendEmail() skips every address in
+        // email_suppressions, for any recipient class, not just curators.
+        // This runs AFTER the curator flag on purpose: if the table is
+        // missing (migration 243 unapplied) the curator invalidation that
+        // already worked must not regress. Both writes are idempotent, so a
+        // Resend retry after a failure here redoes them safely;
+        // ignoreDuplicates keeps the first event id on conflict. A missing
+        // table also 500s here, which is correct: Resend keeps retrying
+        // until the owner applies the migration, so no bounce is lost.
+        // Only the first recipient is suppressed: a bounce event is per
+        // recipient, and suppressing every `to` entry would over-suppress.
+        const { error: suppressionError } = await service
+          .from('email_suppressions')
+          .upsert(
+            {
+              email: normalized,
+              reason: 'hard_bounce',
+              source_event_id: headers['svix-id'] || null,
+            },
+            { onConflict: 'email', ignoreDuplicates: true }
+          )
+        if (suppressionError) {
+          return NextResponse.json({ error: 'Could not record the hard bounce' }, { status: 500 })
+        }
+
         if (!updated || updated.length === 0) {
-          // An address that is not in the curator directory is not a
-          // persistence failure and must not be retried forever.
+          // The suppression is already recorded above; only the curator flag
+          // had nothing to match. An address that is not in the curator
+          // directory is not a persistence failure and must not be retried
+          // forever.
           return NextResponse.json({ ok: true, ignored: true })
         }
       }
