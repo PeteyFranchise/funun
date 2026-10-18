@@ -1,4 +1,8 @@
-import { sendEmail } from './index'
+import {
+  normalizeEmailAddress,
+  resetSuppressionLookupReportThrottleForTests,
+  sendEmail,
+} from './index'
 
 // ─── sendEmail (27-CODEX-REVIEW.md follow-up #2 MEDIUM — idempotencyKey
 // passthrough) ─────────────────────────────────────────────────────────────
@@ -43,6 +47,7 @@ const ENV_BACKUP = { ...process.env }
 
 beforeEach(() => {
   jest.clearAllMocks()
+  resetSuppressionLookupReportThrottleForTests()
   suppressionResult = { data: [], error: null }
   createServiceClientMock.mockImplementation(() => ({ from: fromMock }))
   process.env ={ ...ENV_BACKUP, RESEND_API_KEY: 'test-key', RESEND_FROM_EMAIL: 'hello@funun.studio' }
@@ -173,6 +178,26 @@ describe('sendEmail suppression (GH #190)', () => {
     expect(captureExceptionMock).toHaveBeenCalledTimes(1)
   })
 
+  it('reports a persistent lookup outage to Sentry at most once a minute, but keeps sending', async () => {
+    suppressionResult = { data: null, error: { message: 'connection reset' } }
+    const nowSpy = jest.spyOn(Date, 'now')
+    try {
+      nowSpy.mockReturnValue(1_000_000)
+      await sendEmail({ ...base, to: 'a@example.com' })
+      nowSpy.mockReturnValue(1_000_000 + 59_000)
+      await sendEmail({ ...base, to: 'b@example.com' })
+      expect(captureExceptionMock).toHaveBeenCalledTimes(1)
+      expect(sendMock).toHaveBeenCalledTimes(2)
+
+      nowSpy.mockReturnValue(1_000_000 + 61_000)
+      await sendEmail({ ...base, to: 'c@example.com' })
+      expect(captureExceptionMock).toHaveBeenCalledTimes(2)
+      expect(sendMock).toHaveBeenCalledTimes(3)
+    } finally {
+      nowSpy.mockRestore()
+    }
+  })
+
   it('never touches the database when email is not configured', async () => {
     process.env.RESEND_API_KEY = ''
 
@@ -180,5 +205,16 @@ describe('sendEmail suppression (GH #190)', () => {
 
     expect(result).toEqual({ ok: false, error: 'Email not configured' })
     expect(createServiceClientMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('normalizeEmailAddress', () => {
+  it.each([
+    ['Plain@Example.com', 'plain@example.com'],
+    ['  padded@example.com  ', 'padded@example.com'],
+    ['Some One <Named@Example.com>', 'named@example.com'],
+    ['"Last, First" <Quoted@Example.com> ', 'quoted@example.com'],
+  ])('%p -> %p', (raw, expected) => {
+    expect(normalizeEmailAddress(raw)).toBe(expected)
   })
 })

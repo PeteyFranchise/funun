@@ -9,7 +9,8 @@
 -- sender reputation and Resend account standing.
 --
 -- WHAT: one app-wide suppression list. The webhook upserts a row on every
--- verified HardBounce event, for any address. sendEmail() in
+-- verified permanent bounce (Resend bounce type "Permanent") or spam
+-- complaint, for any address. sendEmail() in
 -- lib/email/index.ts reads this table before every send and skips
 -- suppressed recipients, so every caller is covered without being touched.
 --
@@ -54,6 +55,6 @@ ALTER TABLE public.email_suppressions ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.email_suppressions FROM PUBLIC, anon, authenticated;
 
 COMMENT ON TABLE public.email_suppressions IS
-  'App-wide list of hard-bounced email addresses (normalized lowercase). Written by the Resend webhook on HardBounce, read by sendEmail() before every send. Service-role only: RLS on with zero policies, all browser roles revoked. HUMAN-GATED: never `supabase db push` from an agent.';
+  'App-wide list of hard-bounced or complained-about email addresses (normalized lowercase). Written by the Resend webhook on a permanent bounce or spam complaint, read by sendEmail() before every send. Service-role only: RLS on with zero policies, all browser roles revoked. HUMAN-GATED: never `supabase db push` from an agent.';
 
 NOTIFY pgrst, 'reload schema';
