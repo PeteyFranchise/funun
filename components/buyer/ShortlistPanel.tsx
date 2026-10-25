@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { isReadWithheld } from '@/lib/deals/buyer-song-unit-read-withholding'
+import { syncContactHref } from '@/lib/sync-library/contact'
 import Link from 'next/link'
 import type { ShortlistEntry } from '@/lib/deals/shortlists'
 
@@ -82,7 +84,16 @@ export function ShortlistPanel({ initialEntries }: { initialEntries: ShortlistEn
                 No longer available
               </span>
             )}
-            {entry.stillAvailable && entry.clearance === 'clearance_required' && (
+            {/* 50.5 Task 2 — WITHHELD. This badge read the first exposed
+                sibling's clearance and showed it for the saved entry. With
+                `clearance` now null, say the state is being confirmed rather
+                than render nothing: a missing badge reads as "fine". */}
+            {entry.stillAvailable && isReadWithheld('shortlist_availability') && (
+              <span className="rounded-full border border-[color:var(--line)] bg-[var(--wash-2)] px-2.5 py-0.5 text-[11px] font-semibold text-[color:var(--ink-3)]">
+                Clearance being confirmed
+              </span>
+            )}
+            {entry.stillAvailable && !isReadWithheld('shortlist_availability') && entry.clearance === 'clearance_required' && (
               <span className="rounded-full border border-[color:var(--line)] bg-[var(--wash-2)] px-2.5 py-0.5 text-[11px] font-semibold text-[color:var(--ink-3)]">
                 Contact Funūn to clear
               </span>
@@ -90,7 +101,17 @@ export function ShortlistPanel({ initialEntries }: { initialEntries: ShortlistEn
           </div>
 
           <div className="mt-4 flex items-center gap-2">
-            {entry.stillAvailable ? (
+            {/* 50.5 Task 2 — WITHHELD. This link carried ONLY a project id into
+                the request composer, which then offered every song on it. That
+                is the alternate multi-song path. Route to a person instead. */}
+            {entry.stillAvailable && isReadWithheld('shortlist_availability') ? (
+              <a
+                href={syncContactHref(`Licensing enquiry: ${entry.projectTitle ?? 'saved song'}`)}
+                className="rounded-lg border border-[color:var(--line)] bg-[var(--wash-2)] px-2.5 py-1.5 text-[11px] font-semibold text-[color:var(--indigo)] transition hover:bg-[var(--wash)]"
+              >
+                Email us about this
+              </a>
+            ) : entry.stillAvailable ? (
               <Link
                 href={`/sync/requests/new?project=${entry.vaultProjectId}`}
                 className="rounded-lg border border-[color:var(--line)] bg-[var(--wash-2)] px-2.5 py-1.5 text-[11px] font-semibold text-[color:var(--indigo)] transition hover:bg-[var(--wash)]"

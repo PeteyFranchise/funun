@@ -27,6 +27,11 @@ export const WITHHELD_READ_SURFACES = [
   'staff_sibling_note_fallback',
   'usage_cleared_filter',
   'project_readiness_figure',
+  'license_request_modal',
+  'shortlist_availability',
+  'artist_project_terms_links',
+  'buyer_request_identity',
+  'selects_ai_draft',
 ] as const
 
 export type WithheldReadSurface = (typeof WITHHELD_READ_SURFACES)[number]
@@ -51,3 +56,18 @@ export const STAFF_RIGHTS_DETAIL_WITHHELD = 'Rights detail for this song is bein
 
 /** Buyer: shown where a clearance badge would otherwise sit. */
 export const BUYER_CLEARANCE_WITHHELD = 'Clearance required'
+
+/**
+ * Buyer: replaces the multi-song licence form.
+ *
+ * The form let a buyer tick several songs at once, which is not how these deals
+ * are done, and the write route now refuses the POST anyway. Showing the form
+ * and failing after it is filled in is worse than not showing it: say what is
+ * happening and give a way through.
+ */
+export const LICENCE_REQUEST_WITHHELD_HEADING = 'Licensing requests are paused'
+export const LICENCE_REQUEST_WITHHELD_BODY =
+  'We are moving licensing onto a song by song footing so every request names one exact recording. Email us about this song and we will pick it up by hand in the meantime.'
+
+/** Staff/artist: stands in for a project-level terms link or a project title. */
+export const BEING_CONFIRMED = 'Being confirmed'

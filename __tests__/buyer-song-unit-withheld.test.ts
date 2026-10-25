@@ -189,3 +189,59 @@ describe('50.5 Task 2 — the withholding inventory is enumerated, not implied',
     for (const s of WITHHELD_READ_SURFACES) expect(isReadWithheld(s)).toBe(true)
   })
 })
+
+// ─── Component surfaces: source locks, because there is no jsdom ───────────
+// jest.config.js:49 sets testEnvironment 'node', so a rendered modal, badge or
+// link cannot be observed here. These assert the CALL SITE exists in each
+// component, which is weaker than a render test and is stated as such: the
+// rendered result is owner-verified in a browser (see the plan's <tests>).
+//
+// Every assertion strips comments first. The explanatory comments in these
+// files legitimately name the surfaces, and a grep that counts them would
+// report a call site that is not there — the exact weak-assertion shape this
+// repo has shipped twice.
+describe('50.5 Task 2 — component withholding call sites exist', () => {
+  const { readFileSync } = jest.requireActual('fs') as typeof import('fs')
+  const { join } = jest.requireActual('path') as typeof import('path')
+
+  const codeOf = (rel: string) =>
+    readFileSync(join(process.cwd(), rel), 'utf8')
+      .split('\n')
+      .filter(l => {
+        const t = l.trimStart()
+        return !t.startsWith('//') && !t.startsWith('*') && !t.startsWith('/*') && !t.startsWith('{/*')
+      })
+      .join('\n')
+
+  const CASES: [string, string][] = [
+    ['components/buyer/CatalogBrowserLight.tsx', 'license_request_modal'],
+    ['components/buyer/ShortlistPanel.tsx', 'shortlist_availability'],
+    ['app/(artist)/deals/page.tsx', 'artist_project_terms_links'],
+    ['components/deals/ArtistDealsList.tsx', 'artist_project_terms_links'],
+    ['components/buyer/OrgRequestDashboard.tsx', 'buyer_request_identity'],
+    ['components/admin/DealsQueue.tsx', 'project_readiness_figure'],
+    ['components/admin/DealDetailPanel.tsx', 'project_readiness_figure'],
+    ['components/buyer/CatalogBrowser.tsx', 'usage_cleared_filter'],
+  ]
+
+  it.each(CASES)('%s gates on %s', (file, surface) => {
+    const code = codeOf(file)
+    expect(code).toContain(`isReadWithheld('${surface}')`)
+  })
+
+  it('NEGATIVE CONTROL: the comment stripper does not eat real code', () => {
+    // If the stripper removed executable lines, every assertion above would be
+    // checking a shrunken file and could pass or fail for the wrong reason.
+    const code = codeOf('components/buyer/ShortlistPanel.tsx')
+    expect(code).toContain('export')
+    expect(code.length).toBeGreaterThan(500)
+    expect(code).not.toContain('50.5 Task 2 — WITHHELD')
+  })
+
+  it('the multi-song licence form is gated, not merely present', () => {
+    const code = codeOf('components/buyer/CatalogBrowserLight.tsx')
+    // The form still exists for when the flag lifts, but it must be behind the
+    // negated check — otherwise both panels render at once.
+    expect(code).toContain("!isReadWithheld('license_request_modal')")
+  })
+})

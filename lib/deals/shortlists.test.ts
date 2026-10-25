@@ -193,8 +193,20 @@ describe('loadShortlistEntries — D-11: clearance work does not make an entry u
 
     const result = await loadShortlistEntries(service as never, 'org-1')
 
+    // D-11's substance is UNCHANGED and still asserted: clearance work in
+    // progress does not remove the entry.
     expect(result[0].stillAvailable).toBe(true)
-    expect(result[0].clearance).toBe('clearance_required')
+
+    // 50.5 Task 2 — the clearance VALUE is now withheld. It was derived from
+    // `exposedTracks[0]`, whichever sibling sorted first, and published as the
+    // saved entry's answer. The save is keyed to a PROJECT, so there is no song
+    // to answer for: a buyer who saved an EP never told us which recording they
+    // meant. The panel says "Clearance being confirmed" instead of labelling a
+    // song chosen on their behalf.
+    //
+    // This assertion previously read `.toBe('clearance_required')`. Updated
+    // rather than deleted so the reversal is visible.
+    expect(result[0].clearance).toBeNull()
   })
 
   it('goes UNAVAILABLE when the listing was withdrawn — the thing that really does remove it', async () => {
@@ -237,5 +249,42 @@ describe('loadShortlistEntries — D-11: clearance work does not make an entry u
     const result = await loadShortlistEntries(service as never, 'org-1')
 
     expect(result[0].stillAvailable).toBe(false)
+  })
+})
+
+// ─── 50.5 Task 2 — NEGATIVE CONTROL for the withheld clearance ─────────────
+// The assertion above (clearance === null) is only meaningful if the null comes
+// from the withholding rather than from the fixture producing nothing. This
+// loads the module with isReadWithheld forced false and proves the
+// representative-sibling clearance is exactly what the withholding stands in
+// front of. If someone deletes the call site, this test keeps passing and the
+// one above starts failing — which is the pair working as intended.
+describe('50.5 Task 2 — the withheld clearance is produced BY the withholding', () => {
+  it('with the flag forced off, the first exposed sibling supplies the answer again', async () => {
+    const project = projectRow({
+      vault_documents: [
+        { id: 'doc-1', type: 'copyright_registration', status: 'signed', track_id: null, document_data: null },
+        { id: 'doc-2', type: 'hire_right', status: 'signed', track_id: null, document_data: null },
+        { id: 'doc-3', type: 'split_sheet', status: 'pending', track_id: null, document_data: null },
+      ],
+    })
+    const service = makeService({
+      shortlists: [shortlistRow()],
+      projects: [project],
+      admittedProjectIds: ['proj-1'],
+    })
+
+    let open!: typeof import('./shortlists')
+    await jest.isolateModulesAsync(async () => {
+      jest.doMock('@/lib/deals/buyer-song-unit-read-withholding', () => ({
+        ...jest.requireActual('@/lib/deals/buyer-song-unit-read-withholding'),
+        isReadWithheld: () => false,
+      }))
+      open = await import('./shortlists')
+    })
+
+    const result = await open.loadShortlistEntries(service as never, 'org-1')
+    expect(result[0].stillAvailable).toBe(true)
+    expect(result[0].clearance).toBe('clearance_required')
   })
 })

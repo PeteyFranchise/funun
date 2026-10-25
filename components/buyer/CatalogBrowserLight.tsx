@@ -1,6 +1,7 @@
 'use client'
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { isReadWithheld, LICENCE_REQUEST_WITHHELD_HEADING, LICENCE_REQUEST_WITHHELD_BODY } from '@/lib/deals/buyer-song-unit-read-withholding'
 import { useRouter } from 'next/navigation'
 import type { StaffRole } from '@/lib/admin/staff-role'
 import {
@@ -747,8 +748,38 @@ export function CatalogBrowserLight({
         </div>
       )}
 
+      {/* ── 50.5 Task 2 — WITHHELD: the multi-song licence form ──
+          The form below offers a checkbox per sibling song, so one request
+          could name several recordings. These deals are done one song at a
+          time (D-12), and the write route already refuses the POST. Rendering
+          the form and failing after a buyer fills it in is the worst of the
+          three options, so this stands in front of it and gives a real way
+          through. Removed when the request names a captured song. */}
+      {modalRow && isReadWithheld('license_request_modal') && (
+        <div className="scrim open" onClick={() => setModalId(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="mh">
+              <div className="ma2" style={modalRow.coverUrl ? { backgroundImage: `url('${modalRow.coverUrl}')` } : { background: modalRow.gradient }} />
+              <div><h2>{LICENCE_REQUEST_WITHHELD_HEADING}</h2><p>{modalRow.title} · by {modalRow.artist}</p></div>
+              <button className="x" type="button" aria-label="Close" onClick={() => setModalId(null)}><svg className="icn" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
+            </div>
+            <div className="mb2">
+              <p className="lead">{LICENCE_REQUEST_WITHHELD_BODY}</p>
+            </div>
+            <div className="mf">
+              <a
+                className="send"
+                href={syncContactHref(`Licensing enquiry: ${modalRow.title}`)}
+              >
+                Email us about this song
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── slice 2b: License request modal ── */}
-      {modalRow && (
+      {modalRow && !isReadWithheld('license_request_modal') && (
         <div className="scrim open" onClick={() => setModalId(null)}>
           <form className="modal" onClick={e => e.stopPropagation()} onSubmit={submitRequest}>
             <div className="mh">

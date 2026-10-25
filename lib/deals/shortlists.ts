@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { isReadWithheld } from '@/lib/deals/buyer-song-unit-read-withholding'
 import type { VaultProjectType, SyncListingStatus } from '@/types'
 import { computeStage3 } from '@/lib/vault/stage3'
 import { readinessItemsForProject } from '@/lib/vault/readiness'
@@ -195,7 +196,13 @@ export async function loadShortlistEntries(service: SupabaseClient, orgId: strin
       // the 2026-09-10 note that used to live here was right that assembling
       // one unconditionally was dead work, and that stays true: a shortlist row
       // for an unavailable project needs no clearance answer.
-      const representative = exposedTracks[0]
+      // 50.5 Task 2 — WITHHELD. `exposedTracks[0]` is whichever sibling happens
+      // to sort first, and its clearance was published as the saved entry's
+      // answer. The save is keyed to a PROJECT, so there is no song to answer
+      // for: a buyer who saved an EP did not tell us which recording they
+      // meant. Leave `clearance` null and let the panel say so, rather than
+      // pick a song on their behalf and label it.
+      const representative = isReadWithheld('shortlist_availability') ? undefined : exposedTracks[0]
       if (representative) {
         const stage3 = computeStage3(
           project,

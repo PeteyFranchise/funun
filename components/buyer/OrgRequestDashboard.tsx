@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { isReadWithheld } from '@/lib/deals/buyer-song-unit-read-withholding'
 import Link from 'next/link'
 import {
   DEAL_STAGE_VALUES,
@@ -104,7 +105,18 @@ export function OrgRequestDashboard({ rows }: { rows: OrgRequestRow[] }) {
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
+                  {/* 50.5 Task 2 — WITHHELD identity. A request is about ONE
+                      song, but `license_requests` is keyed to a project and
+                      the song sits in a child table, so this row has only the
+                      project's title to show. Label it rather than let a buyer
+                      read a project name as the song they asked for. The song
+                      name arrives when the request names a captured song. */}
                   <p className="text-sm font-semibold text-[color:var(--ink)]">{projectTitle}</p>
+                  {isReadWithheld('buyer_request_identity') && (
+                    <p className="text-[11px] text-[color:var(--ink-3)]">
+                      Song details being confirmed
+                    </p>
+                  )}
                   {/* Dual-level attribution (D-13a): who on the org filed it. */}
                   {submitterName && (
                     <p className="text-[11px] text-[color:var(--ink-3)]">Requested by {submitterName}</p>

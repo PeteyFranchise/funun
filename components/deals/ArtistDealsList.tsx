@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { isReadWithheld } from '@/lib/deals/buyer-song-unit-read-withholding'
 import {
   DEAL_STAGE_LABELS,
   USAGE_TYPE_LABELS,
@@ -113,14 +114,20 @@ export function ArtistDealsList({ rows }: { rows: ArtistDealRow[] }) {
             </span>
           </div>
 
-          <div className="mt-3">
-            <Link
-              href={`/vault/${request.vault_project_id}/rights`}
-              className="text-[11px] font-medium text-indigo-300 transition hover:text-indigo-200"
-            >
-              Review pre-cleared terms →
-            </Link>
-          </div>
+          {/* 50.5 Task 2 — WITHHELD. This pointed at the PROJECT's Rights
+              page, where terms cover every song on the project at once. A deal
+              is about one song, so the link answered a different question than
+              the row it sat under. */}
+          {!isReadWithheld('artist_project_terms_links') && (
+            <div className="mt-3">
+              <Link
+                href={`/vault/${request.vault_project_id}/rights`}
+                className="text-[11px] font-medium text-indigo-300 transition hover:text-indigo-200"
+              >
+                Review pre-cleared terms →
+              </Link>
+            </div>
+          )}
         </div>
       ))}
     </div>
