@@ -29,7 +29,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@docuseal/react": "^1.0.75",
     "@react-pdf/renderer": "^4.5.1",
-    "@sentry/nextjs": "^10.70.0",
+    "@sentry/nextjs": "^10.75.2",
     "@stripe/stripe-js": "^4.0.0",
     "@supabase/ssr": "0.10.0",
     "@supabase/supabase-js": "2.109.0",
