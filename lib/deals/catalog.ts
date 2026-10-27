@@ -537,6 +537,13 @@ export type CatalogCard = {
   vocal: string
   instruments: string[]
   rights: CatalogRightsCode
+  /**
+   * 50.5 Task 2 — true while the clearance answer is WITHHELD rather than
+   * computed. Distinct from `rights` on purpose: overloading 'req' made the
+   * withheld and open paths indistinguishable, so deleting the call site
+   * changed nothing a test could see.
+   */
+  rightsWithheld?: boolean
   // 2026-10-11 (owner decision D-11): `clearance` is carried PER TRACK because
   // clearance is a per-track answer, and because the two Selects surfaces that
   // flatten this array into track rows must read the right one without either

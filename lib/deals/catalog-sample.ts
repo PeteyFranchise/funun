@@ -66,6 +66,7 @@ export function mapCardsToLightRows(cards: CatalogCard[]): CatalogRow[] {
     // not 'ok' maps to 'req' here. Internal partial progress never reaches a
     // buyer as its own label.
     rights: c.rights === 'ok' ? 'ok' : 'req',
+    rightsWithheld: c.rightsWithheld,
     dynamics: 'steady' as const,
     mood: c.mood,
     vocal: c.vocal,

@@ -69,8 +69,14 @@ export function DealsQueue({ initialRows }: { initialRows: AdminDealRow[] }) {
   const [unassignedOnly, setUnassignedOnly] = useState(false)
 
   const visibleRows = initialRows.filter(row => {
-    if (matchFilter === 'unmatched' && row.request.matched_precleared) return false
-    if (matchFilter === 'matched' && !row.request.matched_precleared) return false
+    // 50.5 Task 2 — WITHHELD. `matched_precleared` is written from PROJECT
+    // terms, so a match proven for one sibling can hide or surface a deal
+    // about a different song. With the filter withheld, queue membership must
+    // not depend on it at all.
+    if (!isReadWithheld('matched_precleared')) {
+      if (matchFilter === 'unmatched' && row.request.matched_precleared) return false
+      if (matchFilter === 'matched' && !row.request.matched_precleared) return false
+    }
     if (stageFilter && row.request.stage !== stageFilter) return false
     if (unassignedOnly && row.request.owner_id) return false
     return true
@@ -176,14 +182,20 @@ export function DealsQueue({ initialRows }: { initialRows: AdminDealRow[] }) {
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
+                    {/* 50.5 Task 2 — WITHHELD: a project-level terms match
+                        labelled as this song's commercial conclusion. */}
                     <span
                       className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${
-                        request.matched_precleared
-                          ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300'
-                          : 'border-amber-400/30 bg-amber-400/10 text-amber-300'
+                        isReadWithheld('matched_precleared')
+                          ? 'border-white/15 bg-white/5 text-white/50'
+                          : request.matched_precleared
+                            ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300'
+                            : 'border-amber-400/30 bg-amber-400/10 text-amber-300'
                       }`}
                     >
-                      {request.matched_precleared ? 'Pre-cleared match' : 'Needs negotiation'}
+                      {isReadWithheld('matched_precleared')
+                        ? 'Terms match being confirmed'
+                        : request.matched_precleared ? 'Pre-cleared match' : 'Needs negotiation'}
                     </span>
                     <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${STAGE_STYLES[request.stage]}`}>
                       {DEAL_STAGE_LABELS[request.stage]}

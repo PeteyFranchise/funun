@@ -52,6 +52,12 @@ export type ShortlistEntry = {
   savedAt: string
   /** Is ANY track on this project still exposed in The Crate? */
   stillAvailable: boolean
+  /**
+   * 50.5 Task 2 — availability could not be computed, as opposed to being
+   * computed as false. Distinct on purpose: "No longer available" is a claim,
+   * and we are not in a position to make it about a save that names a project.
+   */
+  availabilityWithheld?: boolean
   /** The representative exposed track's clearance; null when none is exposed. */
   clearance: TrackClearance['status'] | null
 }
@@ -190,7 +196,15 @@ export async function loadShortlistEntries(service: SupabaseClient, orgId: strin
           )
         : []
 
-      stillAvailable = exposedTracks.length > 0
+      // 50.5 Task 2 — WITHHELD. `exposedTracks.length > 0` makes the saved
+      // entry available when ANY sibling is exposed, so a song the buyer never
+      // chose can keep their save alive. The save names a PROJECT, so there is
+      // no song whose availability we could report. Fail closed on the boolean
+      // and carry the distinction separately, so the panel says "being
+      // confirmed" rather than the false claim "No longer available".
+      stillAvailable = isReadWithheld('shortlist_availability')
+        ? false
+        : exposedTracks.length > 0
 
       // The Stage3Result is computed ONLY when there is something to label —
       // the 2026-09-10 note that used to live here was right that assembling
@@ -240,6 +254,7 @@ export async function loadShortlistEntries(service: SupabaseClient, orgId: strin
       savedBy: saverNameById.get(r.created_by) ?? null,
       savedAt: r.created_at,
       stillAvailable,
+      availabilityWithheld: isReadWithheld('shortlist_availability') || undefined,
       clearance,
     }
   })

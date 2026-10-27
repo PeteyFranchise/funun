@@ -32,6 +32,10 @@ export const WITHHELD_READ_SURFACES = [
   'artist_project_terms_links',
   'buyer_request_identity',
   'selects_ai_draft',
+  'buyer_catalogue_row',
+  'simulated_playback',
+  'matched_precleared',
+  'request_composer',
 ] as const
 
 export type WithheldReadSurface = (typeof WITHHELD_READ_SURFACES)[number]
@@ -54,8 +58,16 @@ export function isReadWithheld(surface: WithheldReadSurface): boolean {
 /** Staff: replaces the project-wide "n/m required rights documents signed". */
 export const STAFF_RIGHTS_DETAIL_WITHHELD = 'Rights detail for this song is being confirmed'
 
-/** Buyer: shown where a clearance badge would otherwise sit. */
-export const BUYER_CLEARANCE_WITHHELD = 'Clearance required'
+/**
+ * Buyer: the badge's withheld state.
+ *
+ * It must NOT reuse 'Clearance required'. That string asserts a negative
+ * outcome, and reusing it made the withholding indistinguishable from the open
+ * path in both the UI and the tests — a deleted call site changed nothing
+ * observable. `rightsWithheld` on the row is the distinct signal; this is its
+ * label.
+ */
+export const BUYER_CLEARANCE_WITHHELD = 'Clearance status being confirmed'
 
 /**
  * Buyer: replaces the multi-song licence form.
@@ -66,8 +78,20 @@ export const BUYER_CLEARANCE_WITHHELD = 'Clearance required'
  * happening and give a way through.
  */
 export const LICENCE_REQUEST_WITHHELD_HEADING = 'Licensing requests are paused'
+// NOT "this song": the row this panel opens from is still a project, so saying
+// "this song" asserts an identity the data does not carry. Say what is true.
 export const LICENCE_REQUEST_WITHHELD_BODY =
-  'We are moving licensing onto a song by song footing so every request names one exact recording. Email us about this song and we will pick it up by hand in the meantime.'
+  'We are moving licensing onto a song by song footing so every request names one exact recording. Email us about what you are after and we will pick it up by hand.'
 
 /** Staff/artist: stands in for a project-level terms link or a project title. */
 export const BEING_CONFIRMED = 'Being confirmed'
+
+/**
+ * Buyer: the catalogue itself, while every row is still project-shaped.
+ *
+ * Distinct from the genuine zero-rows state. "Nothing in here yet" would be a
+ * lie if rows exist and are being held back.
+ */
+export const CATALOGUE_WITHHELD_HEADING = 'The catalogue is being rebuilt song by song'
+export const CATALOGUE_WITHHELD_BODY =
+  'Listings are moving from releases to individual recordings so every row names one exact song. Tell us what you are looking for and we will come to you with songs that fit.'

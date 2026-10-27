@@ -114,7 +114,7 @@ export default async function DealsPage() {
             cannot help them. */}
         <p className="mt-1 text-sm text-white/50">
           {isReadWithheld('artist_project_terms_links')
-            ? 'Every license request for your songs, with its current deal stage. Funūn handles negotiation and buyer communication for you. Pre-cleared terms are moving onto a song by song footing, so terms setting is paused for a moment. Nothing here is affected and we will let you know the day it opens back up.'
+            ? 'Every license request for your songs, with its current deal stage. Funūn handles negotiation and buyer communication for you. Pre-cleared terms are moving onto a song by song footing, so terms setting is paused. We will let you know when it opens back up.'
             : 'Every license request across your projects, with its current deal stage. Funūn handles negotiation and buyer communication for you. Set pre-cleared terms on a song to help requests move faster.'}
         </p>
       </div>

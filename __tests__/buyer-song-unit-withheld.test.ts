@@ -111,27 +111,45 @@ const FILTER = buildCatalogFilter({})
 // reaches it.
 const STAFF = 'anr' as const
 
-describe('50.5 Task 2 — buyer clearance badge is withheld, not borrowed', () => {
-  it('withheld: the card reads Clearance required', async () => {
+describe('50.5 Task 2 — the buyer catalogue row is withheld entirely', () => {
+  // Codex, rev5: "Do not repair this only with softer modal copy." The row's
+  // id, title, genre and artwork all come from vault_projects, and the UI
+  // renders them under "Song / Artist". The row IS the defect.
+  it('withheld: a buyer gets zero rows even though a project is exposed', async () => {
     const { loadCatalogPage } = await loadQuery(true)
     const res = await loadCatalogPage(makeService() as never, null, FILTER, 1)
-    expect(res.data.length).toBeGreaterThan(0)
-    expect(res.data[0].rights).toBe('req')
+    expect(res.data).toEqual([])
   })
 
-  it('NEGATIVE CONTROL: with the flag forced off the badge is computed again', async () => {
-    // If this does not reach the real code path, the test above proves nothing
-    // about the call site — it would pass over a deleted one. The assertion is
-    // that the WITHHELD load and the OPEN load are produced by different code,
-    // which is only true while the call site exists.
+  it('NEGATIVE CONTROL: with the flag forced off the project-shaped rows return', async () => {
+    // This is the difference the withholding causes. If the call site is
+    // deleted, the withheld test above starts returning rows and fails.
     const { loadCatalogPage } = await loadQuery(false)
     const res = await loadCatalogPage(makeService() as never, null, FILTER, 1)
     expect(res.data.length).toBeGreaterThan(0)
-    // The open path runs clearanceToCatalogRights. Today that also returns
-    // 'req' because aiProvenance is passed null, so asserting a DIFFERENT value
-    // would be asserting a bug. What is provable, and what matters, is that the
-    // open path produced the value rather than the constant.
-    expect(['ok', 'req']).toContain(res.data[0].rights)
+  })
+
+  it('STAFF keep their rows: they have a queue to work', async () => {
+    const { loadCatalogPage } = await loadQuery(true)
+    const res = await loadCatalogPage(makeService() as never, null, FILTER, 1, STAFF)
+    expect(res.data.length).toBeGreaterThan(0)
+  })
+})
+
+describe('50.5 Task 2 — the withheld clearance badge is DISTINCT, not overloaded', () => {
+  // The first version asserted 'req' on both branches, so deleting the call
+  // site changed nothing and the negative control could not fail. Codex caught
+  // it. `rightsWithheld` is the distinct signal that makes it falsifiable.
+  it('withheld: the card carries rightsWithheld', async () => {
+    const { loadCatalogPage } = await loadQuery(true)
+    const res = await loadCatalogPage(makeService() as never, null, FILTER, 1, STAFF)
+    expect(res.data[0].rightsWithheld).toBe(true)
+  })
+
+  it('NEGATIVE CONTROL: with the flag forced off the signal is absent', async () => {
+    const { loadCatalogPage } = await loadQuery(false)
+    const res = await loadCatalogPage(makeService() as never, null, FILTER, 1, STAFF)
+    expect(res.data[0].rightsWithheld).toBeUndefined()
   })
 })
 
@@ -243,5 +261,59 @@ describe('50.5 Task 2 — component withholding call sites exist', () => {
     // The form still exists for when the flag lifts, but it must be behind the
     // negated check — otherwise both panels render at once.
     expect(code).toContain("!isReadWithheld('license_request_modal')")
+  })
+})
+
+// ─── 50.5 Task 2 — the withheld copy promises nothing ──────────────────────
+// Three rules, each of which I broke on the first pass and Codex caught:
+//   1. no timing. "paused for a moment", "soon", "shortly" all imply a date.
+//   2. no "fine" claim. "Nothing here is affected" asserts a clean state the
+//      implementation has not established.
+//   3. no "this song" over a project-shaped row. The catalogue row is still a
+//      project, so naming it a song is the ninth conflation in words.
+// Codex's own write-freeze copy breaks rule 1 ("Please try again soon"); that
+// file is theirs and is excluded here rather than silently exempted.
+describe('50.5 Task 2 — withheld copy makes no promises', () => {
+  const { readFileSync } = jest.requireActual('fs') as typeof import('fs')
+  const { join } = jest.requireActual('path') as typeof import('path')
+  const read = (p: string) => readFileSync(join(process.cwd(), p), 'utf8')
+
+  const COPY_FILES = [
+    'lib/deals/buyer-song-unit-read-withholding.ts',
+    'app/(artist)/deals/page.tsx',
+    'components/buyer/ShortlistPanel.tsx',
+    'components/admin/DealsQueue.tsx',
+    'app/sync/requests/new/page.tsx',
+  ]
+
+  // Strings only: a comment may legitimately discuss the word "soon" while
+  // explaining why it is banned. Match quoted literals, not prose.
+  const stringsIn = (src: string): string[] => [
+    ...(src.match(/'[^'\n]{12,}'/g) ?? []),
+    ...(src.match(/"[^"\n]{12,}"/g) ?? []),
+  ]
+
+  it.each(COPY_FILES)('%s promises no timing', file => {
+    const offenders = stringsIn(read(file)).filter(s =>
+      /\b(soon|shortly|for a moment|in a few|by (?:monday|friday|next)|within \d)\b/i.test(s)
+    )
+    expect(offenders).toEqual([])
+  })
+
+  it.each(COPY_FILES)('%s claims nothing is affected', file => {
+    const offenders = stringsIn(read(file)).filter(s =>
+      /nothing (?:here )?is affected|nothing has changed|no impact/i.test(s)
+    )
+    expect(offenders).toEqual([])
+  })
+
+  it('NEGATIVE CONTROL: the matchers fire on real offenders', () => {
+    // Without this the two tests above pass trivially if `stringsIn` returns
+    // nothing — which is exactly how a green check buys false confidence.
+    const poisoned = "const a = 'we will be back soon'\nconst b = 'Nothing here is affected'"
+    const found = stringsIn(poisoned)
+    expect(found.length).toBe(2)
+    expect(found.some(s => /\bsoon\b/i.test(s))).toBe(true)
+    expect(found.some(s => /nothing (?:here )?is affected/i.test(s))).toBe(true)
   })
 })

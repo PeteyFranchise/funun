@@ -10,6 +10,22 @@ import { loadBlockedIds, BLOCK_LOOKUP_FAILED } from '@/lib/green-room/discover'
 // no account can neither block nor be blocked) while leaving the
 // authenticated block-exclusion path unchanged.
 
+// ─── 50.5 Task 2 ───────────────────────────────────────────────────────────
+// This suite tests what loadCatalogPage COMPUTES: the six-item entry gate,
+// per-track exposure, admitted-track descriptors, blocked owners. Phase 50.5
+// separately WITHHOLDS the buyer row, because every row is still project-
+// shaped, so with withholding live a buyer-mode call returns zero rows and
+// fourteen logic tests here would assert nothing while still printing green.
+//
+// Forcing reads open keeps these honest: the logic is still verified, and the
+// withholding has its own suite with its own negative controls
+// (__tests__/buyer-song-unit-withheld.test.ts), where deleting a call site
+// provably fails. Remove this mock when the row is song-shaped.
+jest.mock('@/lib/deals/buyer-song-unit-read-withholding', () => ({
+  ...jest.requireActual('@/lib/deals/buyer-song-unit-read-withholding'),
+  isReadWithheld: () => false,
+}))
+
 jest.mock('@/lib/green-room/discover', () => ({
   // requireActual keeps BLOCK_LOOKUP_FAILED real so the assertion below
   // pins the shipped constant rather than a retyped copy of it.

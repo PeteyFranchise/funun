@@ -150,7 +150,15 @@ describe('loadShortlistEntries — sync-library admission gate', () => {
     const result = await loadShortlistEntries(service as never, 'org-1')
 
     expect(result).toHaveLength(1)
-    expect(result[0].stillAvailable).toBe(true)
+    // 50.5 Task 2 — availability is WITHHELD, and this test is the reason it
+    // had to be. `stillAvailable` was true because SOME track on the project
+    // was admitted, which is the any-sibling rule: a song the buyer never
+    // chose kept their save alive. The entry carries the distinction so the
+    // panel says the recording is being confirmed rather than the false claim
+    // "No longer available". The open-path behaviour is still asserted, in the
+    // negative control at the end of this file.
+    expect(result[0].stillAvailable).toBe(false)
+    expect(result[0].availabilityWithheld).toBe(true)
   })
 
   it('marks stillAvailable false when no track on the project is admitted', async () => {
@@ -193,9 +201,12 @@ describe('loadShortlistEntries — D-11: clearance work does not make an entry u
 
     const result = await loadShortlistEntries(service as never, 'org-1')
 
-    // D-11's substance is UNCHANGED and still asserted: clearance work in
-    // progress does not remove the entry.
-    expect(result[0].stillAvailable).toBe(true)
+    // D-11's substance is unchanged as a RULE, and is asserted on the open
+    // path in the negative control at the end of this file. Here availability
+    // is withheld, so the honest assertion is that no availability claim is
+    // made at all rather than that the entry is available.
+    expect(result[0].stillAvailable).toBe(false)
+    expect(result[0].availabilityWithheld).toBe(true)
 
     // 50.5 Task 2 — the clearance VALUE is now withheld. It was derived from
     // `exposedTracks[0]`, whichever sibling sorted first, and published as the
@@ -284,7 +295,10 @@ describe('50.5 Task 2 — the withheld clearance is produced BY the withholding'
     })
 
     const result = await open.loadShortlistEntries(service as never, 'org-1')
+    // Both halves of the withholding, proven to come FROM the withholding:
+    // availability returns, and so does the representative sibling's clearance.
     expect(result[0].stillAvailable).toBe(true)
+    expect(result[0].availabilityWithheld).toBeUndefined()
     expect(result[0].clearance).toBe('clearance_required')
   })
 })

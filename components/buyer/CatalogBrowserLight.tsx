@@ -1,7 +1,14 @@
 'use client'
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import { isReadWithheld, LICENCE_REQUEST_WITHHELD_HEADING, LICENCE_REQUEST_WITHHELD_BODY } from '@/lib/deals/buyer-song-unit-read-withholding'
+import {
+  isReadWithheld,
+  LICENCE_REQUEST_WITHHELD_HEADING,
+  LICENCE_REQUEST_WITHHELD_BODY,
+  BUYER_CLEARANCE_WITHHELD,
+  CATALOGUE_WITHHELD_HEADING,
+  CATALOGUE_WITHHELD_BODY,
+} from '@/lib/deals/buyer-song-unit-read-withholding'
 import { useRouter } from 'next/navigation'
 import type { StaffRole } from '@/lib/admin/staff-role'
 import {
@@ -64,6 +71,8 @@ export type CatalogRow = {
   length: string
   versions: number
   rights: CatalogRights
+  /** 50.5 Task 2 — the clearance answer is withheld, not computed. */
+  rightsWithheld?: boolean
   dynamics: Dynamics
   mood: string
   vocal: string
@@ -230,7 +239,17 @@ function DynGlyph({ shape }: { shape: Dynamics }) {
 
 // Renders the two buyer states. Both are reachable and both are honest:
 // 'ok' says the rights information is in place, 'req' says talk to us.
-function RightsBadge({ rights }: { rights: CatalogRights }) {
+function RightsBadge({ rights, withheld }: { rights: CatalogRights; withheld?: boolean }) {
+  // 50.5 Task 2 — the withheld state is its OWN label, not 'Clearance
+  // required'. That string asserts an outcome we have not established.
+  if (withheld) {
+    return (
+      <span className="rights req">
+        <svg className="icn" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 8v5" /><path d="M12 16h.01" /></svg>
+        {BUYER_CLEARANCE_WITHHELD}
+      </span>
+    )
+  }
   const icon = rights === 'ok'
     ? (<><path d="M12 3 4 7v6c0 5 3.4 7.4 8 8 4.6-.6 8-3 8-8V7z" /><path d="m9 12 2 2 4-4" /></>)
     : (<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 8 9 5 9-5" /></>)
@@ -415,6 +434,11 @@ export function CatalogBrowserLight({
   }, [])
 
   function play(id: string) {
+    // 50.5 Task 2 — WITHHELD. This never played audio. It moves a simulated
+    // playhead over a row whose identity is a PROJECT, so it presents a
+    // release as a playable song. Task 9 makes playback the captured
+    // artifact; until then the control does not exist.
+    if (isReadWithheld('simulated_playback')) return
     if (id === playId) { setPlaying(p => !p); return }
     setPlayId(id); setProgress(0); setPlaying(true)
   }
@@ -638,7 +662,18 @@ export function CatalogBrowserLight({
             would be a lie when there is nothing to come back to. The fixture
             fallback that used to hide this case was deleted — see
             lib/deals/catalog-sample.ts. */}
-        {rows.length === 0 ? (
+        {/* 50.5 Task 2 — the WITHHELD catalogue state, distinct from the
+            genuine zero-rows one below. "Nothing in here yet" would be a lie
+            while rows exist and are being held back, and an honest empty state
+            is the whole reason that copy was written. */}
+        {rows.length === 0 && isReadWithheld('buyer_catalogue_row') ? (
+          <div className="empty show">
+            <div className="ei"><svg className="icn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3M8 11h6" /></svg></div>
+            <h3>{CATALOGUE_WITHHELD_HEADING}</h3>
+            <p>{CATALOGUE_WITHHELD_BODY}{' '}
+              <a className="empty-link" href={syncContactHref('What I\u2019m looking for')}>Tell us what you\u2019re looking for</a>.</p>
+          </div>
+        ) : rows.length === 0 ? (
           <div className="empty show">
             <div className="ei"><svg className="icn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3M8 11h6" /></svg></div>
             <h3>Nothing in here yet</h3>
@@ -671,16 +706,18 @@ export function CatalogBrowserLight({
                 <div className={`trow ${playId === row.id ? 'playing' : ''}`}>
                   <div className="song">
                     <div className="art" style={row.coverUrl ? { backgroundImage: `url('${row.coverUrl}')` } : { background: row.gradient }}>
+                      {!isReadWithheld('simulated_playback') && (
                       <button className="pb" type="button" aria-label={playId === row.id && playing ? `Pause ${row.title}` : `Play ${row.title}`} onClick={() => play(row.id)}>
                         {playId === row.id && playing
                           ? (<svg viewBox="0 0 24 24"><path d="M8 5h3.2v14H8zM12.8 5H16v14h-3.2z" /></svg>)
                           : (<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>)}
                       </button>
+                      )}
                     </div>
                     <div className="idt">
                       <div className="sname">{row.title}</div>
                       <div className="sby">by <b>{row.artist}</b></div>
-                      <RightsBadge rights={row.rights} />
+                      <RightsBadge rights={row.rights} withheld={row.rightsWithheld} />
                       {rankActive && rankReason[row.id] && (
                         <div className="why"><svg className="icn" viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2.2 2.2M15.8 15.8 18 18M18 6l-2.2 2.2M8.2 15.8 6 18" /></svg>{rankReason[row.id]}</div>
                       )}

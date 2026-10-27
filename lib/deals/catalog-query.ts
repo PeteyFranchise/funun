@@ -518,6 +518,11 @@ export async function loadCatalogPage(
       rights: isReadWithheld('buyer_clearance_badge')
         ? 'req'
         : clearanceToCatalogRights(clearanceByTrack.get(representativeTrack.id)?.status),
+      // The DISTINCT signal. Reusing 'req' above made withheld and open
+      // identical, so a deleted call site changed nothing observable and the
+      // negative control could not fail. `rightsWithheld` is what the badge
+      // and the tests actually read.
+      rightsWithheld: isReadWithheld('buyer_clearance_badge') || undefined,
       // C-01 (.planning/deliberations/2026-10-05-pass-5-rights-eligibility-
       // review.md): admission is song-level (26-06), so a card must never
       // imply a track is licensable just because a project sibling is
@@ -600,6 +605,24 @@ export async function loadCatalogPage(
     }
 
     cards.push(card)
+  }
+
+  // 50.5 Task 2 — WITHHELD: the buyer catalogue row itself.
+  //
+  // Every card above is built from a vault_projects row: its id, title, genre
+  // and artwork are the PROJECT's, and the UI renders them under "Song /
+  // Artist". Softening the licence copy does not fix that; the row is the
+  // defect. Tasks 8 and 9 replace it with one captured song plus matching
+  // playback, and this comes off then.
+  //
+  // STAFF KEEP THEIR ROWS. They need to work the queue, they can see the
+  // project context, and the staff layer is separately withheld above.
+  //
+  // This is a GUARD, not a removal: sync_listings held zero rows at the last
+  // preflight (2026-10-11), so no buyer sees a change today. It fails closed
+  // the moment a song is admitted.
+  if (staffMode === null && isReadWithheld('buyer_catalogue_row')) {
+    return { data: [], page, pageSize: PAGE_SIZE }
   }
 
   return { data: cards, page, pageSize: PAGE_SIZE }
