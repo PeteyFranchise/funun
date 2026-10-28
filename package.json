@@ -34,7 +34,7 @@
     "@supabase/ssr": "0.10.0",
     "@supabase/supabase-js": "2.109.0",
     "archiver": "^8.0.0",
-    "dompurify": "^3.4.16",
+    "dompurify": "^3.4.17",
     "mermaid": "^11.17.2",
     "next": "15.5.27",
     "node-id3": "^0.2.9",
