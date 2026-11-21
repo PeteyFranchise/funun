@@ -190,6 +190,55 @@ describe("50.5 Task 2 — a sibling's staff note never appears on this song", ()
   })
 })
 
+describe('261121-3iu Task 1 — usage_cleared_filter withholds the PROJECT-TERMS QUERY, not just the flag', () => {
+  // The guard is lib/deals/catalog-query.ts:343: `if (filter.usageCleared &&
+  // !isReadWithheld('usage_cleared_filter'))`. Measured 2026-11-21: before this
+  // task, forcing the flag off failed nothing but the blanket loop at :207,
+  // because no test observed the project_license_terms CALL SITE itself —
+  // only the flag's own value. These two cases assert the query, not the flag:
+  // the withheld load must never touch project_license_terms; the open load
+  // must, and the fixture project (which the load always offers a precleared
+  // terms row for) only passes the usage-cleared filter when that query ran.
+  const USAGE_FILTER = buildCatalogFilter({ usageCleared: 'true' })
+
+  /** Wraps makeService()'s `from` in a spy that also serves project_license_terms. */
+  function makeServiceWithTermsSpy() {
+    const base = makeService()
+    const calledTables: string[] = []
+    const from = jest.fn((table: string) => {
+      calledTables.push(table)
+      if (table === 'project_license_terms') {
+        return tableBuilder([{ vault_project_id: PROJECT.id }])
+      }
+      return base.from(table)
+    })
+    return { from, calledTables }
+  }
+
+  it('withheld: project_license_terms is never queried, and the fixture project is filtered out', async () => {
+    const { loadCatalogPage } = await loadQuery(true)
+    const service = makeServiceWithTermsSpy()
+    const res = await loadCatalogPage(service as never, null, USAGE_FILTER, 1, STAFF)
+    expect(service.calledTables).not.toContain('project_license_terms')
+    // Without the query, preclearedProjectIds stays empty, so the
+    // usage-cleared filter has nothing to match against and excludes the
+    // project — this is the observable CONSEQUENCE of the skipped query,
+    // not a second description of the same flag.
+    expect(res.data).toEqual([])
+  })
+
+  it('NEGATIVE CONTROL: with the flag forced off, project_license_terms IS queried and the project passes', async () => {
+    const { loadCatalogPage } = await loadQuery(false)
+    const service = makeServiceWithTermsSpy()
+    const res = await loadCatalogPage(service as never, null, USAGE_FILTER, 1, STAFF)
+    expect(service.calledTables).toContain('project_license_terms')
+    // This is the difference the withholding causes. If the guard clause at
+    // catalog-query.ts:343 is deleted, the withheld case above starts
+    // querying project_license_terms too and its assertion fails.
+    expect(res.data.length).toBeGreaterThan(0)
+  })
+})
+
 describe('50.5 Task 2 — the withholding inventory is enumerated, not implied', () => {
   it('names every surface, so a flag can be lifted one at a time', async () => {
     const { WITHHELD_READ_SURFACES, isReadWithheld } = jest.requireActual(
