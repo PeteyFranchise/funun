@@ -382,20 +382,52 @@ describe('261121-3iu Task 2 — selects_ai_draft withholds the ROUTE, before any
   })
 })
 
+// ─── The inventory: CONFIGURATION, never coverage ──────────────────────────
+//
+// Neither test below is behavioural coverage and neither may be counted as it.
+// They assert what is REGISTERED and what it defaults to. Whether a registered
+// flag actually changes anything a user sees is the job of the behaviour tests
+// above and of lib/deals/admin-deal-queue-view.test.ts.
+//
+// WHY THIS IS SPLIT AND RENAMED (2026-11-21). One test used to do both jobs
+// under the name "names every surface, so a flag can be lifted one at a time",
+// and it named FIVE of the fourteen via expect.arrayContaining. The name
+// asserted a completeness the assertion did not provide. The cost was not
+// theoretical: removing `matched_precleared` from WITHHELD_READ_SURFACES
+// tripped NO inventory lock at all, because it was one of the nine the list
+// never mentioned. A mutation sweep then read as full coverage when it was a
+// third of it. Same defect class as `owner_segment` — see
+// `label-integrity-funun`.
 describe('50.5 Task 2 — the withholding inventory is enumerated, not implied', () => {
-  it('names every surface, so a flag can be lifted one at a time', async () => {
+  it('pins the EXACT surface list, so adding or removing one is a deliberate change', async () => {
+    const { WITHHELD_READ_SURFACES } = jest.requireActual(
+      '@/lib/deals/buyer-song-unit-read-withholding'
+    ) as typeof import('@/lib/deals/buyer-song-unit-read-withholding')
+    // toEqual, not arrayContaining: an exact list in source order. Removing a
+    // surface must fail here, and adding one must be an explicit edit to this
+    // array rather than something that slips in unremarked.
+    expect(WITHHELD_READ_SURFACES).toEqual([
+      'buyer_clearance_badge',
+      'staff_rights_detail',
+      'staff_sibling_note_fallback',
+      'usage_cleared_filter',
+      'project_readiness_figure',
+      'license_request_modal',
+      'shortlist_availability',
+      'artist_project_terms_links',
+      'buyer_request_identity',
+      'selects_ai_draft',
+      'buyer_catalogue_row',
+      'simulated_playback',
+      'matched_precleared',
+      'request_composer',
+    ])
+  })
+
+  it('all registered withholding flags default to active', async () => {
     const { WITHHELD_READ_SURFACES, isReadWithheld } = jest.requireActual(
       '@/lib/deals/buyer-song-unit-read-withholding'
     ) as typeof import('@/lib/deals/buyer-song-unit-read-withholding')
-    expect(WITHHELD_READ_SURFACES).toEqual(
-      expect.arrayContaining([
-        'buyer_clearance_badge',
-        'staff_rights_detail',
-        'staff_sibling_note_fallback',
-        'usage_cleared_filter',
-        'project_readiness_figure',
-      ])
-    )
     for (const s of WITHHELD_READ_SURFACES) expect(isReadWithheld(s)).toBe(true)
   })
 })
