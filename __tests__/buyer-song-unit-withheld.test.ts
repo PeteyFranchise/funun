@@ -482,9 +482,13 @@ describe('50.5 Task 2 — component withholding call sites exist', () => {
 
   it('the multi-song licence form is gated, not merely present', () => {
     const code = codeOf('components/buyer/CatalogBrowserLight.tsx')
-    // The form still exists for when the flag lifts, but it must be behind the
-    // negated check — otherwise both panels render at once.
-    expect(code).toContain("!isReadWithheld('license_request_modal')")
+    // 261121-505 — the inline `!isReadWithheld('license_request_modal')`
+    // check moved into the pure seam (lib/deals/catalog-withholding-view.ts);
+    // the component now branches on `actionsView.licenseMode`. The form
+    // still exists for when the flag lifts, but it must be behind the
+    // 'open' branch of that seam — otherwise both panels render at once.
+    expect(code).toContain("actionsView.licenseMode === 'open'")
+    expect(code).toContain("actionsView.licenseMode === 'withheld'")
   })
 })
 
