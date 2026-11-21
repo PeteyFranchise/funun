@@ -1,0 +1,130 @@
+// ─── 261121-505 Task 1 — the pure seam, both directions asserted ──────────
+//
+// Every behaviour below is asserted withheld AND open, per the house pattern
+// in lib/deals/admin-deal-queue-view.test.ts: a withheld expectation with no
+// open-path control proves nothing, because deleting the withholding entirely
+// would leave the withheld assertion's sibling untested and the regression
+// undetected.
+//
+// catalogRowActionsView takes playbackWithheld / modalWithheld as explicit
+// boolean inputs rather than reading isReadWithheld internally, so no
+// jest.isolateModulesAsync module surgery is needed here — the caller (this
+// test) picks the state directly.
+
+import {
+  catalogRowActionsView,
+  LICENSE_CTA_WITHHELD,
+} from '@/lib/deals/catalog-withholding-view'
+import {
+  isReadWithheld,
+  LICENCE_REQUEST_WITHHELD_HEADING,
+  LICENCE_REQUEST_WITHHELD_BODY,
+} from '@/lib/deals/buyer-song-unit-read-withholding'
+
+describe('261121-505 Task 1 — showPlayControl', () => {
+  it('withheld: false', () => {
+    const view = catalogRowActionsView({ playbackWithheld: true, modalWithheld: false, hasRow: false })
+    expect(view.showPlayControl).toBe(false)
+  })
+
+  it('NEGATIVE CONTROL: open: true', () => {
+    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: false, hasRow: false })
+    expect(view.showPlayControl).toBe(true)
+  })
+})
+
+describe('261121-505 Task 1 — showMiniPlayer', () => {
+  it('withheld: false even when a row is the current playback target', () => {
+    const view = catalogRowActionsView({ playbackWithheld: true, modalWithheld: false, hasRow: true })
+    expect(view.showMiniPlayer).toBe(false)
+  })
+
+  it('NEGATIVE CONTROL: open: true when a row is the current playback target', () => {
+    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: false, hasRow: true })
+    expect(view.showMiniPlayer).toBe(true)
+  })
+
+  it('no row means no mini player in either state', () => {
+    const withheld = catalogRowActionsView({ playbackWithheld: true, modalWithheld: false, hasRow: false })
+    const open = catalogRowActionsView({ playbackWithheld: false, modalWithheld: false, hasRow: false })
+    expect(withheld.showMiniPlayer).toBe(false)
+    expect(open.showMiniPlayer).toBe(false)
+  })
+})
+
+describe('261121-505 Task 1 — licenseMode', () => {
+  it('withheld: "withheld"', () => {
+    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: true, hasRow: false })
+    expect(view.licenseMode).toBe('withheld')
+  })
+
+  it('NEGATIVE CONTROL: open: "open"', () => {
+    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: false, hasRow: false })
+    expect(view.licenseMode).toBe('open')
+  })
+})
+
+describe('261121-505 Task 1 — licenseHeading / licenseBody carry the withheld copy', () => {
+  it('withheld: the shared withheld constants, not a project-shaped substitute', () => {
+    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: true, hasRow: false })
+    expect(view.licenseHeading).toBe(LICENCE_REQUEST_WITHHELD_HEADING)
+    expect(view.licenseBody).toBe(LICENCE_REQUEST_WITHHELD_BODY)
+  })
+
+  it('NEGATIVE CONTROL: open: different copy entirely', () => {
+    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: false, hasRow: false })
+    expect(view.licenseHeading).not.toBe(LICENCE_REQUEST_WITHHELD_HEADING)
+    expect(view.licenseBody).not.toBe(LICENCE_REQUEST_WITHHELD_BODY)
+  })
+})
+
+describe('261121-505 Task 1 — licenseCta never claims a song identity', () => {
+  it('withheld: the fixed replacement string, and it does not say "this song"', () => {
+    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: true, hasRow: false })
+    expect(view.licenseCta).toBe(LICENSE_CTA_WITHHELD)
+    expect(view.licenseCta).not.toMatch(/this song/i)
+  })
+
+  it('NEGATIVE CONTROL: open: a different CTA, also not claiming a song', () => {
+    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: false, hasRow: false })
+    expect(view.licenseCta).not.toBe(LICENSE_CTA_WITHHELD)
+    expect(view.licenseCta).not.toMatch(/this song/i)
+  })
+})
+
+// ─── Real-wiring coverage (261121-505 verification requirement) ───────────
+//
+// Every case above passes `playbackWithheld`/`modalWithheld` as literal
+// booleans, by design (the plan requires the seam take explicit inputs
+// rather than read `isReadWithheld` itself). That means NONE of the cases
+// above can ever observe a change to the real withholding source — mutating
+// lib/deals/buyer-song-unit-read-withholding.ts would not fail a single
+// assertion above, only the unrelated blanket inventory assertion in
+// __tests__/buyer-song-unit-withheld.test.ts.
+//
+// This block closes that gap: it calls the REAL, unmocked `isReadWithheld`
+// exactly the way components/buyer/CatalogBrowserLight.tsx wires it into the
+// seam, so a mutation to the real flag source (removing a surface from
+// WITHHELD_READ_SURFACES, or flipping BUYER_SONG_UNIT_READS_WITHHELD) flips
+// these specific named assertions, not just the inventory list.
+describe('261121-505 — the real isReadWithheld wiring (no mocking), as the component calls it', () => {
+  it('simulated_playback is withheld in production: play control and mini player stay hidden', () => {
+    const view = catalogRowActionsView({
+      playbackWithheld: isReadWithheld('simulated_playback'),
+      modalWithheld: isReadWithheld('license_request_modal'),
+      hasRow: true,
+    })
+    expect(view.showPlayControl).toBe(false)
+    expect(view.showMiniPlayer).toBe(false)
+  })
+
+  it('license_request_modal is withheld in production: the withheld copy renders, with no song claim', () => {
+    const view = catalogRowActionsView({
+      playbackWithheld: isReadWithheld('simulated_playback'),
+      modalWithheld: isReadWithheld('license_request_modal'),
+      hasRow: false,
+    })
+    expect(view.licenseMode).toBe('withheld')
+    expect(view.licenseCta).not.toMatch(/this song/i)
+  })
+})

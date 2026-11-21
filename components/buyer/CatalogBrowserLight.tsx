@@ -3,12 +3,11 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import {
   isReadWithheld,
-  LICENCE_REQUEST_WITHHELD_HEADING,
-  LICENCE_REQUEST_WITHHELD_BODY,
   BUYER_CLEARANCE_WITHHELD,
   CATALOGUE_WITHHELD_HEADING,
   CATALOGUE_WITHHELD_BODY,
 } from '@/lib/deals/buyer-song-unit-read-withholding'
+import { catalogRowActionsView } from '@/lib/deals/catalog-withholding-view'
 import { useRouter } from 'next/navigation'
 import type { StaffRole } from '@/lib/admin/staff-role'
 import {
@@ -348,6 +347,14 @@ export function CatalogBrowserLight({
   const playRow = playId ? rows.find(r => r.id === playId) ?? null : null
   const modalRow = modalId ? rows.find(r => r.id === modalId) ?? null : null
   const dur = playRow ? lenToSeconds(playRow.length) : 0
+  // 50.5/261121-505 — the simulated_playback and license_request_modal
+  // decisions now live in the pure seam (lib/deals/catalog-withholding-view),
+  // taking explicit booleans rather than calling isReadWithheld themselves.
+  const actionsView = catalogRowActionsView({
+    playbackWithheld: isReadWithheld('simulated_playback'),
+    modalWithheld: isReadWithheld('license_request_modal'),
+    hasRow: playRow != null,
+  })
 
   // simulated playhead
   useEffect(() => {
@@ -438,7 +445,7 @@ export function CatalogBrowserLight({
     // playhead over a row whose identity is a PROJECT, so it presents a
     // release as a playable song. Task 9 makes playback the captured
     // artifact; until then the control does not exist.
-    if (isReadWithheld('simulated_playback')) return
+    if (!actionsView.showPlayControl) return
     if (id === playId) { setPlaying(p => !p); return }
     setPlayId(id); setProgress(0); setPlaying(true)
   }
@@ -706,7 +713,7 @@ export function CatalogBrowserLight({
                 <div className={`trow ${playId === row.id ? 'playing' : ''}`}>
                   <div className="song">
                     <div className="art" style={row.coverUrl ? { backgroundImage: `url('${row.coverUrl}')` } : { background: row.gradient }}>
-                      {!isReadWithheld('simulated_playback') && (
+                      {actionsView.showPlayControl && (
                       <button className="pb" type="button" aria-label={playId === row.id && playing ? `Pause ${row.title}` : `Play ${row.title}`} onClick={() => play(row.id)}>
                         {playId === row.id && playing
                           ? (<svg viewBox="0 0 24 24"><path d="M8 5h3.2v14H8zM12.8 5H16v14h-3.2z" /></svg>)
@@ -757,7 +764,7 @@ export function CatalogBrowserLight({
       </div>
 
       {/* ── slice 2b: sticky mini player ── */}
-      {playRow && (
+      {playRow && actionsView.showMiniPlayer && (
         <div className={`mini up`} role="region" aria-label="Player">
           <div className="in">
             <div className="ma" style={playRow.coverUrl ? { backgroundImage: `url('${playRow.coverUrl}')` } : { background: playRow.gradient }} />
@@ -792,23 +799,23 @@ export function CatalogBrowserLight({
           the form and failing after a buyer fills it in is the worst of the
           three options, so this stands in front of it and gives a real way
           through. Removed when the request names a captured song. */}
-      {modalRow && isReadWithheld('license_request_modal') && (
+      {modalRow && actionsView.licenseMode === 'withheld' && (
         <div className="scrim open" onClick={() => setModalId(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="mh">
               <div className="ma2" style={modalRow.coverUrl ? { backgroundImage: `url('${modalRow.coverUrl}')` } : { background: modalRow.gradient }} />
-              <div><h2>{LICENCE_REQUEST_WITHHELD_HEADING}</h2><p>{modalRow.title} · by {modalRow.artist}</p></div>
+              <div><h2>{actionsView.licenseHeading}</h2><p>{modalRow.title} · by {modalRow.artist}</p></div>
               <button className="x" type="button" aria-label="Close" onClick={() => setModalId(null)}><svg className="icn" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
             </div>
             <div className="mb2">
-              <p className="lead">{LICENCE_REQUEST_WITHHELD_BODY}</p>
+              <p className="lead">{actionsView.licenseBody}</p>
             </div>
             <div className="mf">
               <a
                 className="send"
                 href={syncContactHref(`Licensing enquiry: ${modalRow.title}`)}
               >
-                Email us about this song
+                {actionsView.licenseCta}
               </a>
             </div>
           </div>
@@ -816,7 +823,7 @@ export function CatalogBrowserLight({
       )}
 
       {/* ── slice 2b: License request modal ── */}
-      {modalRow && !isReadWithheld('license_request_modal') && (
+      {modalRow && actionsView.licenseMode === 'open' && (
         <div className="scrim open" onClick={() => setModalId(null)}>
           <form className="modal" onClick={e => e.stopPropagation()} onSubmit={submitRequest}>
             <div className="mh">
