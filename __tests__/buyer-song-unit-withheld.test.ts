@@ -16,6 +16,31 @@
 // actually computed.
 
 import { buildCatalogFilter } from '@/lib/deals/catalog'
+// 261121-3iu Task 2 — these four are mocked at FILE scope (not per-load via
+// jest.doMock) because the route under test, not catalog-query, imports
+// them, and none of catalog-query's own dependencies import any of these
+// four modules (checked by grep before adding this) — so this mock surface
+// cannot change what the Task 1 cases above observe.
+import { requireStaff } from '@/lib/admin/gate'
+import { isAssignedToOrg } from '@/lib/staff/scope'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
+import { claimAiUsage, finishAiUsage } from '@/lib/ai/admission'
+import { draftSelectsFromBrief } from '@/lib/selects/ai-draft'
+
+jest.mock('@/lib/admin/gate', () => ({ requireStaff: jest.fn() }))
+jest.mock('@/lib/staff/scope', () => ({ isAssignedToOrg: jest.fn() }))
+jest.mock('@/lib/supabase/server', () => ({
+  createApiClient: jest.fn(),
+  createServiceClient: jest.fn(),
+}))
+jest.mock('@/lib/ai/admission', () => {
+  const actual = jest.requireActual('@/lib/ai/admission')
+  return { ...actual, claimAiUsage: jest.fn(), finishAiUsage: jest.fn() }
+})
+jest.mock('@/lib/selects/ai-draft', () => {
+  const actual = jest.requireActual('@/lib/selects/ai-draft')
+  return { ...actual, draftSelectsFromBrief: jest.fn() }
+})
 
 type Loaded = typeof import('@/lib/deals/catalog-query')
 
@@ -36,6 +61,26 @@ async function loadQuery(withheld: boolean): Promise<Loaded> {
       return withheld ? actual : { ...actual, isReadWithheld: () => false }
     })
     mod = await import('@/lib/deals/catalog-query')
+  })
+  return mod
+}
+
+type RouteModule = typeof import('@/app/api/admin/selects/[id]/ai-draft/route')
+
+/** Load the ai-draft route with withholding either real, or forced off —
+ * same seam as loadQuery above, applied to the OTHER reachable-without-jsdom
+ * surface (a route, not a lib query). The import path is bracketed, which is
+ * a trap for the jest CLI (a regex character class, matches nothing) but
+ * NOT for a dynamic `import()` inside test code — this is a module path
+ * resolution through moduleNameMapper, never passed to jest's CLI matcher. */
+async function loadRoute(withheld: boolean): Promise<RouteModule> {
+  let mod!: RouteModule
+  await jest.isolateModulesAsync(async () => {
+    jest.doMock('@/lib/deals/buyer-song-unit-read-withholding', () => {
+      const actual = jest.requireActual('@/lib/deals/buyer-song-unit-read-withholding')
+      return withheld ? actual : { ...actual, isReadWithheld: () => false }
+    })
+    mod = await import('@/app/api/admin/selects/[id]/ai-draft/route')
   })
   return mod
 }
@@ -80,7 +125,7 @@ const OWNERS = [{ user_id: 'owner-1', display_name: 'Test Artist', handle: 'test
 
 function tableBuilder(rows: unknown[]) {
   const builder: Record<string, unknown> = {}
-  for (const m of ['select', 'eq', 'order', 'range', 'in']) builder[m] = () => builder
+  for (const m of ['select', 'eq', 'order', 'range', 'in', 'limit']) builder[m] = () => builder
   builder.then = (resolve: (v: unknown) => void) => resolve({ data: rows, error: null })
   return builder
 }
@@ -236,6 +281,104 @@ describe('261121-3iu Task 1 — usage_cleared_filter withholds the PROJECT-TERMS
     // catalog-query.ts:343 is deleted, the withheld case above starts
     // querying project_license_terms too and its assertion fails.
     expect(res.data.length).toBeGreaterThan(0)
+  })
+})
+
+describe('261121-3iu Task 2 — selects_ai_draft withholds the ROUTE, before any AI spend or write', () => {
+  // The guard is `if (isReadWithheld('selects_ai_draft'))` at
+  // app/api/admin/selects/[id]/ai-draft/route.ts:132, placed AFTER auth +
+  // own-book scope and BEFORE the catalogue read, the AI usage claim, and
+  // persistence. The fixture below is a COMPLETE happy path (one project,
+  // one admitted-eligible track, a linked brief) specifically so that the
+  // two loads differ ONLY in whether the gate stops execution — never in
+  // whether the rest of the route COULD succeed.
+  const SELECTS_ID = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'
+  const STAFF_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+  const ORG_ID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+
+  function singleBuilder(row: unknown, error: unknown = null) {
+    const builder: Record<string, unknown> = {}
+    builder.select = () => builder
+    builder.eq = () => builder
+    builder.maybeSingle = async () => ({ data: row, error })
+    return builder
+  }
+
+  const AI_DRAFT_PROJECT = {
+    id: 'proj-ai-1', title: 'An EP', type: 'ep', genre: 'Soul',
+    vault_readiness_score: 80, user_id: 'owner-ai-1',
+    tracks: [{
+      id: 'track-ai-A', title: 'Song A', bpm: null, key_signature: null,
+      metadata: null, writers: null, producers: null, mixing_engineer: null,
+      mastering_engineer: null, has_sample: false, sample_details: null,
+      isrc: null, iswc: null,
+    }],
+    vault_documents: [], vault_assets: [],
+  }
+
+  function makeAiDraftService(rpc: jest.Mock) {
+    const from = jest.fn((table: string) => {
+      if (table === 'selects') {
+        return singleBuilder({ id: SELECTS_ID, buyer_org_id: ORG_ID, brief_id: 'brief-1', cover_note: null })
+      }
+      if (table === 'buyer_orgs') return singleBuilder({ ae_user_id: STAFF_ID })
+      if (table === 'buyer_briefs') return singleBuilder({ brief: {} })
+      if (table === 'vault_projects') return tableBuilder([AI_DRAFT_PROJECT])
+      if (table === 'sync_listings') return tableBuilder([])
+      if (table === 'user_profiles') return tableBuilder([{ id: 'owner-ai-1', artist_name: 'Test Artist' }])
+      return tableBuilder([])
+    })
+    return { from, rpc }
+  }
+
+  function postRequest() {
+    return new Request(`http://t.local/api/admin/selects/${SELECTS_ID}/ai-draft`, { method: 'POST' })
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: STAFF_ID }, staffRole: 'ae' })
+    ;(isAssignedToOrg as jest.Mock).mockReturnValue(true)
+    ;(createApiClient as jest.Mock).mockResolvedValue({})
+  })
+
+  it('withheld: 503 with the code, before claimAiUsage or the persist RPC are ever called', async () => {
+    const rpc = jest.fn()
+    const service = makeAiDraftService(rpc)
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const { POST } = await loadRoute(true)
+    const res = await POST(postRequest(), { params: Promise.resolve({ id: SELECTS_ID }) })
+
+    expect(res.status).toBe(503)
+    const body = await res.json()
+    expect(body.code).toBe('buyer_song_unit_read_withheld')
+    // The ordering IS the rev5 finding, not just the status code: an
+    // authorised caller must not spend AI budget or write a draft that
+    // cannot be trusted.
+    expect(claimAiUsage).not.toHaveBeenCalled()
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it('NEGATIVE CONTROL: with the flag forced off, execution passes the gate and claimAiUsage runs', async () => {
+    const rpc = jest.fn().mockResolvedValue({ data: { coverNote: 'x', tracks: [] }, error: null })
+    const service = makeAiDraftService(rpc)
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(claimAiUsage as jest.Mock).mockResolvedValue({ allowed: true, claimId: 'claim-1' })
+    ;(finishAiUsage as jest.Mock).mockResolvedValue(undefined)
+    ;(draftSelectsFromBrief as jest.Mock).mockResolvedValue({ ok: true, draft: { coverNote: 'x', tracks: [] } })
+
+    const { POST } = await loadRoute(false)
+    const res = await POST(postRequest(), { params: Promise.resolve({ id: SELECTS_ID }) })
+
+    // This is the difference the withholding causes. If the
+    // `if (isReadWithheld('selects_ai_draft'))` block is deleted, the
+    // withheld case above starts reaching this same path and its
+    // "not called" assertions fail.
+    expect(claimAiUsage).toHaveBeenCalledTimes(1)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data).toBeDefined()
   })
 })
 
