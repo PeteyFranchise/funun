@@ -12,6 +12,7 @@
 // (this test) picks the state directly.
 
 import { adminDealQueueView, type AdminDealRow } from '@/lib/deals/admin-deal-queue-view'
+import { isReadWithheld } from '@/lib/deals/buyer-song-unit-read-withholding'
 import type { LicenseRequestAdmin } from '@/lib/deals/schema'
 
 function makeRequest(overrides: Partial<LicenseRequestAdmin>): LicenseRequestAdmin {
@@ -286,5 +287,47 @@ describe('261121-452 Task 1 — stage and unassigned filters keep working in BOT
       readinessWithheld: false,
     })
     expect(view.visibleRows).toEqual([ROW_UNMATCHED_WITH_NOTE])
+  })
+})
+
+// ─── Real-wiring coverage (261121-452 verification requirement) ───────────
+//
+// Every case above passes `matchedPreclearedWithheld`/`readinessWithheld` as
+// literal booleans, by design (the plan requires the seam take explicit
+// inputs rather than read `isReadWithheld` itself). That design choice means
+// NONE of the cases above can ever observe a change to the real withholding
+// source — mutating lib/deals/buyer-song-unit-read-withholding.ts would not
+// fail a single assertion above, only the unrelated blanket inventory
+// assertion in __tests__/buyer-song-unit-withheld.test.ts.
+//
+// This block closes that gap: it calls the REAL, unmocked `isReadWithheld`
+// exactly the way components/admin/DealsQueue.tsx wires it into the seam, so
+// a mutation to the real flag source (removing a surface from
+// WITHHELD_READ_SURFACES, or flipping BUYER_SONG_UNIT_READS_WITHHELD) flips
+// these specific named assertions, not just the inventory list.
+describe('261121-452 — the real isReadWithheld wiring (no mocking), as the component calls it', () => {
+  it('matched_precleared is withheld in production: match controls stay hidden and the filter is inert', () => {
+    const view = adminDealQueueView({
+      rows: ROWS,
+      matchFilter: 'unmatched',
+      stageFilter: null,
+      unassignedOnly: false,
+      matchedPreclearedWithheld: isReadWithheld('matched_precleared'),
+      readinessWithheld: isReadWithheld('project_readiness_figure'),
+    })
+    expect(view.showMatchControls).toBe(false)
+    expect(view.visibleRows).toEqual(ROWS)
+  })
+
+  it('project_readiness_figure is withheld in production: the readiness figure stays hidden', () => {
+    const view = adminDealQueueView({
+      rows: ROWS,
+      matchFilter: 'all',
+      stageFilter: null,
+      unassignedOnly: false,
+      matchedPreclearedWithheld: isReadWithheld('matched_precleared'),
+      readinessWithheld: isReadWithheld('project_readiness_figure'),
+    })
+    expect(view.showReadiness).toBe(false)
   })
 })

@@ -2,13 +2,14 @@
 
 import { useState } from 'react'
 import { isReadWithheld } from '@/lib/deals/buyer-song-unit-read-withholding'
+import { adminDealQueueView } from '@/lib/deals/admin-deal-queue-view'
+import type { AdminDealRow, MatchFilter } from '@/lib/deals/admin-deal-queue-view'
 import Link from 'next/link'
 import {
   DEAL_STAGE_VALUES,
   DEAL_STAGE_LABELS,
   USAGE_TYPE_LABELS,
   TERRITORY_LABELS,
-  type LicenseRequestAdmin,
   type DealStage,
 } from '@/lib/deals/schema'
 
@@ -22,16 +23,11 @@ import {
 // instant. Defaults to the lane that matters most in a founder-led motion
 // (D-15a): unmatched requests awaiting negotiation, oldest first.
 
-export type AdminDealRow = {
-  request: LicenseRequestAdmin
-  buyerOrgName: string
-  projectTitle: string
-  projectReadinessScore: number | null
-  submitterName: string | null
-  ownerName: string | null
-}
-
-type MatchFilter = 'unmatched' | 'matched' | 'all'
+// AdminDealRow/MatchFilter now live in lib/deals/admin-deal-queue-view.ts —
+// the pure seam this component calls below (261121-452) — and are
+// re-exported here so app/(admin)/admin/deals/page.tsx's existing import
+// keeps working.
+export type { AdminDealRow }
 
 const STAGE_STYLES: Record<DealStage, string> = {
   submitted: 'border-white/15 bg-white/5 text-white/60',
@@ -68,19 +64,20 @@ export function DealsQueue({ initialRows }: { initialRows: AdminDealRow[] }) {
   const [stageFilter, setStageFilter] = useState<DealStage | null>(null)
   const [unassignedOnly, setUnassignedOnly] = useState(false)
 
-  const visibleRows = initialRows.filter(row => {
-    // 50.5 Task 2 — WITHHELD. `matched_precleared` is written from PROJECT
-    // terms, so a match proven for one sibling can hide or surface a deal
-    // about a different song. With the filter withheld, queue membership must
-    // not depend on it at all.
-    if (!isReadWithheld('matched_precleared')) {
-      if (matchFilter === 'unmatched' && row.request.matched_precleared) return false
-      if (matchFilter === 'matched' && !row.request.matched_precleared) return false
-    }
-    if (stageFilter && row.request.stage !== stageFilter) return false
-    if (unassignedOnly && row.request.owner_id) return false
-    return true
+  // 261121-452 — filtering, badge text, and the mismatch note all route
+  // through the pure seam so the withholding decision (taken once, here) is
+  // the only thing that varies queue membership — not three separate
+  // `isReadWithheld(...)` checks that could drift out of sync with each
+  // other, which is exactly how the dead-chip finding happened.
+  const queueView = adminDealQueueView({
+    rows: initialRows,
+    matchFilter,
+    stageFilter,
+    unassignedOnly,
+    matchedPreclearedWithheld: isReadWithheld('matched_precleared'),
+    readinessWithheld: isReadWithheld('project_readiness_figure'),
   })
+  const { visibleRows, showMatchControls, showReadiness } = queueView
 
   if (initialRows.length === 0) {
     return (
@@ -97,28 +94,38 @@ export function DealsQueue({ initialRows }: { initialRows: AdminDealRow[] }) {
   return (
     <div>
       <div className="flex flex-wrap items-center gap-1.5">
-        <button
-          type="button"
-          onClick={() => setMatchFilter('unmatched')}
-          className={`${CHIP_BASE} ${matchFilter === 'unmatched' ? CHIP_ON : CHIP_OFF}`}
-        >
-          Needs negotiation
-        </button>
-        <button
-          type="button"
-          onClick={() => setMatchFilter('matched')}
-          className={`${CHIP_BASE} ${matchFilter === 'matched' ? CHIP_ON : CHIP_OFF}`}
-        >
-          Pre-cleared match
-        </button>
-        <button
-          type="button"
-          onClick={() => setMatchFilter('all')}
-          className={`${CHIP_BASE} ${matchFilter === 'all' ? CHIP_ON : CHIP_OFF}`}
-        >
-          All
-        </button>
-        <span className="mx-1 h-4 w-px bg-white/10" />
+        {/* 261121-452 — WITHHELD. These three chips controlled a filter body
+            that was skipped entirely while matched_precleared stayed
+            withheld, so selecting a chip changed the active style but never
+            queue membership. Absent, not merely inert, while withheld — the
+            divider right after them exists only to separate this group from
+            the stage filters, so it goes with them. */}
+        {showMatchControls && (
+          <>
+            <button
+              type="button"
+              onClick={() => setMatchFilter('unmatched')}
+              className={`${CHIP_BASE} ${matchFilter === 'unmatched' ? CHIP_ON : CHIP_OFF}`}
+            >
+              Needs negotiation
+            </button>
+            <button
+              type="button"
+              onClick={() => setMatchFilter('matched')}
+              className={`${CHIP_BASE} ${matchFilter === 'matched' ? CHIP_ON : CHIP_OFF}`}
+            >
+              Pre-cleared match
+            </button>
+            <button
+              type="button"
+              onClick={() => setMatchFilter('all')}
+              className={`${CHIP_BASE} ${matchFilter === 'all' ? CHIP_ON : CHIP_OFF}`}
+            >
+              All
+            </button>
+            <span className="mx-1 h-4 w-px bg-white/10" />
+          </>
+        )}
         <button
           type="button"
           onClick={() => setStageFilter(null)}
@@ -154,8 +161,7 @@ export function DealsQueue({ initialRows }: { initialRows: AdminDealRow[] }) {
         ) : (
           visibleRows.map(row => {
             const { request } = row
-            const mismatchNote =
-              !request.matched_precleared && request.admin_notes ? request.admin_notes : null
+            const { showMismatchNote, mismatchNote } = queueView.rowView(row)
             return (
               <Link
                 key={request.id}
@@ -176,7 +182,7 @@ export function DealsQueue({ initialRows }: { initialRows: AdminDealRow[] }) {
                           readiness, shown beside a deal whose subject is one
                           song. A number that looks like an answer and is not is
                           the owner_segment lesson this repo already paid for. */}
-                      {!isReadWithheld('project_readiness_figure') && row.projectReadinessScore != null && (
+                      {showReadiness && row.projectReadinessScore != null && (
                         <span className="text-white/30"> · {row.projectReadinessScore}% ready</span>
                       )}
                     </p>
@@ -203,7 +209,7 @@ export function DealsQueue({ initialRows }: { initialRows: AdminDealRow[] }) {
                   </div>
                 </div>
 
-                {mismatchNote && (
+                {showMismatchNote && (
                   <p className="mt-2 whitespace-pre-line rounded-lg border border-amber-400/20 bg-amber-400/[0.05] p-2 text-[11px] text-amber-200/80">
                     {mismatchNote}
                   </p>
