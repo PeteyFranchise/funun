@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
+import { isReadWithheld } from '@/lib/deals/buyer-song-unit-read-withholding'
+import { buyerRequestIdentityView } from '@/lib/deals/request-identity-view'
 import {
   DEAL_STAGE_LABELS,
   USAGE_TYPE_LABELS,
@@ -86,6 +88,15 @@ export default async function RequestDetailPage({
     (submitterAuth?.data?.user?.user_metadata as { display_name?: string } | undefined)?.display_name ??
     null
 
+  // 261121-505 Task 2 — this page had ZERO guards before this task: it
+  // rendered the project's title as its own <h1> and listed every linked
+  // track title, with no withholding at all. The seam below closes that gap
+  // the same way OrgRequestDashboard.tsx already does.
+  const identity = buyerRequestIdentityView({
+    projectTitle: project?.title ?? null,
+    withheld: isReadWithheld('buyer_request_identity'),
+  })
+
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
       <Link href="/sync/requests" className="text-sm text-[color:var(--ink-3)] transition hover:text-[color:var(--ink)]">
@@ -95,7 +106,10 @@ export default async function RequestDetailPage({
       <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-wide text-[color:var(--ink-3)]">Request</p>
-          <h1 className="mt-1 text-2xl font-semibold text-[color:var(--ink)]">{project?.title ?? 'Unknown project'}</h1>
+          <h1 className="mt-1 text-2xl font-semibold text-[color:var(--ink)]">{identity.displayHeading}</h1>
+          {identity.identityNotice && (
+            <p className="mt-1 text-[11px] text-[color:var(--ink-3)]">{identity.identityNotice}</p>
+          )}
           {submitterName && (
             <p className="mt-1 text-[11px] text-[color:var(--ink-3)]">Requested by {submitterName}</p>
           )}
@@ -109,7 +123,11 @@ export default async function RequestDetailPage({
         <div>
           <p className="text-xs font-semibold text-[color:var(--ink-2)]">Tracks</p>
           <p className="mt-1 text-sm text-[color:var(--ink)]">
-            {trackTitles.length > 0 ? trackTitles.join(', ') : 'No tracks recorded'}
+            {identity.showTrackTitles
+              ? trackTitles.length > 0
+                ? trackTitles.join(', ')
+                : 'No tracks recorded'
+              : identity.identityNotice}
           </p>
         </div>
 
