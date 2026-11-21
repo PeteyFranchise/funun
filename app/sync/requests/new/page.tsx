@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import { isReadWithheld, LICENCE_REQUEST_WITHHELD_HEADING, LICENCE_REQUEST_WITHHELD_BODY } from '@/lib/deals/buyer-song-unit-read-withholding'
-import { syncContactHref } from '@/lib/sync-library/contact'
+import { isReadWithheld } from '@/lib/deals/buyer-song-unit-read-withholding'
+import { requestComposerView } from '@/lib/deals/request-composer-view'
 import { redirect } from 'next/navigation'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { authorizeRequestTarget } from '@/lib/deals/request-target'
@@ -40,6 +40,13 @@ export default async function NewRequestPage({
   }
   const targetProject = target && target.ok ? target.project : null
 
+  // 261121-505 Task 3 — this is the alternate multi-song path. The composer
+  // is reached with ?project= and then offers every track on that project,
+  // so one request could name several recordings. The catalog modal was
+  // already withheld (Task 1); withholding only that one left this door
+  // open.
+  const composer = requestComposerView({ withheld: isReadWithheld('request_composer') })
+
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
       <Link href="/sync/requests" className="text-sm text-[color:var(--ink-3)] transition hover:text-[color:var(--ink)]">
@@ -51,18 +58,13 @@ export default async function NewRequestPage({
       </div>
 
       <div className="mt-8">
-        {/* 50.5 Task 2 — WITHHELD. This is the alternate multi-song path. The
-            composer is reached with ?project= and then offers every track on
-            that project, so one request could name several recordings. The
-            catalogue modal was already withheld; withholding only that one
-            left this door open. */}
-        {isReadWithheld('request_composer') ? (
+        {!composer.showComposer ? (
           <div className="rounded-xl border border-[color:var(--line)] bg-[var(--wash)] p-8 text-center">
-            <p className="text-sm font-semibold text-[color:var(--ink-2)]">{LICENCE_REQUEST_WITHHELD_HEADING}</p>
-            <p className="mx-auto mt-1 max-w-sm text-xs text-[color:var(--ink-3)]">{LICENCE_REQUEST_WITHHELD_BODY}</p>
+            <p className="text-sm font-semibold text-[color:var(--ink-2)]">{composer.heading}</p>
+            <p className="mx-auto mt-1 max-w-sm text-xs text-[color:var(--ink-3)]">{composer.body}</p>
             <a
               className="mt-4 inline-block rounded-lg border border-[color:var(--line)] bg-[var(--wash-2)] px-3 py-1.5 text-[11px] font-semibold text-[color:var(--indigo)]"
-              href={syncContactHref('Licensing enquiry')}
+              href={composer.contactHref ?? undefined}
             >
               Email us
             </a>

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { isReadWithheld } from '@/lib/deals/buyer-song-unit-read-withholding'
+import { artistTermsView } from '@/lib/deals/artist-terms-view'
 import {
   DEAL_STAGE_LABELS,
   USAGE_TYPE_LABELS,
@@ -44,6 +45,8 @@ const STAGE_STYLES: Record<string, string> = {
 }
 
 export function ArtistDealsList({ rows }: { rows: ArtistDealRow[] }) {
+  const terms = artistTermsView({ withheld: isReadWithheld('artist_project_terms_links') })
+
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/[0.03] p-8 text-center">
@@ -114,11 +117,11 @@ export function ArtistDealsList({ rows }: { rows: ArtistDealRow[] }) {
             </span>
           </div>
 
-          {/* 50.5 Task 2 — WITHHELD. This pointed at the PROJECT's Rights
+          {/* 50.5/261121-505 — WITHHELD. This pointed at the PROJECT's Rights
               page, where terms cover every song on the project at once. A deal
               is about one song, so the link answered a different question than
               the row it sat under. */}
-          {!isReadWithheld('artist_project_terms_links') && (
+          {terms.showTermsLinks && (
             <div className="mt-3">
               <Link
                 href={`/vault/${request.vault_project_id}/rights`}

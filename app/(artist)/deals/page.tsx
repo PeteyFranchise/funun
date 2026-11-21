@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { isReadWithheld } from '@/lib/deals/buyer-song-unit-read-withholding'
+import { artistTermsView } from '@/lib/deals/artist-terms-view'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { ArtistDealsList, type ArtistDealRow } from '@/components/deals/ArtistDealsList'
 import type { LicenseRequest } from '@/lib/deals/schema'
@@ -102,21 +103,19 @@ export default async function DealsPage() {
     requesterName: requesterNameById.get(r.created_by) ?? null,
   }))
 
+  const terms = artistTermsView({ withheld: isReadWithheld('artist_project_terms_links') })
+
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
       <div>
         <p className="text-xs uppercase tracking-wide text-white/40">Deals</p>
         <h1 className="mt-1 text-2xl font-semibold text-white">License Requests</h1>
-        {/* 50.5 Task 2 — WITHHELD. The old line told artists to set
+        {/* 50.5/261121-505 — WITHHELD. The old line told artists to set
             pre-cleared terms on a PROJECT's Rights page. Terms are moving to
             one song at a time, and the project licensing route is frozen while
             that lands, so the instruction would send an artist somewhere that
             cannot help them. */}
-        <p className="mt-1 text-sm text-white/50">
-          {isReadWithheld('artist_project_terms_links')
-            ? 'Every license request for your songs, with its current deal stage. Funūn handles negotiation and buyer communication for you. Pre-cleared terms are moving onto a song by song footing, so terms setting is paused. We will let you know when it opens back up.'
-            : 'Every license request across your projects, with its current deal stage. Funūn handles negotiation and buyer communication for you. Set pre-cleared terms on a song to help requests move faster.'}
-        </p>
+        <p className="mt-1 text-sm text-white/50">{terms.introCopy}</p>
       </div>
       <div className="mt-8">
         <ArtistDealsList rows={rows} />
