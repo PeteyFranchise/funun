@@ -87,8 +87,15 @@ export type CatalogRowActionsView = {
  */
 export const LICENSE_CTA_WITHHELD = 'Email us about this listing'
 const LICENSE_HEADING_OPEN = 'Request a license'
+// 261121-sqi Task 3 — this used to be truncated against the live component
+// copy at components/buyer/CatalogBrowserLight.tsx, which also rendered a
+// second sentence ("Inside their pre-cleared terms this moves fast — anything
+// under their floor kicks off a quick back-and-forth."). Consuming the seam
+// as it stood would have silently deleted that sentence of live buyer copy.
+// Carried in full here, with the em dash removed per the house no-dashes
+// copy rule — meaning unchanged, split into its own sentence instead.
 const LICENSE_BODY_OPEN =
-  "Tell the artist how you'll use it. Inside their pre-cleared terms this moves fast."
+  "Tell the artist how you'll use it. Inside their pre-cleared terms this moves fast. Anything under their floor kicks off a quick back and forth."
 const LICENSE_CTA_OPEN = 'Send request'
 
 export function catalogRowActionsView(input: CatalogRowActionsViewInput): CatalogRowActionsView {

@@ -133,6 +133,29 @@ describe('261121-505 — the real isReadWithheld wiring (no mocking), as the com
   })
 })
 
+// ─── 261121-sqi Task 3 — the open body carries the full live sentence ────
+//
+// LICENSE_BODY_OPEN was previously truncated against what
+// CatalogBrowserLight.tsx actually rendered in its open branch, which had a
+// second sentence this seam's constant dropped. These pin the full meaning
+// (both the "moves fast" clause and the "under their floor" clause) stayed,
+// and that no en dash, em dash, or double hyphen made it into the string per
+// the house no-dashes copy rule.
+describe('261121-sqi Task 3 — licenseBody carries the full open sentence, no dashes', () => {
+  it('open: keeps both clauses of the live copy', () => {
+    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: false, hasRow: false, catalogueWithheld: false, hasRows: true })
+    expect(view.licenseBody).toMatch(/pre-cleared terms this moves fast/i)
+    expect(view.licenseBody).toMatch(/under their floor/i)
+  })
+
+  it('open: no en dash, em dash, or double hyphen in any user-facing output', () => {
+    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: false, hasRow: false, catalogueWithheld: false, hasRows: true })
+    expect(view.licenseHeading).not.toMatch(/[–—]|--/)
+    expect(view.licenseBody).not.toMatch(/[–—]|--/)
+    expect(view.licenseCta).not.toMatch(/[–—]|--/)
+  })
+})
+
 // ─── 261121-qt2 Task 2 — emptyMode, the signal CHOSEN not computed ────────
 //
 // catalogueWithheld here is always a literal boolean, by design: the real

@@ -857,11 +857,11 @@ export function CatalogBrowserLight({
           <form className="modal" onClick={e => e.stopPropagation()} onSubmit={submitRequest}>
             <div className="mh">
               <div className="ma2" style={modalRow.coverUrl ? { backgroundImage: `url('${modalRow.coverUrl}')` } : { background: modalRow.gradient }} />
-              <div><h2>Request a license</h2><p>{modalRow.title} · by {modalRow.artist}</p></div>
+              <div><h2>{actionsView.licenseHeading}</h2><p>{modalRow.title} · by {modalRow.artist}</p></div>
               <button className="x" type="button" aria-label="Close" onClick={() => setModalId(null)}><svg className="icn" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
             </div>
             <div className="mb2">
-              <p className="lead">Tell the artist how you&rsquo;ll use it. Inside their pre-cleared terms this moves fast — anything under their floor kicks off a quick back-and-forth.</p>
+              <p className="lead">{actionsView.licenseBody}</p>
               <Field label="Tracks">
                 <div className="trklist">
                   {modalRow.tracks.map(t => (
@@ -931,7 +931,7 @@ export function CatalogBrowserLight({
             <div className="mf">
               <span className="note">We&rsquo;ll confirm it, and you can track it any time in your requests.</span>
               <button className="cancel" type="button" onClick={() => setModalId(null)}>Cancel</button>
-              <button className="send" type="submit" disabled={muSubmitting}>{muSubmitting ? 'Sending…' : 'Send request'}</button>
+              <button className="send" type="submit" disabled={muSubmitting}>{muSubmitting ? 'Sending…' : actionsView.licenseCta}</button>
             </div>
           </form>
         </div>
