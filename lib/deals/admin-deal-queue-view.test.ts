@@ -240,6 +240,34 @@ describe('261121-452 Task 1 — matchBadgeText', () => {
   })
 })
 
+describe('261121-sqi Task 2 — matchBadgeTone', () => {
+  it('withheld: "withheld" regardless of matched_precleared', () => {
+    const view = adminDealQueueView({
+      rows: ROWS,
+      matchFilter: 'all',
+      stageFilter: null,
+      unassignedOnly: false,
+      matchedPreclearedWithheld: true,
+      readinessWithheld: false,
+    })
+    expect(view.rowView(ROW_MATCHED).matchBadgeTone).toBe('withheld')
+    expect(view.rowView(ROW_UNMATCHED_WITH_NOTE).matchBadgeTone).toBe('withheld')
+  })
+
+  it('NEGATIVE CONTROL: open: "matched" / "unmatched"', () => {
+    const view = adminDealQueueView({
+      rows: ROWS,
+      matchFilter: 'all',
+      stageFilter: null,
+      unassignedOnly: false,
+      matchedPreclearedWithheld: false,
+      readinessWithheld: false,
+    })
+    expect(view.rowView(ROW_MATCHED).matchBadgeTone).toBe('matched')
+    expect(view.rowView(ROW_UNMATCHED_WITH_NOTE).matchBadgeTone).toBe('unmatched')
+  })
+})
+
 describe('261121-452 Task 1 — stage and unassigned filters keep working in BOTH states', () => {
   it('withheld: stage filter still narrows the queue', () => {
     const view = adminDealQueueView({
@@ -329,5 +357,18 @@ describe('261121-452 — the real isReadWithheld wiring (no mocking), as the com
       readinessWithheld: isReadWithheld('project_readiness_figure'),
     })
     expect(view.showReadiness).toBe(false)
+  })
+
+  it('matched_precleared is withheld in production: the badge tone is "withheld", never "matched" or "unmatched"', () => {
+    const view = adminDealQueueView({
+      rows: ROWS,
+      matchFilter: 'all',
+      stageFilter: null,
+      unassignedOnly: false,
+      matchedPreclearedWithheld: isReadWithheld('matched_precleared'),
+      readinessWithheld: isReadWithheld('project_readiness_figure'),
+    })
+    expect(view.rowView(ROW_MATCHED).matchBadgeTone).toBe('withheld')
+    expect(view.rowView(ROW_UNMATCHED_WITH_NOTE).matchBadgeTone).toBe('withheld')
   })
 })

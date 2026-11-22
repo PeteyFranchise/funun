@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { isReadWithheld } from '@/lib/deals/buyer-song-unit-read-withholding'
 import { adminDealQueueView } from '@/lib/deals/admin-deal-queue-view'
-import type { AdminDealRow, MatchFilter } from '@/lib/deals/admin-deal-queue-view'
+import type { AdminDealRow, MatchFilter, MatchBadgeTone } from '@/lib/deals/admin-deal-queue-view'
 import Link from 'next/link'
 import {
   DEAL_STAGE_VALUES,
@@ -41,6 +41,14 @@ const STAGE_STYLES: Record<DealStage, string> = {
 const CHIP_BASE = 'rounded-full border px-2.5 py-1 text-[11px] font-medium transition'
 const CHIP_ON = 'border-indigo-400/40 bg-indigo-400/15 text-indigo-200'
 const CHIP_OFF = 'border-white/15 text-white/50 hover:border-white/30'
+
+// 261121-sqi Task 2 — the badge's styling, keyed off the seam's tone output,
+// not re-derived from isReadWithheld. Same three class strings as before.
+const MATCH_BADGE_TONE_STYLES: Record<MatchBadgeTone, string> = {
+  withheld: 'border-white/15 bg-white/5 text-white/50',
+  matched: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300',
+  unmatched: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
+}
 
 function formatMoney(cents: number | null): string {
   if (cents == null) return 'Not quoted'
@@ -161,7 +169,7 @@ export function DealsQueue({ initialRows }: { initialRows: AdminDealRow[] }) {
         ) : (
           visibleRows.map(row => {
             const { request } = row
-            const { showMismatchNote, mismatchNote } = queueView.rowView(row)
+            const { showMismatchNote, mismatchNote, matchBadgeText, matchBadgeTone } = queueView.rowView(row)
             return (
               <Link
                 key={request.id}
@@ -189,19 +197,15 @@ export function DealsQueue({ initialRows }: { initialRows: AdminDealRow[] }) {
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {/* 50.5 Task 2 — WITHHELD: a project-level terms match
-                        labelled as this song's commercial conclusion. */}
+                        labelled as this song's commercial conclusion.
+                        261121-sqi — text AND tone now both come from
+                        queueView.rowView(row) above, not from a direct
+                        isReadWithheld read, per the component comment at
+                        the top of this file. */}
                     <span
-                      className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${
-                        isReadWithheld('matched_precleared')
-                          ? 'border-white/15 bg-white/5 text-white/50'
-                          : request.matched_precleared
-                            ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300'
-                            : 'border-amber-400/30 bg-amber-400/10 text-amber-300'
-                      }`}
+                      className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${MATCH_BADGE_TONE_STYLES[matchBadgeTone]}`}
                     >
-                      {isReadWithheld('matched_precleared')
-                        ? 'Terms match being confirmed'
-                        : request.matched_precleared ? 'Pre-cleared match' : 'Needs negotiation'}
+                      {matchBadgeText}
                     </span>
                     <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${STAGE_STYLES[request.stage]}`}>
                       {DEAL_STAGE_LABELS[request.stage]}

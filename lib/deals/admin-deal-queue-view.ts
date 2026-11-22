@@ -42,8 +42,12 @@ export type AdminDealQueueViewInput = {
   readinessWithheld: boolean
 }
 
+export type MatchBadgeTone = 'withheld' | 'matched' | 'unmatched'
+
 export type AdminDealRowView = {
   matchBadgeText: string
+  /** Which of the three badge class strings the component should apply — never re-derived from the withheld fact. */
+  matchBadgeTone: MatchBadgeTone
   showMismatchNote: boolean
   mismatchNote: string | null
 }
@@ -85,6 +89,12 @@ export function adminDealQueueView(input: AdminDealQueueViewInput): AdminDealQue
   })
 
   function rowView(row: AdminDealRow): AdminDealRowView {
+    const matchBadgeTone: MatchBadgeTone = matchedPreclearedWithheld
+      ? 'withheld'
+      : row.request.matched_precleared
+        ? 'matched'
+        : 'unmatched'
+
     const matchBadgeText = matchedPreclearedWithheld
       ? MATCH_BADGE_WITHHELD_TEXT
       : row.request.matched_precleared
@@ -103,6 +113,7 @@ export function adminDealQueueView(input: AdminDealQueueViewInput): AdminDealQue
 
     return {
       matchBadgeText,
+      matchBadgeTone,
       showMismatchNote: mismatchNote != null,
       mismatchNote,
     }
