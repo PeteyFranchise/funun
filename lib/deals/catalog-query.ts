@@ -180,7 +180,19 @@ type CatalogCardWithStaff = CatalogCard & { staff?: CatalogStaffLayer }
 // any listing in one of these is "in progress" toward admission.
 const IN_PROGRESS_LISTING_STATUSES = new Set(['applied', 'invited', 'agreement_pending', 'pending_admit'])
 
-export type CatalogPageResult = { data: CatalogCardWithStaff[]; page: number; pageSize: number }
+// 261121-qt2 Task 1: catalogueWithheld is a REAL signal carried out of this
+// query, not recomputed by a caller. It answers one question only — "did
+// buyer_catalogue_row suppress this caller's rows?" — and is REQUIRED, never
+// optional. An optional boolean lets a caller forget to set it and read
+// `undefined`, which is falsy, which silently means "not withheld": the
+// exact fail-open shape this phase has spent a week removing. Required means
+// every caller is a compile error until it is handled.
+export type CatalogPageResult = {
+  data: CatalogCardWithStaff[]
+  page: number
+  pageSize: number
+  catalogueWithheld: boolean
+}
 
 export async function loadCatalogPage(
   service: SupabaseClient,
@@ -204,7 +216,11 @@ export async function loadCatalogPage(
   const projects = (data ?? []) as unknown as CatalogProjectRow[]
 
   if (projects.length === 0) {
-    return { data: [], page, pageSize: PAGE_SIZE }
+    // Genuinely empty, not suppressed. 261121-qt2: a buyer with nothing to
+    // see must be told "nothing in here yet", never "clearance is being
+    // confirmed" — the two are different facts and the UI can no longer
+    // guess between them from rows.length alone.
+    return { data: [], page, pageSize: PAGE_SIZE, catalogueWithheld: false }
   }
 
   // Sync-library admission (26-06, T-26-24): ONE batched sync_listings
@@ -621,9 +637,15 @@ export async function loadCatalogPage(
   // This is a GUARD, not a removal: sync_listings held zero rows at the last
   // preflight (2026-10-11), so no buyer sees a change today. It fails closed
   // the moment a song is admitted.
+  // 261121-qt2 Task 1: this is the ONE true source of catalogueWithheld —
+  // never recomputed from rows.length by a caller. STAFF ARE NOT SUPPRESSED
+  // (the staffMode === null half of this same guard), so a staff caller
+  // reads false here even though the flag itself is on. "The flag is on"
+  // and "this caller's rows were suppressed" are different facts, and only
+  // the second is what the empty state is about.
   if (staffMode === null && isReadWithheld('buyer_catalogue_row')) {
-    return { data: [], page, pageSize: PAGE_SIZE }
+    return { data: [], page, pageSize: PAGE_SIZE, catalogueWithheld: true }
   }
 
-  return { data: cards, page, pageSize: PAGE_SIZE }
+  return { data: cards, page, pageSize: PAGE_SIZE, catalogueWithheld: false }
 }

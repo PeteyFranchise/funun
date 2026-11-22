@@ -1,6 +1,7 @@
 import { loadCatalogPage } from './catalog-query'
 import { buildCatalogFilter } from './catalog'
 import { loadBlockedIds, BLOCK_LOOKUP_FAILED } from '@/lib/green-room/discover'
+import { isReadWithheld } from '@/lib/deals/buyer-song-unit-read-withholding'
 
 // ─── loadCatalogPage — anonymous-safe branch (23-03 Task 1) ──────────────
 // RESEARCH Pitfall 3: passing an anonymous visitor's null id straight into
@@ -21,10 +22,27 @@ import { loadBlockedIds, BLOCK_LOOKUP_FAILED } from '@/lib/green-room/discover'
 // withholding has its own suite with its own negative controls
 // (__tests__/buyer-song-unit-withheld.test.ts), where deleting a call site
 // provably fails. Remove this mock when the row is song-shaped.
+//
+// 261121-qt2 Task 1: the DEFAULT stays "every surface forced open", exactly
+// as above — the fourteen pre-existing tests above still need a buyer-mode
+// call to return real cards, not an empty suppressed page. isReadWithheld is
+// now a jest.fn() (rather than a bare arrow) so the dedicated
+// catalogueWithheld describe block below can swap in a per-surface
+// implementation for its own tests only, via beforeEach/afterEach, and run
+// the MUTATION check the plan requires: removing 'buyer_catalogue_row' from
+// WITHHELD_READ_SURFACES must fail a NAMED test there, not just the
+// inventory lock in __tests__/buyer-song-unit-withheld.test.ts (which pins
+// the exact list and fails for every removal by design, telling you nothing
+// about whether removing THIS ONE entry changes any behaviour).
 jest.mock('@/lib/deals/buyer-song-unit-read-withholding', () => ({
   ...jest.requireActual('@/lib/deals/buyer-song-unit-read-withholding'),
-  isReadWithheld: () => false,
+  isReadWithheld: jest.fn(() => false),
 }))
+
+const mockedIsReadWithheld = isReadWithheld as jest.MockedFunction<typeof isReadWithheld>
+const REAL_IS_READ_WITHHELD = jest.requireActual(
+  '@/lib/deals/buyer-song-unit-read-withholding'
+).isReadWithheld as typeof isReadWithheld
 
 jest.mock('@/lib/green-room/discover', () => ({
   // requireActual keeps BLOCK_LOOKUP_FAILED real so the assertion below
@@ -584,5 +602,73 @@ describe('loadCatalogPage — C-01: card.tracks excludes an unadmitted sibling',
 
     expect(result.data).toHaveLength(1)
     expect(result.data[0].tracks.map(t => t.id).sort()).toEqual(['track-1', 'track-2'])
+  })
+})
+
+// ─── 261121-qt2 Task 1: catalogueWithheld, from the query layer ───────────
+// A buyer with a genuinely empty catalogue must be told that, not told
+// clearance is being confirmed. catalogueWithheld is the signal that lets
+// the component (CatalogBrowserLight) stop guessing from rows.length.
+describe('loadCatalogPage — catalogueWithheld (261121-qt2 Task 1)', () => {
+  beforeEach(() => {
+    // Default WITHIN THIS DESCRIBE BLOCK ONLY: buyer_catalogue_row reads the
+    // REAL flag (so the mutation check below can fail this suite); every
+    // other surface stays forced open, matching the file-level mock above.
+    mockedIsReadWithheld.mockImplementation((surface: string) =>
+      surface === 'buyer_catalogue_row' ? REAL_IS_READ_WITHHELD(surface) : false
+    )
+  })
+
+  afterEach(() => {
+    // Restore the file-wide default (every surface forced open) so this
+    // block's override never leaks into a test declared after it.
+    mockedIsReadWithheld.mockImplementation(() => false)
+  })
+
+  it('is true ONLY from the suppression return -- a buyer whose row is withheld', async () => {
+    const project = projectRow()
+    const service = makeService([project], [{ id: 'owner-1', profile_visibility: 'public' }])
+
+    const result = await loadCatalogPage(service as never, null, BASE_FILTER, 1)
+
+    expect(result.catalogueWithheld).toBe(true)
+    expect(result.data).toEqual([])
+  })
+
+  it('is false when there are genuinely no projects -- not the suppressed case', async () => {
+    const service = makeService([], [])
+
+    const result = await loadCatalogPage(service as never, null, BASE_FILTER, 1)
+
+    expect(result.catalogueWithheld).toBe(false)
+    expect(result.data).toEqual([])
+  })
+
+  // MUTATION CHECK (run manually, not committed): remove 'buyer_catalogue_row'
+  // from WITHHELD_READ_SURFACES in lib/deals/buyer-song-unit-read-withholding.ts
+  // and re-run this file. REAL_IS_READ_WITHHELD('buyer_catalogue_row') then
+  // returns false, the suppression branch at catalog-query.ts never fires,
+  // and the test immediately above fails (catalogueWithheld reads false, not
+  // true). Restore the entry afterward.
+
+  it('is false when rows are returned -- the surface open, buyer caller', async () => {
+    mockedIsReadWithheld.mockImplementation(() => false)
+    const project = projectRow()
+    const service = makeService([project], [{ id: 'owner-1', profile_visibility: 'public' }])
+
+    const result = await loadCatalogPage(service as never, null, BASE_FILTER, 1)
+
+    expect(result.catalogueWithheld).toBe(false)
+    expect(result.data).toHaveLength(1)
+  })
+
+  it('is false for a staff caller even while the flag is on -- staff are not suppressed', async () => {
+    const project = projectRow()
+    const service = makeService([project], [{ id: 'owner-1', profile_visibility: 'public' }])
+
+    const result = await loadCatalogPage(service as never, null, BASE_FILTER, 1, 'leadership')
+
+    expect(result.catalogueWithheld).toBe(false)
+    expect(result.data).toHaveLength(1)
   })
 })
