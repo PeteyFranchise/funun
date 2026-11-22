@@ -6,6 +6,8 @@ import { matchesPreclearedTerms } from '@/lib/deals/matching'
 import { authorizeRequestTarget } from '@/lib/deals/request-target'
 import { buildLicenseRequestNotification } from '@/lib/deals/notifications'
 import { createNotification } from '@/lib/notifications'
+import { buyerSongUnitWriteWithholdingResponse } from '@/lib/deals/buyer-song-unit-withholding'
+import { isReadWithheld } from '@/lib/deals/buyer-song-unit-read-withholding'
 import {
   USAGE_TYPE_VALUES,
   TERRITORY_VALUES,
@@ -21,6 +23,14 @@ const ADMIN_DEAL_COLUMNS =
   'id, buyer_org_id, created_by, vault_project_id, usage_types, territories, term_months, exclusivity, budget_cents, need_by, buyer_notes, stage, matched_precleared, gross_fee_cents, contract_document_id, owner_id, admin_notes, commission_pct, artist_net_cents, created_at, updated_at'
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+
+function withoutMatchedPrecleared(
+  request: LicenseRequestAdmin
+): Omit<LicenseRequestAdmin, 'matched_precleared'> {
+  const copy: Partial<LicenseRequestAdmin> = { ...request }
+  delete copy.matched_precleared
+  return copy as Omit<LicenseRequestAdmin, 'matched_precleared'>
+}
 
 // ─── GET /api/admin/deals?stage=&owner=&matched= ──────────────────────────
 // Lists the negotiation queue. Admin-gated (T-16-27/T-16-30) — the internal
@@ -40,6 +50,8 @@ export async function GET(request: Request) {
   const stageParam = url.searchParams.get('stage')
   const ownerParam = url.searchParams.get('owner')
   const matchedParam = url.searchParams.get('matched')
+  const matchedPreclearedWithheld = isReadWithheld('matched_precleared')
+  const readinessWithheld = isReadWithheld('project_readiness_figure')
 
   const service = createServiceClient()
   let query = service.from('license_requests').select(ADMIN_DEAL_COLUMNS)
@@ -52,10 +64,12 @@ export async function GET(request: Request) {
   } else if (ownerParam) {
     query = query.eq('owner_id', ownerParam)
   }
-  if (matchedParam === 'true') {
-    query = query.eq('matched_precleared', true)
-  } else if (matchedParam === 'false') {
-    query = query.eq('matched_precleared', false)
+  if (!matchedPreclearedWithheld) {
+    if (matchedParam === 'true') {
+      query = query.eq('matched_precleared', true)
+    } else if (matchedParam === 'false') {
+      query = query.eq('matched_precleared', false)
+    }
   }
 
   // Oldest first: the request-age clock plan 16-10 aggregates, and the D-15a
@@ -100,10 +114,12 @@ export async function GET(request: Request) {
   )
 
   const rows = requests.map(r => ({
-    request: r,
+    request: matchedPreclearedWithheld ? withoutMatchedPrecleared(r) : r,
     buyerOrgName: orgNameById.get(r.buyer_org_id) ?? 'Unknown company',
     projectTitle: projectById.get(r.vault_project_id)?.title ?? 'Unknown project',
-    projectReadinessScore: projectById.get(r.vault_project_id)?.readiness ?? null,
+    projectReadinessScore: readinessWithheld
+      ? null
+      : projectById.get(r.vault_project_id)?.readiness ?? null,
     submitterName: userNameById.get(r.created_by) ?? null,
     ownerName: r.owner_id ? (userNameById.get(r.owner_id) ?? null) : null,
   }))
@@ -155,6 +171,9 @@ const ManualIntakeBodySchema = z
 export async function POST(request: Request) {
   const auth = await verifyAdmin()
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+
+  const withholding = buyerSongUnitWriteWithholdingResponse()
+  if (withholding) return withholding
 
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null
   if (!body) return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })

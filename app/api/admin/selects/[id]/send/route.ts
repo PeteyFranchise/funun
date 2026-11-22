@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { isLegalSelectsTransition } from '@/lib/selects/stage-machine'
 import { loadSelectsInScope } from '@/lib/selects/persistence'
+import { buyerSongUnitWriteWithholdingResponse } from '@/lib/deals/buyer-song-unit-withholding'
 
 const SELECTS_COLUMNS =
   'id, buyer_org_id, created_by, brief_id, name, cover_note, share_token, status, download_enabled, download_max_seconds, created_at, updated_at, sent_at'
@@ -41,6 +42,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const service = createServiceClient()
   const selects = await loadSelectsInScope(service, id, auth.staffRole, auth.user.id)
   if (!selects) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  const withholding = buyerSongUnitWriteWithholdingResponse()
+  if (withholding) return withholding
 
   if (!isLegalSelectsTransition(selects.status, 'sent')) {
     return NextResponse.json(

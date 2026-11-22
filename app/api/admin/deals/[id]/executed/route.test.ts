@@ -22,6 +22,12 @@ jest.mock('@/lib/staff/audit', () => ({
   logStaffAction: jest.fn(),
 }))
 
+// These tests preserve coverage of the underlying execution-stamp behavior.
+// The active fail-closed response is tested separately at its shared boundary.
+jest.mock('@/lib/deals/buyer-song-unit-withholding', () => ({
+  buyerSongUnitWriteWithholdingResponse: jest.fn(() => null),
+}))
+
 const LEADERSHIP_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
 const DEAL_UUID = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
 

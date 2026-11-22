@@ -499,8 +499,8 @@ describe('50.5 Task 2 — component withholding call sites exist', () => {
 //      implementation has not established.
 //   3. no "this song" over a project-shaped row. The catalogue row is still a
 //      project, so naming it a song is the ninth conflation in words.
-// Codex's own write-freeze copy breaks rule 1 ("Please try again soon"); that
-// file is theirs and is excluded here rather than silently exempted.
+// The write-freeze copy is covered by buyer-song-unit-write-freeze.test.ts;
+// this list owns the read-withholding surfaces only.
 describe('50.5 Task 2 — withheld copy makes no promises', () => {
   const { readFileSync } = jest.requireActual('fs') as typeof import('fs')
   const { join } = jest.requireActual('path') as typeof import('path')
