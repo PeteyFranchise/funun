@@ -23,30 +23,30 @@ import {
 
 describe('261121-505 Task 1 — showPlayControl', () => {
   it('withheld: false', () => {
-    const view = catalogRowActionsView({ playbackWithheld: true, modalWithheld: false, hasRow: false })
+    const view = catalogRowActionsView({ playbackWithheld: true, modalWithheld: false, hasRow: false, catalogueWithheld: false, hasRows: true })
     expect(view.showPlayControl).toBe(false)
   })
 
   it('NEGATIVE CONTROL: open: true', () => {
-    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: false, hasRow: false })
+    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: false, hasRow: false, catalogueWithheld: false, hasRows: true })
     expect(view.showPlayControl).toBe(true)
   })
 })
 
 describe('261121-505 Task 1 — showMiniPlayer', () => {
   it('withheld: false even when a row is the current playback target', () => {
-    const view = catalogRowActionsView({ playbackWithheld: true, modalWithheld: false, hasRow: true })
+    const view = catalogRowActionsView({ playbackWithheld: true, modalWithheld: false, hasRow: true, catalogueWithheld: false, hasRows: true })
     expect(view.showMiniPlayer).toBe(false)
   })
 
   it('NEGATIVE CONTROL: open: true when a row is the current playback target', () => {
-    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: false, hasRow: true })
+    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: false, hasRow: true, catalogueWithheld: false, hasRows: true })
     expect(view.showMiniPlayer).toBe(true)
   })
 
   it('no row means no mini player in either state', () => {
-    const withheld = catalogRowActionsView({ playbackWithheld: true, modalWithheld: false, hasRow: false })
-    const open = catalogRowActionsView({ playbackWithheld: false, modalWithheld: false, hasRow: false })
+    const withheld = catalogRowActionsView({ playbackWithheld: true, modalWithheld: false, hasRow: false, catalogueWithheld: false, hasRows: true })
+    const open = catalogRowActionsView({ playbackWithheld: false, modalWithheld: false, hasRow: false, catalogueWithheld: false, hasRows: true })
     expect(withheld.showMiniPlayer).toBe(false)
     expect(open.showMiniPlayer).toBe(false)
   })
@@ -54,25 +54,25 @@ describe('261121-505 Task 1 — showMiniPlayer', () => {
 
 describe('261121-505 Task 1 — licenseMode', () => {
   it('withheld: "withheld"', () => {
-    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: true, hasRow: false })
+    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: true, hasRow: false, catalogueWithheld: false, hasRows: true })
     expect(view.licenseMode).toBe('withheld')
   })
 
   it('NEGATIVE CONTROL: open: "open"', () => {
-    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: false, hasRow: false })
+    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: false, hasRow: false, catalogueWithheld: false, hasRows: true })
     expect(view.licenseMode).toBe('open')
   })
 })
 
 describe('261121-505 Task 1 — licenseHeading / licenseBody carry the withheld copy', () => {
   it('withheld: the shared withheld constants, not a project-shaped substitute', () => {
-    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: true, hasRow: false })
+    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: true, hasRow: false, catalogueWithheld: false, hasRows: true })
     expect(view.licenseHeading).toBe(LICENCE_REQUEST_WITHHELD_HEADING)
     expect(view.licenseBody).toBe(LICENCE_REQUEST_WITHHELD_BODY)
   })
 
   it('NEGATIVE CONTROL: open: different copy entirely', () => {
-    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: false, hasRow: false })
+    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: false, hasRow: false, catalogueWithheld: false, hasRows: true })
     expect(view.licenseHeading).not.toBe(LICENCE_REQUEST_WITHHELD_HEADING)
     expect(view.licenseBody).not.toBe(LICENCE_REQUEST_WITHHELD_BODY)
   })
@@ -80,13 +80,13 @@ describe('261121-505 Task 1 — licenseHeading / licenseBody carry the withheld 
 
 describe('261121-505 Task 1 — licenseCta never claims a song identity', () => {
   it('withheld: the fixed replacement string, and it does not say "this song"', () => {
-    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: true, hasRow: false })
+    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: true, hasRow: false, catalogueWithheld: false, hasRows: true })
     expect(view.licenseCta).toBe(LICENSE_CTA_WITHHELD)
     expect(view.licenseCta).not.toMatch(/this song/i)
   })
 
   it('NEGATIVE CONTROL: open: a different CTA, also not claiming a song', () => {
-    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: false, hasRow: false })
+    const view = catalogRowActionsView({ playbackWithheld: false, modalWithheld: false, hasRow: false, catalogueWithheld: false, hasRows: true })
     expect(view.licenseCta).not.toBe(LICENSE_CTA_WITHHELD)
     expect(view.licenseCta).not.toMatch(/this song/i)
   })
@@ -113,6 +113,8 @@ describe('261121-505 — the real isReadWithheld wiring (no mocking), as the com
       playbackWithheld: isReadWithheld('simulated_playback'),
       modalWithheld: isReadWithheld('license_request_modal'),
       hasRow: true,
+      catalogueWithheld: false,
+      hasRows: true,
     })
     expect(view.showPlayControl).toBe(false)
     expect(view.showMiniPlayer).toBe(false)
@@ -123,8 +125,54 @@ describe('261121-505 — the real isReadWithheld wiring (no mocking), as the com
       playbackWithheld: isReadWithheld('simulated_playback'),
       modalWithheld: isReadWithheld('license_request_modal'),
       hasRow: false,
+      catalogueWithheld: false,
+      hasRows: true,
     })
     expect(view.licenseMode).toBe('withheld')
     expect(view.licenseCta).not.toMatch(/this song/i)
+  })
+})
+
+// ─── 261121-qt2 Task 2 — emptyMode, the signal CHOSEN not computed ────────
+//
+// catalogueWithheld here is always a literal boolean, by design: the real
+// signal comes from lib/deals/catalog-query.ts's loadCatalogPage (see that
+// module's own test file and its mutation check), never from this seam.
+// These three cases pin which of CatalogBrowserLight.tsx's two existing
+// empty-state copy blocks (plus the rows branch) gets chosen from it.
+describe('261121-qt2 Task 2 — emptyMode', () => {
+  it('withheld: catalogueWithheld true and no rows -> "withheld"', () => {
+    const view = catalogRowActionsView({
+      playbackWithheld: false,
+      modalWithheld: false,
+      hasRow: false,
+      catalogueWithheld: true,
+      hasRows: false,
+    })
+    expect(view.emptyMode).toBe('withheld')
+  })
+
+  it('genuinely empty: catalogueWithheld false and no rows -> "empty"', () => {
+    const view = catalogRowActionsView({
+      playbackWithheld: false,
+      modalWithheld: false,
+      hasRow: false,
+      catalogueWithheld: false,
+      hasRows: false,
+    })
+    expect(view.emptyMode).toBe('empty')
+  })
+
+  it('rows present -> "rows", even if catalogueWithheld were somehow still true', () => {
+    // Defensive: hasRows must win over a stale/inconsistent catalogueWithheld
+    // input. A caller with real rows to show should show them.
+    const view = catalogRowActionsView({
+      playbackWithheld: false,
+      modalWithheld: false,
+      hasRow: false,
+      catalogueWithheld: true,
+      hasRows: true,
+    })
+    expect(view.emptyMode).toBe('rows')
   })
 })

@@ -6,7 +6,8 @@
 // lib/deals/admin-deal-queue-view.ts: explicit boolean withholding inputs,
 // never `isReadWithheld` called from inside this module.
 //
-// Two read surfaces, both still project-shaped today:
+// Three read surfaces, two still project-shaped today, one a genuine query
+// signal (261121-qt2 Task 2):
 // 1. simulated_playback — the playhead moves over a row whose identity is a
 //    PROJECT, presenting a release as a playable song. Governs whether the
 //    play control renders at all, and whether the sticky mini player (which
@@ -14,6 +15,12 @@
 // 2. license_request_modal — the multi-track licence form lets a buyer tick
 //    several sibling songs into one request, which is not how these deals
 //    are done (D-12) and the write route already refuses the POST.
+// 3. buyer_catalogue_row (261121-qt2) — NOT a withholding decision made by
+//    this seam. `catalogueWithheld` is carried in from lib/deals/catalog-
+//    query.ts's loadCatalogPage, the one place that actually knows whether
+//    an empty result is suppressed or genuinely empty. emptyMode only
+//    CHOOSES between the two copy blocks CatalogBrowserLight.tsx already
+//    had written, it never computes the underlying fact.
 //
 // THE COPY FIX THIS TASK CARRIES. The withheld modal's CTA used to read
 // "Email us about this song" about a row whose identity is a PROJECT — the
@@ -27,6 +34,19 @@ import {
 
 export type LicenseMode = 'withheld' | 'open'
 
+/**
+ * Which of the three catalogue-level empty states to render.
+ *
+ * 'rows' wins whenever rows exist, regardless of `catalogueWithheld` — a
+ * caller that has rows to show should show them even if the upstream signal
+ * disagrees, because showing real rows is never the wrong direction to fail
+ * in. Between the two true-empty cases, 'withheld' and 'empty' answer
+ * different questions ("is the catalogue suppressed?" vs. "is it genuinely
+ * empty?") and must never be chosen by guessing from row count alone — see
+ * the header comment above.
+ */
+export type EmptyMode = 'withheld' | 'empty' | 'rows'
+
 export type CatalogRowActionsViewInput = {
   /** True while the `simulated_playback` read surface must stay withheld. */
   playbackWithheld: boolean
@@ -34,6 +54,15 @@ export type CatalogRowActionsViewInput = {
   modalWithheld: boolean
   /** True when a row is the current playback target (drives the sticky mini player). */
   hasRow: boolean
+  /**
+   * The REAL signal from lib/deals/catalog-query.ts's loadCatalogPage —
+   * true only when `buyer_catalogue_row` suppressed this caller's rows, and
+   * always false for a staff caller or a genuinely empty catalogue. Never
+   * recomputed here from `hasRows`; this seam only chooses copy from it.
+   */
+  catalogueWithheld: boolean
+  /** True when the caller has at least one row to show, before filters. */
+  hasRows: boolean
 }
 
 export type CatalogRowActionsView = {
@@ -45,6 +74,8 @@ export type CatalogRowActionsView = {
   licenseHeading: string
   licenseBody: string
   licenseCta: string
+  /** Which catalogue-level empty state (or 'rows') the component should render. */
+  emptyMode: EmptyMode
 }
 
 /**
@@ -61,7 +92,9 @@ const LICENSE_BODY_OPEN =
 const LICENSE_CTA_OPEN = 'Send request'
 
 export function catalogRowActionsView(input: CatalogRowActionsViewInput): CatalogRowActionsView {
-  const { playbackWithheld, modalWithheld, hasRow } = input
+  const { playbackWithheld, modalWithheld, hasRow, catalogueWithheld, hasRows } = input
+
+  const emptyMode: EmptyMode = hasRows ? 'rows' : catalogueWithheld ? 'withheld' : 'empty'
 
   return {
     showPlayControl: !playbackWithheld,
@@ -70,5 +103,6 @@ export function catalogRowActionsView(input: CatalogRowActionsViewInput): Catalo
     licenseHeading: modalWithheld ? LICENCE_REQUEST_WITHHELD_HEADING : LICENSE_HEADING_OPEN,
     licenseBody: modalWithheld ? LICENCE_REQUEST_WITHHELD_BODY : LICENSE_BODY_OPEN,
     licenseCta: modalWithheld ? LICENSE_CTA_WITHHELD : LICENSE_CTA_OPEN,
+    emptyMode,
   }
 }

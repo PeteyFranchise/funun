@@ -59,7 +59,17 @@ export default async function CatalogPage() {
     // 2026-10-11: no fixture fallback. An empty catalogue renders an honest
     // empty state — see the SAMPLE_CATALOG_ROWS deletion note in
     // lib/deals/catalog-sample.ts.
-    return <CatalogBrowserLight rows={mapCardsToLightRows(initial.data)} isPublic />
+    //
+    // 261121-qt2: catalogueWithheld is REQUIRED on CatalogBrowserLight now
+    // (see that component's prop comment), so a forgotten pass-through is a
+    // compile error rather than a silent "not withheld" on this branch.
+    return (
+      <CatalogBrowserLight
+        rows={mapCardsToLightRows(initial.data)}
+        isPublic
+        catalogueWithheld={initial.catalogueWithheld}
+      />
+    )
   }
 
   const { data: member } = await supabase
@@ -81,5 +91,18 @@ export default async function CatalogPage() {
 
   // 2026-10-11: no fixture fallback here either. Staff seeing invented songs
   // is the same false claim as a buyer seeing them.
-  return <CatalogBrowserLight rows={rows} embedded staffMode={staffRole} />
+  //
+  // 261121-qt2: SAME required catalogueWithheld pass-through as the
+  // anonymous branch above. loadCatalogPage already returns false here for
+  // any staff caller (staff are not suppressed), so this is never 'withheld'
+  // on this branch in practice -- but the value still has to come from the
+  // query, not be assumed, same as every other caller.
+  return (
+    <CatalogBrowserLight
+      rows={rows}
+      embedded
+      staffMode={staffRole}
+      catalogueWithheld={initial.catalogueWithheld}
+    />
+  )
 }

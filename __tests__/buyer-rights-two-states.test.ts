@@ -301,8 +301,16 @@ describe('no fabricated catalogue row can reach a buyer surface', () => {
     // The distinct zero-rows branch, separate from the filter-empty one: an
     // empty catalogue is a different fact from filters excluding everything,
     // and the filter copy would be a lie with nothing to come back to.
+    //
+    // 261121-qt2: the literal `rows.length === 0` call site moved into the
+    // pure seam (lib/deals/catalog-withholding-view.ts's catalogRowActionsView),
+    // because this component could not tell a genuinely empty catalogue from
+    // a withheld one using rows.length alone. The component now branches on
+    // `actionsView.emptyMode === 'empty'`, computed from the real
+    // catalogueWithheld signal lib/deals/catalog-query.ts carries out of the
+    // query -- same honest-empty-state guarantee, no longer guessed here.
     const code = stripComments(crate)
-    expect(code).toMatch(/rows\.length === 0/)
+    expect(code).toMatch(/emptyMode === 'empty'/)
     expect(code).toMatch(/Nothing in here yet/)
   })
 })

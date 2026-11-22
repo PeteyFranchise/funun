@@ -267,6 +267,7 @@ export function CatalogBrowserLight({
   isPublic = false,
   embedded = false,
   staffMode = null,
+  catalogueWithheld,
 }: {
   rows: CatalogRow[]
   isPublic?: boolean
@@ -281,6 +282,12 @@ export function CatalogBrowserLight({
   // additional staff-only panel renders below that row. Absent/null keeps
   // the buyer render path exactly as it was before this plan.
   staffMode?: StaffRole | null
+  // 261121-qt2: the REAL signal from lib/deals/catalog-query.ts's
+  // loadCatalogPage — required, not optional, so a caller that forgets to
+  // pass it is a compile error rather than a silent "not withheld". This
+  // component must never derive it from `rows.length` itself; see the
+  // emptyMode comment below.
+  catalogueWithheld: boolean
 }) {
   const emptySel = () => FILTER_KEYS.reduce((a, k) => ({ ...a, [k]: new Set<string>() }), {} as Record<FilterKey, Set<string>>)
 
@@ -347,13 +354,16 @@ export function CatalogBrowserLight({
   const playRow = playId ? rows.find(r => r.id === playId) ?? null : null
   const modalRow = modalId ? rows.find(r => r.id === modalId) ?? null : null
   const dur = playRow ? lenToSeconds(playRow.length) : 0
-  // 50.5/261121-505 — the simulated_playback and license_request_modal
-  // decisions now live in the pure seam (lib/deals/catalog-withholding-view),
-  // taking explicit booleans rather than calling isReadWithheld themselves.
+  // 50.5/261121-505/261121-qt2 — the simulated_playback, license_request_modal
+  // and empty-state decisions all live in the pure seam
+  // (lib/deals/catalog-withholding-view), taking explicit booleans rather
+  // than calling isReadWithheld or guessing from rows.length themselves.
   const actionsView = catalogRowActionsView({
     playbackWithheld: isReadWithheld('simulated_playback'),
     modalWithheld: isReadWithheld('license_request_modal'),
     hasRow: playRow != null,
+    catalogueWithheld,
+    hasRows: rows.length > 0,
   })
 
   // simulated playhead
@@ -672,15 +682,34 @@ export function CatalogBrowserLight({
         {/* 50.5 Task 2 — the WITHHELD catalogue state, distinct from the
             genuine zero-rows one below. "Nothing in here yet" would be a lie
             while rows exist and are being held back, and an honest empty state
-            is the whole reason that copy was written. */}
-        {rows.length === 0 && isReadWithheld('buyer_catalogue_row') ? (
+            is the whole reason that copy was written.
+
+            261121-qt2 — CORRECTED. Both paragraphs above name the right
+            INTENT, but until this task the predicate below them could not
+            actually tell the two facts apart: `rows.length === 0 &&
+            isReadWithheld('buyer_catalogue_row')` read true for EVERY empty
+            result while the flag was on, because this component has no way
+            to know whether rows.length is zero because rows were SUPPRESSED
+            or because the catalogue is GENUINELY empty — it is handed the
+            same empty array either way. A comment asserting a distinction
+            the code could not make is the label-integrity-funun pattern, in
+            prose rather than a column name, which is why this read as fixed
+            through review after review while sync_listings held zero rows.
+
+            The branch below now reads `actionsView.emptyMode`, computed in
+            the pure seam (lib/deals/catalog-withholding-view.ts) from
+            `catalogueWithheld` — the REAL signal lib/deals/catalog-query.ts's
+            loadCatalogPage carries out of the query that actually knows
+            which case it is. Both copy blocks are unchanged; only which one
+            gets chosen is different now. */}
+        {actionsView.emptyMode === 'withheld' ? (
           <div className="empty show">
             <div className="ei"><svg className="icn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3M8 11h6" /></svg></div>
             <h3>{CATALOGUE_WITHHELD_HEADING}</h3>
             <p>{CATALOGUE_WITHHELD_BODY}{' '}
               <a className="empty-link" href={syncContactHref('What I\u2019m looking for')}>Tell us what you\u2019re looking for</a>.</p>
           </div>
-        ) : rows.length === 0 ? (
+        ) : actionsView.emptyMode === 'empty' ? (
           <div className="empty show">
             <div className="ei"><svg className="icn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3M8 11h6" /></svg></div>
             <h3>Nothing in here yet</h3>
