@@ -468,7 +468,6 @@ npm run security:migrations:verify
 npm run typecheck:strict     # not just `tsc --noEmit` — adds noUnusedLocals/noUnusedParameters
 npm run lint                 # --max-warnings=0, so ANY warning fails the build
 npm test -- --runInBand
-npm audit --omit=dev --audit-level=moderate
 npm run audit:gate          # npm audit at the high threshold, plus dated deferrals that expire
 ```
 
@@ -488,6 +487,10 @@ Notes:
   mechanism working, not a bug. The correct response to a lapsed entry is to re-evaluate the
   advisory (is there a patch now? does the reason still hold?), not to reflexively push the date
   further out.
+- **The audit gate is the single audit authority.** On 2026-11-21 the owner explicitly changed the
+  production-dependency policy from moderate-or-higher failures to high-or-higher failures with
+  dated deferrals. This is a deliberate loosening, not cleanup. If the bar returns to moderate,
+  change the gate threshold rather than adding a second `npm audit` step.
 
 A check that prints green without exercising what it claims to cover is worse than no check,
 because it buys false confidence. Two known traps in this repo: a bracketed Jest path

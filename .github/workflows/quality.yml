@@ -28,6 +28,12 @@ jobs:
       - run: npm run typecheck:strict
       - run: npm run lint
       - run: npm test -- --runInBand
-      - run: npm audit --omit=dev --audit-level=moderate
+      # The audit gate replaced CI's high-severity npm-audit step on 2026-10-03;
+      # that replacement was complete. The production-only moderate step added
+      # on 2026-09-03 was a separate, stricter control. On 2026-11-21 the owner
+      # explicitly approved loosening that policy from moderate-fails to
+      # high-fails-with-dated-deferrals. Keep one audit authority: if the bar
+      # returns to moderate, change the gate threshold instead of adding a
+      # second npm-audit step.
       - name: Audit gate (dated, self-expiring deferrals)
         run: npm run audit:gate
