@@ -34,7 +34,34 @@ describe('261121-505 Task 3 — introCopy promises nothing while withheld', () =
 
   it('withheld copy makes no timing promise and no good/bad implication', () => {
     const view = artistTermsView({ withheld: true })
-    expect(view.introCopy).not.toMatch(/we will let you know|soon|shortly|coming back|opens back up/i)
+    expect(view.introCopy).not.toMatch(
+      /we will let you know|soon|shortly|coming back|opens back up|for now|right now|at the moment|currently|temporarily/i,
+    )
+  })
+})
+
+describe('261121-sqi Task 1 — emptyStateCopy routes the zero-row sentence through the seam', () => {
+  it('withheld: does not instruct the project-level Rights page', () => {
+    const view = artistTermsView({ withheld: true })
+    expect(view.emptyStateCopy).not.toMatch(/rights page/i)
+  })
+
+  it('NEGATIVE CONTROL: open: keeps the existing Rights page instruction', () => {
+    const view = artistTermsView({ withheld: false })
+    expect(view.emptyStateCopy).toMatch(/rights page/i)
+  })
+
+  it('withheld empty-state copy makes no timing promise either', () => {
+    const view = artistTermsView({ withheld: true })
+    expect(view.emptyStateCopy).not.toMatch(
+      /we will let you know|soon|shortly|coming back|opens back up|for now|right now|at the moment|currently|temporarily/i,
+    )
+  })
+
+  it('withheld and open empty-state copy differ', () => {
+    const withheld = artistTermsView({ withheld: true })
+    const open = artistTermsView({ withheld: false })
+    expect(withheld.emptyStateCopy).not.toBe(open.emptyStateCopy)
   })
 })
 
@@ -58,5 +85,10 @@ describe('261121-505 — the real isReadWithheld wiring (no mocking), as the com
   it('artist_project_terms_links is withheld in production: the per-row terms link stays hidden', () => {
     const view = artistTermsView({ withheld: isReadWithheld('artist_project_terms_links') })
     expect(view.showTermsLinks).toBe(false)
+  })
+
+  it('artist_project_terms_links is withheld in production: the empty-state copy stays off the Rights page', () => {
+    const view = artistTermsView({ withheld: isReadWithheld('artist_project_terms_links') })
+    expect(view.emptyStateCopy).not.toMatch(/rights page/i)
   })
 })

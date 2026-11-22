@@ -53,8 +53,7 @@ export function ArtistDealsList({ rows }: { rows: ArtistDealRow[] }) {
         <p className="text-sm font-semibold text-white/70">No requests yet</p>
         <p className="mx-auto mt-1 max-w-sm text-xs text-white/50">
           Requests appear here when a buyer submits a license request against one of your
-          projects. Set pre-cleared terms on a project&apos;s Rights page so matching requests
-          move straight to contract.
+          projects. {terms.emptyStateCopy}
         </p>
       </div>
     )
