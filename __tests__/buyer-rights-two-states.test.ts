@@ -187,25 +187,33 @@ describe('buyer Rights filter offers two states', () => {
   })
 })
 
+// ─── SUPERSEDED 2026-10-12 — this block asserted the OPPOSITE contract ─────
+// It locked RIGHTS_LABEL and RIGHTS_FILTER_LABEL as three-key maps, forbade
+// narrowing CatalogRights, and required the renderer's `part` branch. Its
+// stated premise was that "a legacy or mid-migration row can still arrive
+// carrying rights: 'part'".
+//
+// That premise was false. A row's `rights` is COMPUTED per request and never
+// stored, so nothing can carry a stale value forward. The only production
+// producer is lib/deals/catalog-query.ts:502 -> clearanceToCatalogRights(),
+// which returns 'ok' | 'req' (lib/sync-library/track-clearance.ts:152-156).
+// catalogRightsFromStage3() can still return 'part' but has no production
+// caller — only comments and its own tests.
+//
+// Replaced by '50.5 Task 3 — the buyer rights type admits exactly two states'
+// at the end of this file. Recorded rather than deleted: this block was a
+// working lock, and knowing why a lock reversed is worth more than a clean
+// diff.
 describe('the label maps stay exhaustive over CatalogRights', () => {
-  // Deliberate: rightsBadge() still returns 'partial' for staff review, so a
-  // legacy or mid-migration row can still arrive carrying rights: 'part'. A
-  // narrowed map would render `undefined` in the badge.
-  it.each(['RIGHTS_LABEL', 'RIGHTS_FILTER_LABEL'])('%s keeps all three keys', name => {
-    const line = crate.split('\n').find(l => l.startsWith(`const ${name}`)) as string
-    expect(line).toBeTruthy()
-    expect(line).toContain('Record<CatalogRights, string>')
-    expect(line).toMatch(/\bok:/)
-    expect(line).toMatch(/\bpart:/)
-    expect(line).toMatch(/\breq:/)
-  })
-
-  it('does not narrow the CatalogRights union', () => {
-    expect(crate).toContain("export type CatalogRights = 'ok' | 'part' | 'req'")
-  })
-
-  it('keeps the RightsBadge renderer branch for a legacy part row', () => {
-    expect(crate).toContain("rights === 'part'")
+  it('maps cover exactly the reachable buyer states, no more and no fewer', () => {
+    for (const name of ['RIGHTS_LABEL', 'RIGHTS_FILTER_LABEL']) {
+      const line = crate.split('\n').find(l => l.startsWith(`const ${name}`)) as string
+      expect(line).toBeTruthy()
+      expect(line).toContain('Record<CatalogRights, string>')
+      expect(line).toMatch(/\bok:/)
+      expect(line).toMatch(/\breq:/)
+      expect(line).not.toMatch(/\bpart:/)
+    }
   })
 })
 
@@ -293,8 +301,16 @@ describe('no fabricated catalogue row can reach a buyer surface', () => {
     // The distinct zero-rows branch, separate from the filter-empty one: an
     // empty catalogue is a different fact from filters excluding everything,
     // and the filter copy would be a lie with nothing to come back to.
+    //
+    // 261121-qt2: the literal `rows.length === 0` call site moved into the
+    // pure seam (lib/deals/catalog-withholding-view.ts's catalogRowActionsView),
+    // because this component could not tell a genuinely empty catalogue from
+    // a withheld one using rows.length alone. The component now branches on
+    // `actionsView.emptyMode === 'empty'`, computed from the real
+    // catalogueWithheld signal lib/deals/catalog-query.ts carries out of the
+    // query -- same honest-empty-state guarantee, no longer guessed here.
     const code = stripComments(crate)
-    expect(code).toMatch(/rows\.length === 0/)
+    expect(code).toMatch(/emptyMode === 'empty'/)
     expect(code).toMatch(/Nothing in here yet/)
   })
 })
@@ -331,5 +347,48 @@ describe('Rights filter options stay coupled to the label map', () => {
     // diagnosed instantly when both lists are visible.
     expect({ offered, unmatched: offered.filter(o => !mapped.includes(o)) })
       .toEqual({ offered, unmatched: [] })
+  })
+})
+
+// ─── 50.5 Task 3 — the buyer rights contract is TWO states, locked ──────────
+// Codex corrected my claim that three states ship: the live producer
+// (lib/deals/catalog-query.ts -> clearanceToCatalogRights) only ever returns
+// 'ok' | 'req'. `part` survived in the component's TYPE, label map, filter map,
+// renderer and CSS while nothing emitted it. These lock the narrowing so a
+// third value cannot drift back in.
+describe('50.5 Task 3 — the buyer rights type admits exactly two states', () => {
+  const component = read('components/buyer/CatalogBrowserLight.tsx')
+  // Strip comments first: the explanatory comments legitimately mention 'part',
+  // and a grep that counts them reports a gap that is not there. (This repo has
+  // already shipped two "weak assertion" defects of exactly that shape.)
+  const code = component
+    .split('\n')
+    .filter(line => !line.trimStart().startsWith('//'))
+    .join('\n')
+
+  it('declares CatalogRights as ok | req and nothing else', () => {
+    const decl = code.split('\n').find(l => l.includes('export type CatalogRights'))
+    expect(decl).toBeDefined()
+    expect(decl).toContain("'ok'")
+    expect(decl).toContain("'req'")
+    expect(decl).not.toContain("'part'")
+  })
+
+  it('has no label, filter label, renderer branch or style for a third state', () => {
+    expect(code).not.toContain("part: '")       // label maps
+    expect(code).not.toContain("=== 'part'")    // renderer branch
+    expect(code).not.toContain('.rights.part')  // badge styling
+  })
+
+  it('NEGATIVE CONTROL: the comment-stripper does not hide a real reintroduction', () => {
+    // Prove the assertions above would actually fire. If this fails, the
+    // stripper is eating code, and the three tests above prove nothing.
+    const poisoned = code + "\nconst X: Record<string,string> = { part: 'Partial rights' }\n"
+    expect(poisoned).toContain("part: '")
+  })
+
+  it('maps anything that is not ok to req at the buyer boundary', () => {
+    const sample = read('lib/deals/catalog-sample.ts')
+    expect(sample).toContain("c.rights === 'ok' ? 'ok' : 'req'")
   })
 })

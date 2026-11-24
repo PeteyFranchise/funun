@@ -7,6 +7,7 @@ import { USAGE_TYPE_VALUES, TERRITORY_VALUES, type ProjectLicenseTerms } from '@
 import { buildLicenseRequestNotification } from '@/lib/deals/notifications'
 import { createNotification } from '@/lib/notifications'
 import { authorizeRequestTarget } from '@/lib/deals/request-target'
+import { buyerSongUnitWriteWithholdingResponse } from '@/lib/deals/buyer-song-unit-withholding'
 
 // ─── POST /api/buyer/requests (D-07/D-02/D-15a/D-15b) ─────────────────────
 // license_requests writes are REVOKEd from authenticated (migration 081) —
@@ -64,6 +65,9 @@ export async function POST(request: Request) {
   if (!member || !canSubmitRequest(member)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
+
+  const withholding = buyerSongUnitWriteWithholdingResponse()
+  if (withholding) return withholding
 
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null
   if (!body) return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })

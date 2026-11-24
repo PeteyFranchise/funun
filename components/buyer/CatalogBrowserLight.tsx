@@ -1,6 +1,13 @@
 'use client'
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  isReadWithheld,
+  BUYER_CLEARANCE_WITHHELD,
+  CATALOGUE_WITHHELD_HEADING,
+  CATALOGUE_WITHHELD_BODY,
+} from '@/lib/deals/buyer-song-unit-read-withholding'
+import { catalogRowActionsView } from '@/lib/deals/catalog-withholding-view'
 import { useRouter } from 'next/navigation'
 import type { StaffRole } from '@/lib/admin/staff-role'
 import {
@@ -49,7 +56,7 @@ import { BRIEF_APPLY_KEY, RERANK_CAND_CAP, coerceBrief, briefToCrateFilters, typ
 // reach for the dark Team Console's .fncon tokens, which would not resolve
 // inside this light-themed component.
 
-export type CatalogRights = 'ok' | 'part' | 'req'
+export type CatalogRights = 'ok' | 'req'
 export type Dynamics = 'twin' | 'steady' | 'build' | 'fade' | 'peak'
 
 export type CatalogRow = {
@@ -63,6 +70,8 @@ export type CatalogRow = {
   length: string
   versions: number
   rights: CatalogRights
+  /** 50.5 Task 2 — the clearance answer is withheld, not computed. */
+  rightsWithheld?: boolean
   dynamics: Dynamics
   mood: string
   vocal: string
@@ -116,9 +125,9 @@ const FILTER_OPTIONS: Record<FilterKey, string[]> = {
   // rest of the slice. Sample status is still carried, itemised, in
   // TrackClearance.outstanding; it is no longer the headline.
   //
-  // 'Partial' is still deliberately NOT offered: clearanceToCatalogRights never
-  // emits 'part', so an option for it would always be empty, and an
-  // always-empty filter option reads as broken.
+  // 'Partial' is not offered and no longer exists in the buyer type at all
+  // (50.5 Task 3). clearanceToCatalogRights never emitted it; the type now
+  // agrees with the producer.
   // See .planning/deliberations/2026-10-10-owner-decisions-phase-50-rescope.md
   // (D-11) and 50-REVIEWS.md finding F2.
   //
@@ -129,22 +138,26 @@ const FILTER_OPTIONS: Record<FilterKey, string[]> = {
 const FILTER_KEYS = Object.keys(FILTER_OPTIONS) as FilterKey[]
 const SORTS = ['Best match', 'Newest', 'Most licensed', 'Shortest first'] as const
 
-// Both maps keep the `part` key even though FILTER_OPTIONS.Rights no longer
-// offers 'Partial' and the help page no longer defines it. rightsBadge()
-// (lib/sync-library/gate.ts) still returns 'partial' — staff Crate review
-// needs it for a part-way, unadmitted submission — so a legacy or
-// mid-migration row can still arrive here carrying `rights: 'part'`. Keeping
-// the Record<CatalogRights, string> exhaustive means such a row renders a
-// label instead of `undefined`, and never matches an active Rights filter
-// (which is correct: it is not one of the two buyer states).
-// Do NOT narrow CatalogRights to two members.
-const RIGHTS_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', part: 'Partial rights', req: 'Clearance required' }
+// 50.5 Task 3: the buyer contract is TWO states and the type now says so.
+//
+// The previous comment here kept a `part` key against "a legacy or
+// mid-migration row". That reasoning was stale: a row's `rights` is COMPUTED
+// per request, never stored, so no row can carry a value forward. The single
+// production producer is catalog-query.ts:502 -> clearanceToCatalogRights(),
+// which returns 'ok' | 'req' only (lib/sync-library/track-clearance.ts:152).
+// catalogRightsFromStage3() can still return 'part' but has NO production
+// caller — only comments and its own tests.
+//
+// rightsBadge() keeps 'partial' for staff review of a part-way submission.
+// That is internal: it maps to 'req' at every buyer boundary
+// (see mapCardsToLightRows in lib/deals/catalog-sample.ts).
+const RIGHTS_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', req: 'Clearance required' }
 // COUPLING: matchesFilters() does `sel.Rights.has(RIGHTS_FILTER_LABEL[row.rights])`,
 // so every value offered in FILTER_OPTIONS.Rights must appear here VERBATIM.
 // Change one without the other and the filter silently matches nothing — it
 // looks like an empty catalogue, not like a bug. Guarded by
 // __tests__/buyer-rights-two-states.test.ts.
-const RIGHTS_FILTER_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', part: 'Partial', req: 'Clearance required' }
+const RIGHTS_FILTER_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', req: 'Clearance required' }
 const DYN_LABEL: Record<Dynamics, string> = { build: 'Builds', steady: 'Steady', twin: 'Two peaks', peak: 'Two peaks', fade: 'Fades' }
 // 30-08: staff-only readinessStatus display labels — falls back to the raw
 // value for any status this map doesn't recognize (never throws).
@@ -223,16 +236,22 @@ function DynGlyph({ shape }: { shape: Dynamics }) {
   return (<svg className="dyn" width="104" height="26" viewBox="0 0 104 26" aria-hidden>{paths[shape]}</svg>)
 }
 
-// Renders all three codes. 'part' is not a state a buyer-visible row should
-// reach (see FILTER_OPTIONS.Rights above), but a legacy row carrying it must
-// still render a real badge rather than fall through to the 'req' envelope
-// icon and mislabel itself. Retained deliberately, not offered as a filter.
-function RightsBadge({ rights }: { rights: CatalogRights }) {
+// Renders the two buyer states. Both are reachable and both are honest:
+// 'ok' says the rights information is in place, 'req' says talk to us.
+function RightsBadge({ rights, withheld }: { rights: CatalogRights; withheld?: boolean }) {
+  // 50.5 Task 2 — the withheld state is its OWN label, not 'Clearance
+  // required'. That string asserts an outcome we have not established.
+  if (withheld) {
+    return (
+      <span className="rights req">
+        <svg className="icn" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 8v5" /><path d="M12 16h.01" /></svg>
+        {BUYER_CLEARANCE_WITHHELD}
+      </span>
+    )
+  }
   const icon = rights === 'ok'
     ? (<><path d="M12 3 4 7v6c0 5 3.4 7.4 8 8 4.6-.6 8-3 8-8V7z" /><path d="m9 12 2 2 4-4" /></>)
-    : rights === 'part'
-      ? (<><circle cx="12" cy="12" r="9" /><path d="M12 3v18a9 9 0 0 0 0-18" /></>)
-      : (<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 8 9 5 9-5" /></>)
+    : (<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 8 9 5 9-5" /></>)
   return (<span className={`rights ${rights}`}><svg className="icn" viewBox="0 0 24 24">{icon}</svg>{RIGHTS_LABEL[rights]}</span>)
 }
 
@@ -248,6 +267,7 @@ export function CatalogBrowserLight({
   isPublic = false,
   embedded = false,
   staffMode = null,
+  catalogueWithheld,
 }: {
   rows: CatalogRow[]
   isPublic?: boolean
@@ -262,6 +282,12 @@ export function CatalogBrowserLight({
   // additional staff-only panel renders below that row. Absent/null keeps
   // the buyer render path exactly as it was before this plan.
   staffMode?: StaffRole | null
+  // 261121-qt2: the REAL signal from lib/deals/catalog-query.ts's
+  // loadCatalogPage — required, not optional, so a caller that forgets to
+  // pass it is a compile error rather than a silent "not withheld". This
+  // component must never derive it from `rows.length` itself; see the
+  // emptyMode comment below.
+  catalogueWithheld: boolean
 }) {
   const emptySel = () => FILTER_KEYS.reduce((a, k) => ({ ...a, [k]: new Set<string>() }), {} as Record<FilterKey, Set<string>>)
 
@@ -328,6 +354,17 @@ export function CatalogBrowserLight({
   const playRow = playId ? rows.find(r => r.id === playId) ?? null : null
   const modalRow = modalId ? rows.find(r => r.id === modalId) ?? null : null
   const dur = playRow ? lenToSeconds(playRow.length) : 0
+  // 50.5/261121-505/261121-qt2 — the simulated_playback, license_request_modal
+  // and empty-state decisions all live in the pure seam
+  // (lib/deals/catalog-withholding-view), taking explicit booleans rather
+  // than calling isReadWithheld or guessing from rows.length themselves.
+  const actionsView = catalogRowActionsView({
+    playbackWithheld: isReadWithheld('simulated_playback'),
+    modalWithheld: isReadWithheld('license_request_modal'),
+    hasRow: playRow != null,
+    catalogueWithheld,
+    hasRows: rows.length > 0,
+  })
 
   // simulated playhead
   useEffect(() => {
@@ -414,6 +451,11 @@ export function CatalogBrowserLight({
   }, [])
 
   function play(id: string) {
+    // 50.5 Task 2 — WITHHELD. This never played audio. It moves a simulated
+    // playhead over a row whose identity is a PROJECT, so it presents a
+    // release as a playable song. Task 9 makes playback the captured
+    // artifact; until then the control does not exist.
+    if (!actionsView.showPlayControl) return
     if (id === playId) { setPlaying(p => !p); return }
     setPlayId(id); setProgress(0); setPlaying(true)
   }
@@ -637,7 +679,37 @@ export function CatalogBrowserLight({
             would be a lie when there is nothing to come back to. The fixture
             fallback that used to hide this case was deleted — see
             lib/deals/catalog-sample.ts. */}
-        {rows.length === 0 ? (
+        {/* 50.5 Task 2 — the WITHHELD catalogue state, distinct from the
+            genuine zero-rows one below. "Nothing in here yet" would be a lie
+            while rows exist and are being held back, and an honest empty state
+            is the whole reason that copy was written.
+
+            261121-qt2 — CORRECTED. Both paragraphs above name the right
+            INTENT, but until this task the predicate below them could not
+            actually tell the two facts apart: `rows.length === 0 &&
+            isReadWithheld('buyer_catalogue_row')` read true for EVERY empty
+            result while the flag was on, because this component has no way
+            to know whether rows.length is zero because rows were SUPPRESSED
+            or because the catalogue is GENUINELY empty — it is handed the
+            same empty array either way. A comment asserting a distinction
+            the code could not make is the label-integrity-funun pattern, in
+            prose rather than a column name, which is why this read as fixed
+            through review after review while sync_listings held zero rows.
+
+            The branch below now reads `actionsView.emptyMode`, computed in
+            the pure seam (lib/deals/catalog-withholding-view.ts) from
+            `catalogueWithheld` — the REAL signal lib/deals/catalog-query.ts's
+            loadCatalogPage carries out of the query that actually knows
+            which case it is. Both copy blocks are unchanged; only which one
+            gets chosen is different now. */}
+        {actionsView.emptyMode === 'withheld' ? (
+          <div className="empty show">
+            <div className="ei"><svg className="icn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3M8 11h6" /></svg></div>
+            <h3>{CATALOGUE_WITHHELD_HEADING}</h3>
+            <p>{CATALOGUE_WITHHELD_BODY}{' '}
+              <a className="empty-link" href={syncContactHref('What I\u2019m looking for')}>Tell us what you\u2019re looking for</a>.</p>
+          </div>
+        ) : actionsView.emptyMode === 'empty' ? (
           <div className="empty show">
             <div className="ei"><svg className="icn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3M8 11h6" /></svg></div>
             <h3>Nothing in here yet</h3>
@@ -670,16 +742,18 @@ export function CatalogBrowserLight({
                 <div className={`trow ${playId === row.id ? 'playing' : ''}`}>
                   <div className="song">
                     <div className="art" style={row.coverUrl ? { backgroundImage: `url('${row.coverUrl}')` } : { background: row.gradient }}>
+                      {actionsView.showPlayControl && (
                       <button className="pb" type="button" aria-label={playId === row.id && playing ? `Pause ${row.title}` : `Play ${row.title}`} onClick={() => play(row.id)}>
                         {playId === row.id && playing
                           ? (<svg viewBox="0 0 24 24"><path d="M8 5h3.2v14H8zM12.8 5H16v14h-3.2z" /></svg>)
                           : (<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>)}
                       </button>
+                      )}
                     </div>
                     <div className="idt">
                       <div className="sname">{row.title}</div>
                       <div className="sby">by <b>{row.artist}</b></div>
-                      <RightsBadge rights={row.rights} />
+                      <RightsBadge rights={row.rights} withheld={row.rightsWithheld} />
                       {rankActive && rankReason[row.id] && (
                         <div className="why"><svg className="icn" viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2.2 2.2M15.8 15.8 18 18M18 6l-2.2 2.2M8.2 15.8 6 18" /></svg>{rankReason[row.id]}</div>
                       )}
@@ -719,7 +793,7 @@ export function CatalogBrowserLight({
       </div>
 
       {/* ── slice 2b: sticky mini player ── */}
-      {playRow && (
+      {playRow && actionsView.showMiniPlayer && (
         <div className={`mini up`} role="region" aria-label="Player">
           <div className="in">
             <div className="ma" style={playRow.coverUrl ? { backgroundImage: `url('${playRow.coverUrl}')` } : { background: playRow.gradient }} />
@@ -747,17 +821,47 @@ export function CatalogBrowserLight({
         </div>
       )}
 
+      {/* ── 50.5 Task 2 — WITHHELD: the multi-song licence form ──
+          The form below offers a checkbox per sibling song, so one request
+          could name several recordings. These deals are done one song at a
+          time (D-12), and the write route already refuses the POST. Rendering
+          the form and failing after a buyer fills it in is the worst of the
+          three options, so this stands in front of it and gives a real way
+          through. Removed when the request names a captured song. */}
+      {modalRow && actionsView.licenseMode === 'withheld' && (
+        <div className="scrim open" onClick={() => setModalId(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="mh">
+              <div className="ma2" style={modalRow.coverUrl ? { backgroundImage: `url('${modalRow.coverUrl}')` } : { background: modalRow.gradient }} />
+              <div><h2>{actionsView.licenseHeading}</h2><p>{modalRow.title} · by {modalRow.artist}</p></div>
+              <button className="x" type="button" aria-label="Close" onClick={() => setModalId(null)}><svg className="icn" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
+            </div>
+            <div className="mb2">
+              <p className="lead">{actionsView.licenseBody}</p>
+            </div>
+            <div className="mf">
+              <a
+                className="send"
+                href={syncContactHref(`Licensing enquiry: ${modalRow.title}`)}
+              >
+                {actionsView.licenseCta}
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── slice 2b: License request modal ── */}
-      {modalRow && (
+      {modalRow && actionsView.licenseMode === 'open' && (
         <div className="scrim open" onClick={() => setModalId(null)}>
           <form className="modal" onClick={e => e.stopPropagation()} onSubmit={submitRequest}>
             <div className="mh">
               <div className="ma2" style={modalRow.coverUrl ? { backgroundImage: `url('${modalRow.coverUrl}')` } : { background: modalRow.gradient }} />
-              <div><h2>Request a license</h2><p>{modalRow.title} · by {modalRow.artist}</p></div>
+              <div><h2>{actionsView.licenseHeading}</h2><p>{modalRow.title} · by {modalRow.artist}</p></div>
               <button className="x" type="button" aria-label="Close" onClick={() => setModalId(null)}><svg className="icn" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
             </div>
             <div className="mb2">
-              <p className="lead">Tell the artist how you&rsquo;ll use it. Inside their pre-cleared terms this moves fast — anything under their floor kicks off a quick back-and-forth.</p>
+              <p className="lead">{actionsView.licenseBody}</p>
               <Field label="Tracks">
                 <div className="trklist">
                   {modalRow.tracks.map(t => (
@@ -827,7 +931,7 @@ export function CatalogBrowserLight({
             <div className="mf">
               <span className="note">We&rsquo;ll confirm it, and you can track it any time in your requests.</span>
               <button className="cancel" type="button" onClick={() => setModalId(null)}>Cancel</button>
-              <button className="send" type="submit" disabled={muSubmitting}>{muSubmitting ? 'Sending…' : 'Send request'}</button>
+              <button className="send" type="submit" disabled={muSubmitting}>{muSubmitting ? 'Sending…' : actionsView.licenseCta}</button>
             </div>
           </form>
         </div>
@@ -1026,7 +1130,6 @@ const CSS = `
 .fnbl .rights{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;padding:4px 9px;border-radius:6px;margin-top:9px;letter-spacing:.02em;white-space:nowrap;}
 .fnbl .rights svg{width:12px;height:12px;stroke-width:2.4;flex:none;}
 .fnbl .rights.ok{color:var(--ok-fg);background:var(--ok-bg);border:1px solid var(--ok-line);}
-.fnbl .rights.part{color:var(--part-fg);background:var(--part-bg);border:1px solid var(--part-line);}
 .fnbl .rights.req{color:var(--req-fg);background:var(--req-bg);border:1px solid var(--req-line);}
 /* 30-08: staff-only panel — light .fnbl tokens ONLY, never .fncon (Pitfall 4). */
 .fnbl .staffpanel{display:flex;flex-wrap:wrap;align-items:center;gap:8px 22px;margin:-2px 6px 4px;padding:12px 16px;border-radius:10px;background:var(--wash);border:1px dashed var(--line-2);font-size:12.5px;color:var(--ink-2);}

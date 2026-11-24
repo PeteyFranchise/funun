@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { isReadWithheld } from '@/lib/deals/buyer-song-unit-read-withholding'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { isAssignedToOrg } from '@/lib/staff/scope'
@@ -112,6 +113,31 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   }
   if (auth.staffRole !== 'leadership' && !isAssignedToOrg(orgRow, auth.user.id)) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
+  // ── 50.5 Task 2 — WITHHELD ────────────────────────────────────────────────
+  // Placed AFTER authentication and the own-book scope check, and BEFORE the
+  // catalogue read, the AI usage claim and persistence. That ordering is the
+  // point: an unauthorised caller must still get 404 rather than learn the
+  // feature exists, and an authorised one must not spend AI budget or write a
+  // draft that cannot be trusted.
+  //
+  // WHY. The draft shares project readiness across sibling tracks and falls
+  // back to the project's title and genre, so it writes project-derived track
+  // choices and copy into a durable record. The frozen send route stops those
+  // reaching a client TODAY, which is exactly the trap: the records persist
+  // and become sendable the moment the freeze lifts. I originally left this
+  // alone on the reasoning that nothing could reach a client. That checked
+  // whether it could be SENT and never checked what it STORES.
+  if (isReadWithheld('selects_ai_draft')) {
+    return NextResponse.json(
+      {
+        error:
+          'AI drafting is paused while the catalogue moves onto a song by song footing. Build the starter by hand from The Crate.',
+        code: 'buyer_song_unit_read_withheld',
+      },
+      { status: 503 }
+    )
   }
 
   if (!selectsRow.brief_id) {

@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { isReadWithheld } from '@/lib/deals/buyer-song-unit-read-withholding'
+import { syncContactHref } from '@/lib/sync-library/contact'
 import Link from 'next/link'
 import type { ShortlistEntry } from '@/lib/deals/shortlists'
 
@@ -68,15 +70,52 @@ export function ShortlistPanel({ initialEntries }: { initialEntries: ShortlistEn
                 </p>
               )}
             </div>
-            {!entry.stillRightsReady && (
+            {/* 2026-10-11 (owner decision D-11): the badge used to read "No
+                longer rights-ready" and was driven by rights paperwork, which
+                disabled the Request licence link for a song whose clearance was
+                merely still in progress. Under D-11 outstanding clearance work
+                never removes a track from The Crate and never blocks request
+                intake, so this now reports AVAILABILITY — the track's listing
+                was withdrawn/removed/rejected, its master is gone, or the
+                project went private. A clearance-required entry stays
+                requestable and says so below. */}
+            {/* 50.5 Task 2 — the withheld branch comes FIRST. With
+                availability fail-closed, the old branch would assert "No
+                longer available" about every saved entry, which is a claim and
+                a false one. */}
+            {entry.availabilityWithheld && (
+              <span className="rounded-full border border-[color:var(--line)] bg-[var(--wash-2)] px-2.5 py-0.5 text-[11px] font-semibold text-[color:var(--ink-3)]">
+                Exact recording and clearance being confirmed
+              </span>
+            )}
+            {!entry.availabilityWithheld && !entry.stillAvailable && (
               <span className="rounded-full border border-[color:var(--req-line)] bg-[var(--req-bg)] px-2.5 py-0.5 text-[11px] font-semibold text-[color:var(--req-fg)]">
-                No longer rights-ready
+                No longer available
+              </span>
+            )}
+            {/* 50.5 Task 2 — WITHHELD. This badge read the first exposed
+                sibling's clearance and showed it for the saved entry. With
+                `clearance` now null, say the state is being confirmed rather
+                than render nothing: a missing badge reads as "fine". */}
+            {entry.stillAvailable && !isReadWithheld('shortlist_availability') && entry.clearance === 'clearance_required' && (
+              <span className="rounded-full border border-[color:var(--line)] bg-[var(--wash-2)] px-2.5 py-0.5 text-[11px] font-semibold text-[color:var(--ink-3)]">
+                Talk to us to clear it
               </span>
             )}
           </div>
 
           <div className="mt-4 flex items-center gap-2">
-            {entry.stillRightsReady ? (
+            {/* 50.5 Task 2 — WITHHELD. This link carried ONLY a project id into
+                the request composer, which then offered every song on it. That
+                is the alternate multi-song path. Route to a person instead. */}
+            {entry.availabilityWithheld ? (
+              <a
+                href={syncContactHref(`Licensing enquiry: ${entry.projectTitle ?? 'saved song'}`)}
+                className="rounded-lg border border-[color:var(--line)] bg-[var(--wash-2)] px-2.5 py-1.5 text-[11px] font-semibold text-[color:var(--indigo)] transition hover:bg-[var(--wash)]"
+              >
+                Email us about this
+              </a>
+            ) : entry.stillAvailable ? (
               <Link
                 href={`/sync/requests/new?project=${entry.vaultProjectId}`}
                 className="rounded-lg border border-[color:var(--line)] bg-[var(--wash-2)] px-2.5 py-1.5 text-[11px] font-semibold text-[color:var(--indigo)] transition hover:bg-[var(--wash)]"

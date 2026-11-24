@@ -14,8 +14,17 @@ import {
 } from '@/lib/metadata/schema'
 import { ALL_GENRE_SLUGS } from '@/lib/genres'
 import { rightsBadge, RIGHTS_BADGE_TO_CATALOG_RIGHTS, type CatalogRightsCode } from '@/lib/sync-library/gate'
-import { isSyncEntryComplete, isSyncEligibleProjectType } from '@/lib/sync-library/readiness'
+import {
+  isSyncEntryComplete,
+  isSyncEligibleProjectType,
+  SYNC_READINESS_KEYS,
+} from '@/lib/sync-library/readiness'
 import type { ReadinessItem, VaultProjectType } from '@/types'
+// Type-only, so nothing is emitted and there is no runtime cycle with
+// track-clearance.ts (which imports syncReadinessCoverage from this module).
+// The union lives beside the function that produces it rather than being
+// restated here.
+import type { TrackClearance } from '@/lib/sync-library/track-clearance'
 
 // ─── isAdmittedToSyncLibrary (26-06) ──────────────────────────────────────
 // The SINGLE admission-authority predicate for buyer-catalogue membership,
@@ -37,7 +46,9 @@ export function isAdmittedToSyncLibrary(project: { has_admitted_sync_listing: bo
 
 // ─── isRightsReady (D-16, RESEARCH Open Question 3 / Assumption A4) ──────
 // The SINGLE named helper expressing the rights-ready definition for buyer
-// catalogue browse. Six live call sites depend on it — the buyer catalogue
+// catalogue browse. FIVE live call expressions across four files depend on
+// it (counted 2026-10-11, and locked by
+// __tests__/sync-exposure-caller-lock.test.ts) — the buyer catalogue
 // (lib/deals/catalog-query.ts), AE shortlists (lib/deals/shortlists.ts),
 // Selects track queries (lib/selects/tracks-query.ts) and the Selects AI
 // draft (lib/selects/ai-draft.ts, x2). Deliberately NOT a boolean flag
@@ -179,33 +190,99 @@ export type CatalogProjectLike = {
 // Stage3Result — document assembly over every vault_document on the project
 // — SOLELY to feed this parameter, so removing it deleted real dead work
 // rather than just shortening an argument list.
-export function isRightsReady(
+// ─── syncReadinessCoverage — the six-key question, with its reason named ─
+// RENAMED 2026-10-11 from syncExposureVerdict, per owner decision D-11. The
+// logic is unchanged and still correct; the old NAME was not. D-11 made the six
+// sync-readiness keys a CLEARANCE question rather than an exposure one —
+// exposure is now decided per track by lib/sync-library/track-exposure.ts from
+// the track's own admitted listing and a bound master. This function is consumed
+// by lib/sync-library/track-clearance.ts, which is where its answer belongs.
+// isRightsReady answered one question with one bit, so a refusal could not
+// say WHY. That mattered once 'unreleased' became sync-eligible (owner
+// reversal 2026-09-26, lib/sync-library/readiness.ts:63-73): the type check
+// below now PASSES for it, while the release-oriented applies_to registry
+// emits only 2 of the 6 sync keys for that type, so coverage silently fails
+// and the song is admitted-but-invisible. The two halves of that divergence
+// are 50-RESEARCH.md §7 and lib/sync-library/readiness.ts:101-103.
+//
+// Five states, each naming exactly one fact and never conflated (fence
+// constraint C-10 — AI provenance, sync readiness, quality review,
+// catalogue admission and licensing readiness stay separate decisions).
+// `indeterminate` is the new one and the point of this type: it separates
+// "the caller never supplied these keys, so the question is unanswerable"
+// from "the paperwork is incomplete". Both still fail closed.
+//
+// The payloads are for plan 03's refusal and a future diagnostic surface.
+// They are NOT copy: `missingKeys` must never be rendered as a checklist a
+// user could finish, because under-coverage is not something an artist can
+// fix — S5b fixes it at the five call sites. And nothing here blames a
+// project's type for a coverage failure (owner decision D-5).
+export type SyncReadinessCoverage =
+  | { status: 'type_ineligible'; type: VaultProjectType }
+  | { status: 'not_admitted' }
+  | { status: 'indeterminate'; missingKeys: readonly string[] }
+  | { status: 'incomplete'; incompleteKeys: readonly string[] }
+  | { status: 'ready' }
+
+export function syncReadinessCoverage(
   project: CatalogProjectLike,
   readinessItems: ReadinessItem[]
-): boolean {
-  // FIRST, and deliberately so: the sync catalogue licenses released-format
-  // recordings ('single' | 'ep' | 'album'). 'snippet' is a promo clip;
-  // 'unreleased' was confirmed out of scope by the owner on 2026-09-09.
-  // Before this line, both were excluded only as a SIDE EFFECT of the
-  // readiness registry's applies_to tables not emitting four of the six
-  // entry items for them — see SYNC_ELIGIBLE_PROJECT_TYPES
-  // (lib/sync-library/readiness.ts) for why that was unsafe to rely on.
-  // This check is independent of `readinessItems` entirely: even if the
-  // registry started emitting all six items complete for an 'unreleased'
-  // project, the gate still refuses.
-  if (!isSyncEligibleProjectType(project.type)) return false
-  if (!isAdmittedToSyncLibrary(project)) return false
-  // The six decided entry items, all 'complete'. isSyncEntryComplete fails
-  // closed on an absent key, on 'warning', and on an empty list — so a
-  // caller that forgets to pass readiness items gets false, never true.
-  if (!isSyncEntryComplete(readinessItems)) return false
+): SyncReadinessCoverage {
+  // Order is isRightsReady's original order, preserved exactly so the
+  // boolean below cannot drift from what it returned before this existed.
+  // Type first, so an ineligible type never reports a coverage problem.
+  if (!isSyncEligibleProjectType(project.type)) {
+    return { status: 'type_ineligible', type: project.type }
+  }
+  if (!isAdmittedToSyncLibrary(project)) return { status: 'not_admitted' }
+
+  // COVERAGE: which of the six keys did the caller supply at all? This is a
+  // question about the item LIST, not about statuses — an absent key and a
+  // present-but-missing key are different facts, and conflating them is what
+  // hid the defect. isSyncEntryComplete fails closed on both; only this can
+  // tell them apart.
+  const supplied = new Set(readinessItems.map(item => item.key))
+  const missingKeys = SYNC_READINESS_KEYS.filter(key => !supplied.has(key))
+  if (missingKeys.length > 0) return { status: 'indeterminate', missingKeys }
+
+  // COMPLETENESS: every supplied key must read 'complete'. Delegated, never
+  // reimplemented — isSyncEntryComplete stays the single authority, and it is
+  // NOT loosened here. An under-specified list fails closed exactly as it did
+  // before; the only addition is that the failure now has a name.
+  if (!isSyncEntryComplete(readinessItems)) {
+    const incompleteKeys = readinessItems
+      .filter(item => item.status !== 'complete')
+      .map(item => item.key)
+    return { status: 'incomplete', incompleteKeys }
+  }
+
   // No rights condition beyond this point, and deliberately none. A track
   // with an UNCLEARED SAMPLE reaches here and PASSES (owner decision
   // 2026-09-09): it is listed, and catalogRightsFromStage3() labels it
   // "Contains a sample". Sample clearance still blocks the ARTIST's
   // distribution path via computeStage3().canContinue — a different
   // question, asked and answered elsewhere.
-  return true
+  //
+  // 'ready' means ready UNDER THIS EXPOSURE GATE. It is not universal buyer
+  // visibility and not licence-readiness: AI provenance is not consulted here
+  // at all, and sample clearance is deliberately excluded.
+  return { status: 'ready' }
+}
+
+// ─── isRightsReady — unchanged contract, delegating implementation ───────
+// The name asserts more than the data carries: it includes catalogue
+// admission and project type, deliberately excludes sample clearance, and
+// never consults AI provenance. It is therefore neither solely about rights
+// nor a complete licensing-readiness signal. Kept verbatim ANYWAY — name,
+// parameter order and boolean return — because changing the signature would
+// force edits at five call sites, two of them Selects files that the Pass 6
+// H-2 workstream owns while it is in flight. Recorded as legacy naming debt:
+// do not copy this name into a new API; prefer syncReadinessCoverage.
+export function isRightsReady(
+  project: CatalogProjectLike,
+  readinessItems: ReadinessItem[]
+): boolean {
+  return syncReadinessCoverage(project, readinessItems).status === 'ready'
 }
 
 // ─── normalizeKeySignature (D-16b) ────────────────────────────────────────
@@ -460,5 +537,22 @@ export type CatalogCard = {
   vocal: string
   instruments: string[]
   rights: CatalogRightsCode
-  tracks: { id: string; title: string | null; bpm: number | null; keySignature: string | null }[]
+  /**
+   * 50.5 Task 2 — true while the clearance answer is WITHHELD rather than
+   * computed. Distinct from `rights` on purpose: overloading 'req' made the
+   * withheld and open paths indistinguishable, so deleting the call site
+   * changed nothing a test could see.
+   */
+  rightsWithheld?: boolean
+  // 2026-10-11 (owner decision D-11): `clearance` is carried PER TRACK because
+  // clearance is a per-track answer, and because the two Selects surfaces that
+  // flatten this array into track rows must read the right one without either
+  // file changing. Additive — existing consumers ignore it.
+  tracks: {
+    id: string
+    title: string | null
+    bpm: number | null
+    keySignature: string | null
+    clearance: TrackClearance['status']
+  }[]
 }

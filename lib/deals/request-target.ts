@@ -1,6 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { computeStage3 } from '@/lib/vault/stage3'
-import { isAdmittedToSyncLibrary } from '@/lib/deals/catalog'
+import type { VaultProjectType, SyncListingStatus } from '@/types'
+import { isSyncEligibleProjectType } from '@/lib/sync-library/readiness'
+import {
+  trackExposure,
+  resolveListingStatus,
+  type ListingStatusRow,
+} from '@/lib/sync-library/track-exposure'
 import { isProfileVisibleTo } from '@/lib/trust-safety/contracts'
 import { mustBlockActionBetween } from '@/lib/trust-safety/block-check'
 
@@ -46,6 +51,30 @@ import { mustBlockActionBetween } from '@/lib/trust-safety/block-check'
 // reads the `ok` boolean, never `.tracks`, but still routes through the
 // same gate).
 
+// ─── 2026-10-11 (owner decision D-11, plan 50-05 Task 3) ─────────────────
+// TWO refusals changed here, in opposite directions.
+//
+// REMOVED — the `computeStage3().canContinue` refusal. D-11: "Interest and
+// request intake may proceed for a clearance-required track; licence execution
+// and delivery stay gated." canContinue is `vault_readiness_score >= 60 &&
+// !sampleBlock` — a rights-paperwork and sample-clearance question, i.e. exactly
+// the clearance work D-11 says must not block intake. A supervisor asking about
+// a song whose split sheet is unsigned is the ordinary case this product exists
+// to serve; Funūn answers it and finishes the paperwork. Licence EXECUTION is a
+// separate decision made elsewhere and is untouched by this change.
+//
+// ADDED — the project-type check. This function never had one, so a buyer could
+// request a project type the catalogue would never have shown them (e.g.
+// 'snippet'); the two surfaces disagreed. SYNC_ELIGIBLE_PROJECT_TYPES is
+// consumed, not restated, and 'unreleased' is inside it, so nothing truthful is
+// blocked.
+//
+// The admission check is now per-track EXPOSURE rather than project-level
+// admission: the same trackExposure authority loadCatalogPage and
+// loadShortlistEntries use, so what is requestable and what is discoverable
+// cannot drift. A project with one admitted playable track and one incomplete
+// sibling stays requestable, and only the exposed track is returned.
+
 export type RequestTargetProject = {
   id: string
   title: string
@@ -66,6 +95,8 @@ type ProjectRow = {
   tracks: {
     id: string
     title: string | null
+    /** D-11's proof of a playable master; required by trackExposure. */
+    audio_file_url: string | null
     writers: string[] | null
     producers: string[] | null
     mixing_engineer: string | null
@@ -93,7 +124,7 @@ export async function authorizeRequestTarget(
       `
       id, title, user_id, type, vault_readiness_score,
       content_id_registered, content_id_dismissed_until,
-      tracks (id, title, writers, producers, mixing_engineer, mastering_engineer, has_sample, sample_details),
+      tracks (id, title, audio_file_url, writers, producers, mixing_engineer, mastering_engineer, has_sample, sample_details),
       vault_documents (id, type, status, track_id, document_data)
       `
     )
@@ -103,39 +134,47 @@ export async function authorizeRequestTarget(
   const project = data as ProjectRow | null
   if (!project) return { ok: false }
 
-  // 26-06: admission is the single gate authority — the SAME
-  // isAdmittedToSyncLibrary helper lib/deals/catalog.ts's isRightsReady
-  // uses. C-01: the lookup now selects every admitted row's track_id
-  // (mirrors catalog-query.ts:200-207's existing batched-query shape,
-  // scoped to one project instead of a page of them) instead of a single
-  // existence row — the project-level admission DECISION is unchanged,
-  // only how the per-track ids get collected changes.
-  const { data: admittedRows } = await service
+  // Project type: an admission precondition, re-checked here so this gate and
+  // the catalogue agree on what exists (see the D-11 note in the header).
+  const projectType = project.type as VaultProjectType
+  if (!isSyncEligibleProjectType(projectType)) return { ok: false }
+
+  // One query for this project's listing rows, no status filter — the same
+  // shape and the same per-track precedence lib/deals/catalog-query.ts uses
+  // (T-26-24: one admission authority, no drift). trackExposure's contract
+  // covers the terminal states and ranks them first, so handing it a
+  // pre-filtered admitted-only view would let it answer 'not_admitted' where the
+  // truth is 'unavailable'. Keyed by track; the query is already scoped to one
+  // project by the .eq below, so there is no cross-project key to guard here.
+  const { data: listingRows } = await service
     .from('sync_listings')
-    .select('track_id')
+    .select('track_id, status, created_at')
     .eq('vault_project_id', project.id)
-    .eq('status', 'admitted')
-  const admittedTrackIds = new Set(
-    ((admittedRows ?? []) as { track_id: string | null }[])
-      .map(r => r.track_id)
-      .filter((id): id is string => id != null)
-  )
-  if (!isAdmittedToSyncLibrary({ has_admitted_sync_listing: admittedTrackIds.size > 0 })) {
-    return { ok: false }
+  const listingRowsByTrack = new Map<string, ListingStatusRow[]>()
+  for (const r of (listingRows ?? []) as {
+    track_id: string | null
+    status: SyncListingStatus
+    created_at: string | null
+  }[]) {
+    if (!r.track_id) continue
+    const rows = listingRowsByTrack.get(r.track_id) ?? []
+    rows.push({ status: r.status, created_at: r.created_at })
+    listingRowsByTrack.set(r.track_id, rows)
   }
 
-  // Stage 3's canContinue answers the artist's own distribution-readiness
-  // question, not the buyer's per-track admission question (same
-  // separation lib/deals/catalog.ts's isRightsReady header comment
-  // documents for a different gate) — it must keep receiving EVERY track,
-  // never just the admitted ones.
-  const stage3 = computeStage3(
-    project,
-    project.tracks ?? [],
-    project.vault_documents ?? [],
-    project.vault_readiness_score
+  // D-11: exposure per exact track. A project is requestable when at least one
+  // of its tracks is exposed, and ONLY the exposed tracks come back — an
+  // incomplete or never-reviewed sibling must never ride along, and an
+  // incomplete sibling must never hide an exposed one.
+  const exposedTracks = (project.tracks ?? []).filter(
+    t =>
+      trackExposure({
+        trackId: t.id,
+        audioFileUrl: t.audio_file_url,
+        listingStatus: resolveListingStatus(listingRowsByTrack.get(t.id) ?? []),
+      }).status === 'exposed'
   )
-  if (!stage3.canContinue) return { ok: false }
+  if (exposedTracks.length === 0) return { ok: false }
 
   const { data: owner } = await service
     .from('user_profiles')
@@ -165,9 +204,7 @@ export async function authorizeRequestTarget(
       id: project.id,
       title: project.title,
       user_id: project.user_id,
-      tracks: (project.tracks ?? [])
-        .filter(t => admittedTrackIds.has(t.id))
-        .map(t => ({ id: t.id, title: t.title })),
+      tracks: exposedTracks.map(t => ({ id: t.id, title: t.title })),
     },
   }
 }

@@ -22,6 +22,12 @@ jest.mock('@/lib/selects/persistence', () => ({
   loadSelectsInScope: jest.fn(),
 }))
 
+// These tests preserve coverage of the underlying Selects state machine.
+// The active fail-closed response is tested separately at its shared boundary.
+jest.mock('@/lib/deals/buyer-song-unit-withholding', () => ({
+  buyerSongUnitWriteWithholdingResponse: jest.fn(() => null),
+}))
+
 const AE_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
 const SELECTS_ID = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'
 

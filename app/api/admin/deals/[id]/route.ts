@@ -7,6 +7,7 @@ import { computeNetFee } from '@/lib/deals/commission'
 import { buildDealStageChangedNotification } from '@/lib/deals/notifications'
 import { createNotification } from '@/lib/notifications'
 import { DEAL_STAGE_VALUES, type LicenseRequestAdmin } from '@/lib/deals/schema'
+import { buyerSongUnitWriteWithholdingResponse } from '@/lib/deals/buyer-song-unit-withholding'
 
 const ADMIN_DEAL_COLUMNS =
   'id, buyer_org_id, created_by, vault_project_id, usage_types, territories, term_months, exclusivity, budget_cents, need_by, buyer_notes, stage, matched_precleared, gross_fee_cents, contract_document_id, owner_id, admin_notes, commission_pct, artist_net_cents, payment_status, created_at, updated_at'
@@ -43,6 +44,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const auth = await verifyAdmin()
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+
+  const withholding = buyerSongUnitWriteWithholdingResponse()
+  if (withholding) return withholding
 
   const service = createServiceClient()
   const { data: existing, error: fetchError } = await service

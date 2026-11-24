@@ -1,5 +1,7 @@
 import {
   isRightsReady,
+  syncReadinessCoverage,
+  type SyncReadinessCoverage,
   isAdmittedToSyncLibrary,
   normalizeKeySignature,
   buildCatalogFilter,
@@ -696,5 +698,102 @@ describe('catalogRightsFromStage3', () => {
       sampleBlock: true,
     })
     expect(catalogRightsFromStage3(s3)).toBe('req')
+  })
+})
+
+// ─── syncReadinessCoverage: the same decision, with its reason named ───────
+// Plan 50-01. Every case here asserts the VERDICT and the BOOLEAN together,
+// so the two can never disagree — which is the whole point of reimplementing
+// isRightsReady over this rather than beside it.
+describe('syncReadinessCoverage — five named states, and isRightsReady agreeing with all of them', () => {
+  const ADMITTED: CatalogProjectLike = { has_admitted_sync_listing: true, type: 'single' }
+
+  it('ready: eligible, admitted, all six keys complete', () => {
+    const items = entryGateItems()
+    expect(syncReadinessCoverage(ADMITTED, items)).toEqual({ status: 'ready' })
+    expect(isRightsReady(ADMITTED, items)).toBe(true)
+  })
+
+  it('incomplete: all six keys present, one not complete — and it names which', () => {
+    const items = entryGateItemsWith('copyright', 'missing')
+    const verdict = syncReadinessCoverage(ADMITTED, items)
+    expect(verdict.status).toBe('incomplete')
+    expect(verdict.status === 'incomplete' && verdict.incompleteKeys).toContain('copyright')
+    expect(isRightsReady(ADMITTED, items)).toBe(false)
+  })
+
+  it('type_ineligible: a snippet is refused on type, and never reports a coverage problem', () => {
+    const snippet: CatalogProjectLike = { has_admitted_sync_listing: true, type: 'snippet' }
+    // Hand it a COMPLETE six-key list, so the only possible refusal is the type.
+    const verdict = syncReadinessCoverage(snippet, entryGateItems())
+    expect(verdict).toEqual({ status: 'type_ineligible', type: 'snippet' })
+    expect(isRightsReady(snippet, entryGateItems())).toBe(false)
+  })
+
+  it('not_admitted: eligible type, complete keys, no admitted listing', () => {
+    for (const flag of [null, false] as const) {
+      const project: CatalogProjectLike = { has_admitted_sync_listing: flag, type: 'single' }
+      expect(syncReadinessCoverage(project, entryGateItems())).toEqual({ status: 'not_admitted' })
+      expect(isRightsReady(project, entryGateItems())).toBe(false)
+    }
+  })
+
+  it("indeterminate: THE DEFECT. An 'unreleased' project's applies_to list cannot answer the six-key question", () => {
+    // This is 50-RESEARCH.md §7 expressed as a test. 'unreleased' has been
+    // sync-ELIGIBLE since the owner's 2026-09-26 reversal, so the type check
+    // passes — but the release-oriented applies_to registry emits only
+    // audio_files and split_sheets for it, so four keys never arrive and the
+    // question is unanswerable rather than answered 'no'.
+    const unreleased: CatalogProjectLike = { has_admitted_sync_listing: true, type: 'unreleased' }
+    const appliesToFiltered = entryGateItems({ type: 'unreleased' })
+
+    const verdict = syncReadinessCoverage(unreleased, appliesToFiltered)
+    expect(verdict.status).toBe('indeterminate')
+    const missing = verdict.status === 'indeterminate' ? verdict.missingKeys : []
+    expect([...missing].sort()).toEqual(['copyright', 'hire_right', 'metadata', 'visual_asset'])
+
+    // Still fails closed, exactly as before this type existed.
+    expect(isRightsReady(unreleased, appliesToFiltered)).toBe(false)
+  })
+
+  it('indeterminate: an empty item list names all six keys and is never ready', () => {
+    const verdict = syncReadinessCoverage(ADMITTED, [])
+    expect(verdict.status).toBe('indeterminate')
+    const missing = verdict.status === 'indeterminate' ? [...verdict.missingKeys].sort() : []
+    expect(missing).toEqual([...SYNC_READINESS_KEYS].sort())
+    expect(isRightsReady(ADMITTED, [])).toBe(false)
+  })
+
+  it("'unreleased' WITH the six-key set supplied is evaluated on its merits, not refused on type", () => {
+    // The companion to the defect case, and the reason S5b is the real fix:
+    // when a caller supplies the sync key set (as syncReadinessForTrack does
+    // via onlyKeys), the same project reaches a real answer.
+    const unreleased: CatalogProjectLike = { has_admitted_sync_listing: true, type: 'unreleased' }
+    const sixKeys = readinessItemsForProject({
+      type: 'unreleased',
+      onlyKeys: SYNC_READINESS_KEYS,
+      distributor: null,
+      tracks: [{ id: 'track-1', isrc: null, iswc: null, metadata: completeComposers() }],
+      assets: [{ type: 'cover_art' }],
+      documents: [
+        { type: 'copyright_registration', status: 'signed' },
+        { type: 'hire_right', status: 'signed' },
+        { type: 'split_sheet', status: 'signed' },
+      ],
+    })
+    expect(syncReadinessCoverage(unreleased, sixKeys).status).not.toBe('indeterminate')
+  })
+
+  it('every state is reachable, so no arm of the union is dead', () => {
+    const seen = new Set<SyncReadinessCoverage['status']>()
+    seen.add(syncReadinessCoverage(ADMITTED, entryGateItems()).status)
+    seen.add(syncReadinessCoverage(ADMITTED, entryGateItemsWith('metadata', 'warning')).status)
+    seen.add(syncReadinessCoverage({ has_admitted_sync_listing: true, type: 'snippet' }, entryGateItems()).status)
+    seen.add(syncReadinessCoverage({ has_admitted_sync_listing: null, type: 'single' }, entryGateItems()).status)
+    seen.add(syncReadinessCoverage(ADMITTED, []).status)
+    // Sorted, so 'incomplete' precedes 'indeterminate' — "inc" < "ind".
+    expect([...seen].sort()).toEqual([
+      'incomplete', 'indeterminate', 'not_admitted', 'ready', 'type_ineligible',
+    ])
   })
 })

@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { verifyAdmin } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
 import { stampLicenseExecuted } from '@/lib/deals/executed'
+import { buyerSongUnitWriteWithholdingResponse } from '@/lib/deals/buyer-song-unit-withholding'
 
 // ─── POST /api/admin/deals/[id]/executed ───────────────────────────────────
 // The explicit executed/signed-license event (D-31.1-09) — the ONLY write
@@ -14,6 +15,9 @@ import { stampLicenseExecuted } from '@/lib/deals/executed'
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await verifyAdmin()
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+
+  const withholding = buyerSongUnitWriteWithholdingResponse()
+  if (withholding) return withholding
 
   const { id } = await params
   const service = createServiceClient()

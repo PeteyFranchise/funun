@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { VaultProjectType } from '@/types'
+import type { VaultProjectType, SyncListingStatus } from '@/types'
 import type { StaffRole } from '@/lib/admin/staff-role'
 import { computeStage3 } from '@/lib/vault/stage3'
 import { readinessItemsForProject } from '@/lib/vault/readiness'
@@ -7,13 +7,26 @@ import { isProfileVisibleTo } from '@/lib/trust-safety/contracts'
 import { loadBlockedIds } from '@/lib/green-room/discover'
 import { readDescriptors } from '@/lib/metadata/schema'
 import { syncReadinessForTrack, missingSyncItems } from '@/lib/sync-library/readiness'
+import { isSyncEligibleProjectType } from '@/lib/sync-library/readiness'
 import {
-  isRightsReady,
+  trackExposure,
+  resolveListingStatus,
+  type ListingStatusRow,
+} from '@/lib/sync-library/track-exposure'
+import {
+  isReadWithheld,
+  STAFF_RIGHTS_DETAIL_WITHHELD,
+} from '@/lib/deals/buyer-song-unit-read-withholding'
+import {
+  trackClearance,
+  clearanceToCatalogRights,
+  type TrackClearance,
+} from '@/lib/sync-library/track-clearance'
+import {
   projectMatchesKeyBpm,
   projectMatchesDescriptors,
   projectMatchesUsageCleared,
   descriptorsToDisplay,
-  catalogRightsFromStage3,
   type CatalogFilter,
   type CatalogCard,
 } from '@/lib/deals/catalog'
@@ -78,7 +91,7 @@ const PAGE_SIZE = 20
 const PROJECT_COLUMNS = `
   id, title, type, genre, vault_readiness_score, user_id,
   cover_art_url, content_id_registered, content_id_dismissed_until,
-  tracks (id, title, bpm, key_signature, metadata, writers, producers, mixing_engineer, mastering_engineer, has_sample, sample_details, isrc, iswc),
+  tracks (id, title, bpm, key_signature, audio_file_url, metadata, writers, producers, mixing_engineer, mastering_engineer, has_sample, sample_details, isrc, iswc),
   vault_documents (id, type, status, track_id, document_data),
   vault_assets (id, type)
 `
@@ -98,6 +111,13 @@ type CatalogProjectRow = {
     title: string | null
     bpm: number | null
     key_signature: string | null
+    /**
+     * D-11's proof of a playable finished master. trackExposure requires it;
+     * omitting it from the select above fails CLOSED (every track reads
+     * no_playable_master and the catalogue empties), which is the safe
+     * direction but still a bug.
+     */
+    audio_file_url: string | null
     metadata: Record<string, unknown> | null
     writers: string[] | null
     producers: string[] | null
@@ -160,7 +180,19 @@ type CatalogCardWithStaff = CatalogCard & { staff?: CatalogStaffLayer }
 // any listing in one of these is "in progress" toward admission.
 const IN_PROGRESS_LISTING_STATUSES = new Set(['applied', 'invited', 'agreement_pending', 'pending_admit'])
 
-export type CatalogPageResult = { data: CatalogCardWithStaff[]; page: number; pageSize: number }
+// 261121-qt2 Task 1: catalogueWithheld is a REAL signal carried out of this
+// query, not recomputed by a caller. It answers one question only — "did
+// buyer_catalogue_row suppress this caller's rows?" — and is REQUIRED, never
+// optional. An optional boolean lets a caller forget to set it and read
+// `undefined`, which is falsy, which silently means "not withheld": the
+// exact fail-open shape this phase has spent a week removing. Required means
+// every caller is a compile error until it is handled.
+export type CatalogPageResult = {
+  data: CatalogCardWithStaff[]
+  page: number
+  pageSize: number
+  catalogueWithheld: boolean
+}
 
 export async function loadCatalogPage(
   service: SupabaseClient,
@@ -184,7 +216,11 @@ export async function loadCatalogPage(
   const projects = (data ?? []) as unknown as CatalogProjectRow[]
 
   if (projects.length === 0) {
-    return { data: [], page, pageSize: PAGE_SIZE }
+    // Genuinely empty, not suppressed. 261121-qt2: a buyer with nothing to
+    // see must be told "nothing in here yet", never "clearance is being
+    // confirmed" — the two are different facts and the UI can no longer
+    // guess between them from rows.length alone.
+    return { data: [], page, pageSize: PAGE_SIZE, catalogueWithheld: false }
   }
 
   // Sync-library admission (26-06, T-26-24): ONE batched sync_listings
@@ -197,25 +233,54 @@ export async function loadCatalogPage(
   // SONG-level — staff admit one track, not a project — and the card the
   // buyer reads has to describe THAT song. See admittedTrackIdsByProject
   // below and its use at the representative-track choice.
-  const { data: admittedRows } = await service
+  // 2026-10-11 (owner decision D-11, plan 50-05 Task 3): this query no longer
+  // filters `.eq('status', 'admitted')`. Exposure is decided per track by
+  // trackExposure, whose contract is "the status of THIS track's own listing
+  // row" — including the terminal states, which rank above everything. Fetching
+  // only the admitted rows would hand that function a filtered view and let it
+  // answer 'not_admitted' where the truth is 'unavailable'. Same ONE batched
+  // query, scoped to this page's project ids; `created_at` comes along because
+  // resolveListingStatus needs it to pick the latest terminal row.
+  //
+  // Still buyer-safe: `staff_notes` is deliberately NOT selected here. The
+  // staff-only batch below remains separate so a buyer/anon read never fetches
+  // staff commentary.
+  const { data: listingRows } = await service
     .from('sync_listings')
-    .select('vault_project_id, track_id')
-    .eq('status', 'admitted')
+    .select('vault_project_id, track_id, status, created_at')
     .in(
       'vault_project_id',
       projects.map(p => p.id)
     )
-  const admittedListingRows = (admittedRows ?? []) as {
+  // "projectId:trackId" -> every listing row that track has ever had.
+  // resolveListingStatus collapses it to the one row that describes the track
+  // now (active wins; terminal rows are history — migration 096's partial
+  // unique index allows re-submission after a terminal outcome, so both can
+  // coexist on one track).
+  //
+  // KEYED BY PROJECT AND TRACK, not by track alone. tracks.id is a primary key,
+  // so in production a track id already belongs to exactly one project and the
+  // project half is redundant — which is precisely the argument for including
+  // it. A lookup that is correct only because of an invariant it does not check
+  // is the shape of a cross-tenant disclosure, and this one is applying an
+  // admission decision; the composite key costs nothing and makes a listing
+  // unable to reach a track on any other project.
+  const listingRowsByTrack = new Map<string, ListingStatusRow[]>()
+  const listingKey = (projectId: string, trackId: string) => `${projectId}:${trackId}`
+  for (const r of (listingRows ?? []) as {
     vault_project_id: string
     track_id: string | null
-  }[]
-  const admittedProjectIds = new Set(admittedListingRows.map(r => r.vault_project_id))
-  const admittedTrackIdsByProject = new Map<string, Set<string>>()
-  for (const r of admittedListingRows) {
+    status: SyncListingStatus
+    created_at: string | null
+  }[]) {
+    // A listing with no track_id names no song, so it can expose none (D-11:
+    // exposure is per exact track). Skipped rather than treated as a
+    // project-wide admission, which is what the pre-D-11 fallback did.
     if (!r.track_id) continue
-    const set = admittedTrackIdsByProject.get(r.vault_project_id) ?? new Set<string>()
-    set.add(r.track_id)
-    admittedTrackIdsByProject.set(r.vault_project_id, set)
+    const key = listingKey(r.vault_project_id, r.track_id)
+    const rows = listingRowsByTrack.get(key) ?? []
+    rows.push({ status: r.status, created_at: r.created_at })
+    listingRowsByTrack.set(key, rows)
   }
 
   // 30-08: staff-layer batch — ONE additional batched query, scoped to this
@@ -286,7 +351,12 @@ export async function loadCatalogPage(
   // Usage-cleared filter (D-15): one batched existence check against
   // project_license_terms, not a per-project query.
   let preclearedProjectIds = new Set<string>()
-  if (filter.usageCleared) {
+  // 50.5 Task 2 — WITHHELD. This existence check is against
+  // project_license_terms, so one project row clears every song in it. Fail
+  // closed: match nothing rather than vouch for songs whose terms were never
+  // written. The filter affordance is removed from the buyer UI alongside this,
+  // so an empty result is not what a user sees.
+  if (filter.usageCleared && !isReadWithheld('usage_cleared_filter')) {
     const { data: termsRows } = await service
       .from('project_license_terms')
       .select('vault_project_id')
@@ -310,39 +380,87 @@ export async function loadCatalogPage(
 
     const tracks = project.tracks ?? []
     const stage3 = computeStage3(project, tracks, project.vault_documents ?? [], project.vault_readiness_score ?? 0)
-    const hasAdmittedSyncListing = admittedProjectIds.has(project.id)
-    // 2026-09-10: isRightsReady now gates on the SIX decided entry items
-    // (SYNC_READINESS_KEYS) instead of vault_readiness_score, so the caller
-    // supplies the per-item readiness the Wave 1 engine computes. Computed
-    // ONCE per project here and reused by the staff layer below — never a
-    // second, independently-derived readiness signal.
     // vault_projects.type is TEXT in the row shape; narrowed ONCE here and
-    // reused by the readiness engine, the isRightsReady gate and the staff
-    // layer below, so all three read the same value.
+    // reused by the eligibility check, the readiness engine, the clearance
+    // evaluator and the staff layer below, so all four read the same value.
     const projectType = project.type as VaultProjectType
+
+    // ─── Project type: an ADMISSION precondition, re-checked here ────────
+    // D-11's admission bar includes "a valid project type", and staff enforce
+    // it at the admission route. Re-checking it at the read surface is defence
+    // in depth, not a second definition — SYNC_ELIGIBLE_PROJECT_TYPES stays the
+    // single authority and is consumed, never restated.
+    //
+    // It is deliberately NOT part of exposure. trackExposure's input type
+    // cannot express a project type at all, which is how D-11's "a truthful
+    // `unreleased` project label does not block it" is guaranteed rather than
+    // asserted — and 'unreleased' is inside the eligible set, so this check
+    // does not reintroduce that block. What it still excludes is a format that
+    // was never licensable, e.g. 'snippet'.
+    if (!isSyncEligibleProjectType(projectType)) continue
+
+    // ─── D-11: EXPOSURE IS DECIDED PER TRACK ────────────────────────────
+    // What this replaced, stated plainly because the defect is subtle: this
+    // line used to be a project-level `isRightsReady(project, readinessItems)`
+    // refusal, where `readinessItems` came from readinessItemsForProject —
+    // which spans EVERY track on the project. One incomplete sibling made that
+    // list incomplete, the whole project failed the gate, and an admitted
+    // complete track was hidden behind its unfinished EP-mate. D-11:
+    //
+    //   "A complete admitted track is never hidden because a sibling track on
+    //    the same EP or album is incomplete."
+    //
+    // So each track is asked about itself, from its OWN listing row and its own
+    // bound master. A project contributes its exposed tracks and is skipped
+    // entirely when it has none.
+    const exposedTracks = tracks.filter(
+      t =>
+        trackExposure({
+          trackId: t.id,
+          audioFileUrl: t.audio_file_url,
+          listingStatus: resolveListingStatus(listingRowsByTrack.get(listingKey(project.id, t.id)) ?? []),
+        }).status === 'exposed'
+    )
+    if (exposedTracks.length === 0) continue
+
+    // Readiness is still computed — but as a CLEARANCE input now, never a
+    // visibility gate (D-11 moved the six sync keys to the clearance question;
+    // see syncReadinessCoverage's rename note in lib/deals/catalog.ts). Computed
+    // ONCE per project and reused by the clearance evaluator and the staff layer
+    // below, so there is no second independently-derived readiness signal.
     const readinessItems = readinessItemsForProject({
       type: projectType,
       tracks,
       assets: project.vault_assets ?? [],
       documents: project.vault_documents ?? [],
     })
-    // `type` is passed EXPLICITLY after the spread, not left to it: the row
-    // shape types `type` as string, and isRightsReady requires the narrowed
-    // VaultProjectType so its SYNC_ELIGIBLE_PROJECT_TYPES check is total.
-    //
-    // 2026-09-10 (third pass): `stage3` is NO LONGER passed to the gate —
-    // it stopped consuming computeStage3().canContinue so that a track with
-    // an uncleared sample is LISTED and labelled rather than hidden (owner
-    // decision 2026-09-09). This is the ONE call site that still computes a
-    // Stage3Result, and it does so for the BADGE (catalogRightsFromStage3
-    // below) and the staff rightsDetail string — never for admission.
-    if (
-      !isRightsReady(
-        { ...project, has_admitted_sync_listing: hasAdmittedSyncListing, type: projectType },
-        readinessItems
+
+    // ─── Clearance: the BADGE, never a filter ───────────────────────────
+    // Evaluated per exposed track through the single trackClearance authority.
+    // `aiProvenance: null` is the documented interim argument until plan 50-02
+    // lands: trackClearance treats null as unresolved and can never return
+    // 'rights_ready' for it, so every track currently reads
+    // 'clearance_required'. That is honest (AI involvement genuinely is not
+    // established yet), it fails closed, and — this is the D-11 point — it
+    // changes NO exposure outcome. A non-ready clearance moves a badge and
+    // routes the buyer to Funūn; it never removes a track from the catalogue.
+    const clearanceByTrack = new Map<string, TrackClearance>()
+    for (const t of exposedTracks) {
+      clearanceByTrack.set(
+        t.id,
+        trackClearance({
+          exposure: {
+            trackId: t.id,
+            audioFileUrl: t.audio_file_url,
+            listingStatus: resolveListingStatus(listingRowsByTrack.get(listingKey(project.id, t.id)) ?? []),
+          },
+          project: { has_admitted_sync_listing: true, type: projectType },
+          readinessItems,
+          stage3,
+          aiProvenance: null,
+        })
       )
-    )
-      continue
+    }
 
     if (!projectMatchesKeyBpm(tracks, filter)) continue
     if (!projectMatchesDescriptors(tracks, filter)) continue
@@ -373,13 +491,16 @@ export async function loadCatalogPage(
     //      above has already established the project IS admitted, so
     //      returning no card at all would hide a listed song over a display
     //      detail; the old behaviour is the safer fallback.
-    const admittedTrackIds = admittedTrackIdsByProject.get(project.id) ?? new Set<string>()
-    const admittedTracks = tracks.filter(t => admittedTrackIds.has(t.id))
+    //   2026-10-11 (D-11, plan 50-05 Task 3): the candidate set is now the
+    //      EXPOSED tracks rather than the merely-admitted ones, and the third
+    //      fallback is GONE. It used to reach for any track on the project when
+    //      no admitted id resolved — safe under the old project-level gate,
+    //      which had already established the project was admitted. Under
+    //      per-track exposure that premise no longer holds: `exposedTracks` is
+    //      non-empty by the check above, so a fallback to a non-exposed track
+    //      could only ever describe the card with a song no buyer may have.
     const representativeTrack =
-      admittedTracks.find(t => readDescriptors(t.metadata) != null) ??
-      admittedTracks[0] ??
-      tracks.find(t => readDescriptors(t.metadata) != null) ??
-      tracks[0]
+      exposedTracks.find(t => readDescriptors(t.metadata) != null) ?? exposedTracks[0]
     const display = representativeTrack
       ? descriptorsToDisplay(representativeTrack)
       : { mood: '', energy: '', vocal: '', instruments: [] }
@@ -395,7 +516,29 @@ export async function loadCatalogPage(
       energy: display.energy,
       vocal: display.vocal,
       instruments: display.instruments,
-      rights: catalogRightsFromStage3(stage3),
+      // D-11 makes the buyer-facing rights answer binary — rights ready, or
+      // contact Funūn — so the badge comes from the representative exposed
+      // track's CLEARANCE rather than from catalogRightsFromStage3's
+      // project-level Stage3 tri-state. rightsBadge is not bypassed: it is
+      // consumed inside trackClearance, which only adds the two facts it never
+      // considered (the terminal listing state and AI provenance). 'part'
+      // therefore stops being emitted here; the distinction it drew survives
+      // itemised in TrackClearance.outstanding, which S5c renders.
+      // 50.5 Task 2 — WITHHELD. The badge below reads the REPRESENTATIVE
+      // exposed track's clearance and renders it for the whole card, so a
+      // multi-song project shows one sibling's answer as every song's. Until
+      // the row is one captured song, fail closed to 'req' (contact Funūn)
+      // rather than publish a borrowed answer. Note this is also what every
+      // song resolves to today anyway, because aiProvenance is passed null
+      // below and trackClearance treats unresolved as not cleared.
+      rights: isReadWithheld('buyer_clearance_badge')
+        ? 'req'
+        : clearanceToCatalogRights(clearanceByTrack.get(representativeTrack.id)?.status),
+      // The DISTINCT signal. Reusing 'req' above made withheld and open
+      // identical, so a deleted call site changed nothing observable and the
+      // negative control could not fail. `rightsWithheld` is what the badge
+      // and the tests actually read.
+      rightsWithheld: isReadWithheld('buyer_clearance_badge') || undefined,
       // C-01 (.planning/deliberations/2026-10-05-pass-5-rights-eligibility-
       // review.md): admission is song-level (26-06), so a card must never
       // imply a track is licensable just because a project sibling is
@@ -410,7 +553,17 @@ export async function loadCatalogPage(
       // searched here at all" -- that claim becomes true only after this
       // change), app/selects/[token]/page.tsx's public Suggested Songs
       // widget, and lib/deals/catalog-sample.ts's mapCardsToLightRows.
-      tracks: admittedTracks.map(t => ({ id: t.id, title: t.title, bpm: t.bpm, keySignature: t.key_signature })),
+      tracks: exposedTracks.map(t => ({
+        id: t.id,
+        title: t.title,
+        bpm: t.bpm,
+        keySignature: t.key_signature,
+        // D-11's second result, carried per track so the two Selects
+        // consumers that flatten this array (app/api/admin/selects/catalog/
+        // route.ts and app/selects/[token]/page.tsx) inherit the right answer
+        // without either file changing. Additive: neither reads it yet.
+        clearance: clearanceByTrack.get(t.id)?.status ?? 'clearance_required',
+      })),
     }
 
     // 30-08: attach the staff-only layer — never for buyers/anon (staffMode
@@ -421,8 +574,12 @@ export async function loadCatalogPage(
       const repListing = representativeTrack
         ? projectListings.find(l => l.track_id === representativeTrack.id) ?? null
         : null
-      const artistNotes =
-        repListing?.staff_notes ?? projectListings.find(l => l.staff_notes != null)?.staff_notes ?? null
+      // 50.5 Task 2 — WITHHELD fallback. The second clause takes a note
+      // written about a DIFFERENT song in the same project and shows it on
+      // this one. Use only this song's own note.
+      const artistNotes = isReadWithheld('staff_sibling_note_fallback')
+        ? repListing?.staff_notes ?? null
+        : repListing?.staff_notes ?? projectListings.find(l => l.staff_notes != null)?.staff_notes ?? null
 
       let readinessStatus: CatalogStaffLayer['readinessStatus']
       if (repListing?.status === 'admitted') {
@@ -450,7 +607,15 @@ export async function loadCatalogPage(
         readinessStatus = 'needs_completion'
       }
 
-      const rightsDetail = `${stage3.requiredComplete}/${stage3.requiredTotal} required rights documents signed${stage3.sampleBlock ? ' — sample clearance blocking' : ''}`
+      // 50.5 Task 2 — WITHHELD. This fraction is summed across the whole
+      // PROJECT (stage3.requiredComplete / requiredTotal), so it names no song,
+      // no requirement and no person. It is a progress bar nobody can act on,
+      // shown where staff need a to-do list. Task 10 replaces it with the
+      // per-song action list; until then it says so rather than implying the
+      // number describes this song.
+      const rightsDetail = isReadWithheld('staff_rights_detail')
+        ? STAFF_RIGHTS_DETAIL_WITHHELD
+        : `${stage3.requiredComplete}/${stage3.requiredTotal} required rights documents signed${stage3.sampleBlock ? ' — sample clearance blocking' : ''}`
 
       card.staff = { readinessStatus, rightsDetail, artistNotes, inProgress }
     }
@@ -458,5 +623,29 @@ export async function loadCatalogPage(
     cards.push(card)
   }
 
-  return { data: cards, page, pageSize: PAGE_SIZE }
+  // 50.5 Task 2 — WITHHELD: the buyer catalogue row itself.
+  //
+  // Every card above is built from a vault_projects row: its id, title, genre
+  // and artwork are the PROJECT's, and the UI renders them under "Song /
+  // Artist". Softening the licence copy does not fix that; the row is the
+  // defect. Tasks 8 and 9 replace it with one captured song plus matching
+  // playback, and this comes off then.
+  //
+  // STAFF KEEP THEIR ROWS. They need to work the queue, they can see the
+  // project context, and the staff layer is separately withheld above.
+  //
+  // This is a GUARD, not a removal: sync_listings held zero rows at the last
+  // preflight (2026-10-11), so no buyer sees a change today. It fails closed
+  // the moment a song is admitted.
+  // 261121-qt2 Task 1: this is the ONE true source of catalogueWithheld —
+  // never recomputed from rows.length by a caller. STAFF ARE NOT SUPPRESSED
+  // (the staffMode === null half of this same guard), so a staff caller
+  // reads false here even though the flag itself is on. "The flag is on"
+  // and "this caller's rows were suppressed" are different facts, and only
+  // the second is what the empty state is about.
+  if (staffMode === null && isReadWithheld('buyer_catalogue_row')) {
+    return { data: [], page, pageSize: PAGE_SIZE, catalogueWithheld: true }
+  }
+
+  return { data: cards, page, pageSize: PAGE_SIZE, catalogueWithheld: false }
 }

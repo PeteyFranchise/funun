@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { randomUUID } from 'node:crypto'
 import { createServiceClient } from '@/lib/supabase/server'
 import { verifyAdmin } from '@/lib/admin/gate'
+import { buyerSongUnitWriteWithholdingResponse } from '@/lib/deals/buyer-song-unit-withholding'
 import {
   buildDestinationChargeParams,
   checkoutEconomicsFingerprint,
@@ -27,6 +28,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const auth = await verifyAdmin()
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+
+  const withholding = buyerSongUnitWriteWithholdingResponse()
+  if (withholding) return withholding
 
   const service = createServiceClient()
   const { data: deal, error: fetchError } = await service

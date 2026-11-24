@@ -7,6 +7,7 @@ import {
   type Territory,
   type ProjectLicenseTerms,
 } from '@/lib/deals/schema'
+import { buyerSongUnitWriteWithholdingResponse } from '@/lib/deals/buyer-song-unit-withholding'
 
 // ─── Pre-cleared terms API (Marmoset five, D-15) ─────────────────────────
 // GET/PATCH project_license_terms — the per-project pre-clearance an artist
@@ -184,6 +185,9 @@ export async function PATCH(
 
   const project = await verifyOwnership(supabase, projectId, user.id)
   if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  const withholding = buyerSongUnitWriteWithholdingResponse()
+  if (withholding) return withholding
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
   const result = sanitize(body)

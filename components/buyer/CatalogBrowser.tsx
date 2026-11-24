@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { isReadWithheld } from '@/lib/deals/buyer-song-unit-read-withholding'
 import Link from 'next/link'
 import { GENRES } from '@/lib/genres'
 import { MOOD_VALUES, MOOD_LABELS, ENERGY_VALUES, ENERGY_LABELS, VOCAL_VALUES, VOCAL_LABELS } from '@/lib/metadata/schema'
@@ -207,15 +208,21 @@ export function CatalogBrowser({
               className={FIELD_CLASS}
             />
           </div>
-          <div className="flex items-end">
-            <button
-              type="button"
-              onClick={() => setFilter(f => ({ ...f, usageCleared: !f.usageCleared }))}
-              className={`${CHIP_BASE} ${filter.usageCleared ? CHIP_ON : CHIP_OFF}`}
-            >
-              Usage cleared only
-            </button>
-          </div>
+          {/* 50.5 Task 2 — WITHHELD. The filter behind this chip matched on
+              project_license_terms, so one project row vouched for every song
+              in it. The query now fails closed, and the affordance goes with it
+              so nobody is handed an empty catalogue instead of an answer. */}
+          {!isReadWithheld('usage_cleared_filter') && (
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={() => setFilter(f => ({ ...f, usageCleared: !f.usageCleared }))}
+                className={`${CHIP_BASE} ${filter.usageCleared ? CHIP_ON : CHIP_OFF}`}
+              >
+                Usage cleared only
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="mt-4">

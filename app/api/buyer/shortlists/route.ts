@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { authorizeRequestTarget } from '@/lib/deals/request-target'
 import { loadShortlistEntries } from '@/lib/deals/shortlists'
+import { buyerSongUnitWriteWithholdingResponse } from '@/lib/deals/buyer-song-unit-withholding'
 
 // ─── Org-shared shortlists (D-14c, T-16-19) ────────────────────────────────
 // Both requester and approver may save/remove (D-14c: a scout saves, an
@@ -58,6 +59,9 @@ export async function POST(request: Request) {
 
   const member = await resolveMember(supabase, user.id)
   if (!member) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const withholding = buyerSongUnitWriteWithholdingResponse()
+  if (withholding) return withholding
 
   const body = (await request.json().catch(() => null)) as { vault_project_id?: unknown } | null
   const vaultProjectId = typeof body?.vault_project_id === 'string' ? body.vault_project_id : null
