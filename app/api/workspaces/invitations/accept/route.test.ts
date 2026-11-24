@@ -22,7 +22,7 @@ import { POST } from './route'
 //      the test proves the route can tell them apart.
 //
 // No database is touched. `workspace_redeem_invitation` and
-// `workspace_access_permitted` are authored but UNAPPLIED; the stub below
+// `workspace_access_permitted` are APPLIED as of 2026-11-23; the stub below
 // stands in for both.
 
 jest.mock('@/lib/supabase/server', () => ({

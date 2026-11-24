@@ -18,7 +18,8 @@ import { DELETE, GET, PATCH } from './route'
 //      behaviour rather than against the source text.
 //
 // No database is touched. The RPCs this route calls are authored but
-// UNAPPLIED; the stub below stands in for them.
+// APPLIED as of 2026-11-23; the stub below stands in for them, so what runs in
+// production is not what this suite exercises.
 
 jest.mock('@/lib/supabase/server', () => ({
   createApiClient: jest.fn(),

@@ -15,7 +15,8 @@ import { DELETE, GET, POST } from './route'
 // reaches a chrome route. Without it, "apply the floor" quietly becomes "ban
 // guests", and nothing would catch it.
 //
-// No database connection: migrations 197 and 198 are authored but unapplied.
+// No database connection. Migrations 197 and 198 ARE applied as of 2026-11-23,
+// so these functions are live and this suite still does not exercise them.
 
 jest.mock('@/lib/supabase/server', () => ({
   createApiClient: jest.fn(),

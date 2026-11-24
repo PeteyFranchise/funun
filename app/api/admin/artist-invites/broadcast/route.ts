@@ -94,8 +94,9 @@ async function findSuppressedAddresses(
   for (let i = 0; i < emails.length; i += SUPPRESSION_LOOKUP_CHUNK) {
     const chunk = emails.slice(i, i + SUPPRESSION_LOOKUP_CHUNK)
     const { data, error } = await service.from('email_suppressions').select('email').in('email', chunk)
-    // Fail open, like sendEmail(): if the table is missing (migration 246
-    // unapplied) the in-loop sendEmail() check still stops the send and the
+    // Fail open, like sendEmail(). Migration 246 IS applied (verified
+    // 2026-11-23), so a missing table is no longer the expected cause; on any
+    // error the in-loop sendEmail() check still stops the send and the
     // row is counted as skipped; it only costs a claim and a token mint.
     if (error) continue
     for (const row of (data ?? []) as { email: string }[]) suppressed.add(row.email)

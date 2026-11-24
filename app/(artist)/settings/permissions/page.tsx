@@ -44,8 +44,9 @@ export const dynamic = 'force-dynamic'
 //
 // FAILS CLOSED ON THE D-56 CONTROL. With the kill switch off the page
 // short-circuits to empty groups before touching any workspace table at all,
-// which is also what keeps it rendering cleanly while migrations 190-195 are
-// authored but not yet applied.
+// which is also what kept it rendering cleanly before migrations 190-195 were
+// applied. They ARE applied now (verified 2026-11-23); the short-circuit stays
+// because the kill switch, not the schema, is what it guards.
 
 const EMPTY_GROUPS: PermissionsGroup[] = []
 

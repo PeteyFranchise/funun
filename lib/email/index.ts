@@ -22,7 +22,7 @@ export function resetSuppressionLookupReportThrottleForTests() {
  * exception it reports to Sentry (never including the address, which is PII;
  * throttled, see above) and returns an empty set. Delivery of legitimate
  * transactional mail (invites, magic links, approvals) must not stop because
- * the table is missing (migration 246 not yet applied) or the DB blipped; the
+ * the table is missing (not expected: 246 IS applied as of 2026-11-23) or the DB blipped; the
  * cost of failing open is at worst one more send to a bounced address, which
  * the Resend webhook already tolerates.
  */

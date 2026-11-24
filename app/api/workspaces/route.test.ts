@@ -10,7 +10,8 @@ import { GET, POST } from './route'
 //
 // Style follows ./[workspaceId]/projects/route.test.ts: the REAL handler runs
 // against in-memory Supabase stubs. Nothing here opens a database
-// connection — migrations 197 and 198 are authored but unapplied.
+// connection. Migrations 197 and 198 ARE applied (verified 2026-11-23), so the
+// functions this suite stubs are live in production and still unexercised here.
 
 jest.mock('@/lib/supabase/server', () => ({
   createApiClient: jest.fn(),
