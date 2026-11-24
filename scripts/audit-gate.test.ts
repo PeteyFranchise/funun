@@ -336,9 +336,12 @@ describe('Verification Gate doc/workflow drift guard', () => {
     }
   })
 
-  it('keeps the production audit line byte-identical in both files, with no deferral path', () => {
-    const PRODUCTION_AUDIT_LINE = 'npm audit --omit=dev --audit-level=moderate'
-    expect(workflow).toContain(PRODUCTION_AUDIT_LINE)
-    expect(claudeMd).toContain(PRODUCTION_AUDIT_LINE)
+  it('keeps audit:gate as the single audit authority in CI and the verification docs', () => {
+    const block = extractVerificationGateBlock(claudeMd)
+
+    expect(workflow).toContain('run: npm run audit:gate')
+    expect(block).toContain('npm run audit:gate')
+    expect(workflow).not.toMatch(/run:\s*npm audit\b/)
+    expect(block).not.toMatch(/^npm audit\b/m)
   })
 })

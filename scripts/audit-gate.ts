@@ -104,20 +104,20 @@ export type EvaluateResult = {
 
 export const AUDIT_DEFERRALS: readonly AuditDeferral[] = [
   {
-    advisory: 'GHSA-vfj7-8cjw-p6xm',
-    package: 'braces',
+    advisory: 'GHSA-MRHX-C7XC-M3W5',
+    package: 'zod',
     reason:
-      'braces 3.0.3 is simultaneously the installed version and the latest version ' +
-      'published to npm, so no upstream patch exists for the vulnerable range (<=3.0.3). ' +
-      "npm's only offered fix is a semver-major upgrade to tailwindcss 4.3.3, which would " +
-      'rewrite tailwind.config.ts and the design tokens defined there. The entire chain ' +
-      '(braces, chokidar, micromatch, fast-glob, @next/eslint-plugin-next, ' +
-      'eslint-config-next, tailwindcss) is devDependencies-only -- `npm audit --omit=dev ' +
-      '--audit-level=moderate` reports zero vulnerabilities, so none of this reaches the ' +
-      'deployed bundle.',
+      'The only published fix is Zod 4.x, a semver-major migration from the pinned ^3.23.0. ' +
+      'Zod is imported by 142 files across app/, lib/, components/, and scripts/, so this is ' +
+      'scheduled migration work rather than a safe dependency bump. Keeping the repository ' +
+      'blocked until that migration finishes would leave every pull request unmergeable, which ' +
+      'is the state this deferral exists to end. Exposure is bounded but not zero: exploitation ' +
+      'requires an attacker-supplied oversized constrained collection, and request-body parsing ' +
+      'routes are behind authentication. Those constraints support a one-month deferral; they ' +
+      'do not make the vulnerability harmless.',
     approvedBy: 'Pete Zora (repo owner)',
-    approvedOn: '2026-10-03',
-    expires: '2026-11-02',
+    approvedOn: '2026-11-21',
+    expires: '2026-12-21',
   },
 ]
 
