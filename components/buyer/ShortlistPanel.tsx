@@ -99,7 +99,7 @@ export function ShortlistPanel({ initialEntries }: { initialEntries: ShortlistEn
                 than render nothing: a missing badge reads as "fine". */}
             {entry.stillAvailable && !isReadWithheld('shortlist_availability') && entry.clearance === 'clearance_required' && (
               <span className="rounded-full border border-[color:var(--line)] bg-[var(--wash-2)] px-2.5 py-0.5 text-[11px] font-semibold text-[color:var(--ink-3)]">
-                Contact Funūn to clear
+                Talk to us to clear it
               </span>
             )}
           </div>
