@@ -94,4 +94,4 @@ export const BEING_CONFIRMED = 'Being confirmed'
  */
 export const CATALOGUE_WITHHELD_HEADING = 'The catalogue is being rebuilt song by song'
 export const CATALOGUE_WITHHELD_BODY =
-  'Listings are moving from releases to individual recordings so every row names one exact song. Tell us what you are looking for and we will come to you with songs that fit.'
+  'Listings are moving from releases to individual recordings so every row names one exact song.'
