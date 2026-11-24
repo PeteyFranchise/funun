@@ -236,15 +236,27 @@ describe('middleware.ts marketing-document wiring', () => {
     expect(source).not.toContain('favicon.ico|marketing|api')
   })
 
-  it('keeps script-src nonce-based and pins the exact script-src and frame-src source lists', () => {
-    const source = middlewareSource()
-    expect(source).toContain("style-src 'self' 'unsafe-inline'")
-    expect(source).not.toContain("'unsafe-inline'\"\n    `script-src")
-    expect(source).toContain(
-      "`script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://js.stripe.com https://challenges.cloudflare.com`",
+  it('keeps script-src nonce-based, pins the exact script-src and frame-src source lists, and pins the dev-only unsafe-eval gate at the call site', () => {
+    // The script-src/style-src/frame-src literals moved to lib/security/csp.ts
+    // (quick task 261118-ryb, extraction decision) -- pin them there instead.
+    const cspSource = readFileSync(
+      path.join(process.cwd(), 'lib', 'security', 'csp.ts'),
+      'utf8',
     )
-    expect(source).toContain(
+    expect(cspSource).toContain("style-src 'self' 'unsafe-inline'")
+    expect(cspSource).not.toContain("'unsafe-inline'\"\n    `script-src")
+    expect(cspSource).toContain(
+      "`script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://js.stripe.com https://challenges.cloudflare.com",
+    )
+    expect(cspSource).toContain(
       "\"frame-src https://js.stripe.com https://*.docuseal.com https://challenges.cloudflare.com\"",
     )
+
+    // middleware.ts must still delegate through buildContentSecurityPolicy
+    // with the dev-only gate wired at this single call site -- this is what
+    // stops a later edit from hardcoding the relaxation on (T-ryb-02).
+    const source = middlewareSource()
+    expect(source).toContain('buildContentSecurityPolicy({')
+    expect(source).toContain("allowUnsafeEval: process.env.NODE_ENV !== 'production'")
   })
 })
