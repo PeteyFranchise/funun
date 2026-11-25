@@ -139,6 +139,13 @@ CREATE TABLE public.crate_songs (
   -- in section (6), once crate_clearance_assessments exists.
   current_assessment_id  UUID,
 
+  -- M8 (review 2026-11-25): the compare-and-set counter for the assessment
+  -- pointer. Separate from lifecycle_version because clearance advances and
+  -- lifecycle transitions are different races. Omitting it would have forced a
+  -- later slice to invent a different concurrency contract or alter production
+  -- schema outside the approved 248/250 plan.
+  assessment_version     INT NOT NULL DEFAULT 0,
+
   captured_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
   captured_by            UUID NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
   updated_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -178,7 +185,7 @@ CREATE TABLE public.crate_song_artifacts (
     CHECK (status IN ('pending', 'verified', 'failed', 'superseded')),
   captured_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
   captured_by           UUID NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
-  supersedes_artifact_id UUID REFERENCES public.crate_song_artifacts(id) ON DELETE RESTRICT,
+  supersedes_artifact_id UUID,
 
   -- NOT NULL for role 'review_playback': the captured playback must trace to the
   -- review whose sha256 it matched.
@@ -187,6 +194,13 @@ CREATE TABLE public.crate_song_artifacts (
     CHECK (role <> 'review_playback' OR quality_review_id IS NOT NULL),
 
   CONSTRAINT crate_song_artifacts_no_self_supersede CHECK (supersedes_artifact_id <> id),
+
+  -- M6 (review 2026-11-25): supersession must stay on the SAME SONG. The simple
+  -- single-column FK checked only that the artifact existed, so song B's artifact
+  -- could supersede song A's, contradicting the contract's own requirement.
+  CONSTRAINT crate_song_artifacts_supersedes_same_song
+    FOREIGN KEY (supersedes_artifact_id, crate_song_id)
+    REFERENCES public.crate_song_artifacts (id, crate_song_id) ON DELETE RESTRICT,
 
   -- One stored object is captured once.
   CONSTRAINT crate_song_artifacts_object_unique UNIQUE (storage_bucket, storage_path),
@@ -245,6 +259,14 @@ CREATE TABLE public.crate_artifact_approvals (
   basis                        TEXT NOT NULL,
   supersedes_approval_id       UUID,
 
+  -- M7 (review 2026-11-25): UNIQUE (supersedes_approval_id) stops the chain
+  -- FORKING but not CYCLING. PostgreSQL checks these non-deferrable FKs at
+  -- statement completion, so one multi-row INSERT of "P1 supersedes P2, P2
+  -- supersedes P1" satisfied every constraint. A monotonic counter makes a cycle
+  -- unrepresentable rather than merely rejected.
+  chain_version                INT NOT NULL DEFAULT 1 CHECK (chain_version >= 1),
+  supersedes_version           INT,
+
   -- An approval must say what it was judged against; a rejection need not.
   CONSTRAINT crate_artifact_approvals_approved_needs_basis_artifact
     CHECK (decision <> 'approved' OR approval_against_artifact_id IS NOT NULL),
@@ -266,6 +288,23 @@ CREATE TABLE public.crate_artifact_approvals (
   -- A LINEAR head, not a tree. Same-artifact alone does not stop two rows
   -- superseding one predecessor, which would make "is this superseded" ambiguous.
   CONSTRAINT crate_artifact_approvals_linear_chain UNIQUE (supersedes_approval_id),
+
+  -- M7: an approval may not supersede itself. The manifests had this check and
+  -- the approvals did not.
+  CONSTRAINT crate_artifact_approvals_no_self_supersede
+    CHECK (supersedes_approval_id <> id),
+  CONSTRAINT crate_artifact_approvals_chain_shape CHECK (
+    (supersedes_approval_id IS NULL) = (chain_version = 1)
+    AND (supersedes_version IS NULL) = (chain_version = 1)
+  ),
+  CONSTRAINT crate_artifact_approvals_chain_adjacent CHECK (
+    supersedes_version IS NULL OR supersedes_version = chain_version - 1
+  ),
+  CONSTRAINT crate_artifact_approvals_id_artifact_version
+    UNIQUE (id, artifact_id, chain_version),
+  CONSTRAINT crate_artifact_approvals_predecessor_is_real
+    FOREIGN KEY (supersedes_approval_id, artifact_id, supersedes_version)
+    REFERENCES public.crate_artifact_approvals (id, artifact_id, chain_version) ON DELETE RESTRICT,
 
   CONSTRAINT crate_artifact_approvals_id_artifact UNIQUE (id, artifact_id),
   CONSTRAINT crate_artifact_approvals_id_song UNIQUE (id, crate_song_id)
@@ -421,6 +460,15 @@ ALTER TABLE public.license_requests
 ALTER TABLE public.license_requests
   ADD CONSTRAINT license_requests_id_crate_song UNIQUE (id, crate_song_id);
 
+-- M2 (review 2026-11-25): the two expand columns were independently constrained,
+-- so a request could record that the buyer saw ANOTHER SONG'S clearance state at
+-- submission. Both columns are nullable, so MATCH SIMPLE leaves legacy rows
+-- untouched; the pair is only checked once both are populated.
+ALTER TABLE public.license_requests
+  ADD CONSTRAINT license_requests_submission_assessment_same_song
+  FOREIGN KEY (clearance_assessment_id_at_submission, crate_song_id)
+  REFERENCES public.crate_clearance_assessments (id, crate_song_id) ON DELETE RESTRICT;
+
 -- Provenance integrity for the captured source reference.
 ALTER TABLE public.tracks
   ADD CONSTRAINT tracks_project_id_id_unique UNIQUE (project_id, id);
@@ -446,6 +494,10 @@ CREATE TABLE public.license_request_holds (
 
   -- Retry idempotency: re-firing the same advance cannot stack a second hold.
   CONSTRAINT license_request_holds_one_per_advance UNIQUE (request_id, triggering_assessment_id),
+
+  -- M4 (review 2026-11-25): the composite target that lets coverage rows prove a
+  -- hold and the decision covering it belong to the SAME REQUEST.
+  CONSTRAINT license_request_holds_id_request UNIQUE (id, request_id),
 
   CONSTRAINT license_request_holds_request_same_song
     FOREIGN KEY (request_id, crate_song_id)
@@ -475,6 +527,8 @@ CREATE TABLE public.license_request_hold_decisions (
   -- authority D-20 grants, so it may not be nullable for either.
   reason                 TEXT NOT NULL CHECK (btrim(reason) <> ''),
 
+  CONSTRAINT license_request_hold_decisions_id_request UNIQUE (id, request_id),
+
   CONSTRAINT license_request_hold_decisions_request_same_song
     FOREIGN KEY (request_id, crate_song_id)
     REFERENCES public.license_requests (id, crate_song_id) ON DELETE RESTRICT,
@@ -491,13 +545,27 @@ CREATE TRIGGER license_request_hold_decisions_append_only
 -- hold would represent one click as several independent human judgements, which
 -- is an audit that says something untrue.
 CREATE TABLE public.license_request_hold_decision_holds (
-  decision_id UUID NOT NULL REFERENCES public.license_request_hold_decisions(id) ON DELETE RESTRICT,
-  hold_id     UUID NOT NULL REFERENCES public.license_request_holds(id) ON DELETE RESTRICT,
+  decision_id UUID NOT NULL,
+  hold_id     UUID NOT NULL,
+
+  -- M4 (review 2026-11-25): the request is carried HERE so both sides can be
+  -- bound to it. With two independent single-column FKs, a decision on request A
+  -- could cover a hold on request B, and UNIQUE (hold_id) then made B's hold
+  -- appear permanently decided by a human act that never looked at it.
+  request_id  UUID NOT NULL,
+
   PRIMARY KEY (decision_id, hold_id),
 
   -- A hold is decided once. A reversal is a new advance, a new hold and a new
   -- decision, never an edit.
-  CONSTRAINT license_request_hold_decision_holds_once UNIQUE (hold_id)
+  CONSTRAINT license_request_hold_decision_holds_once UNIQUE (hold_id),
+
+  CONSTRAINT license_request_hold_decision_holds_decision_same_request
+    FOREIGN KEY (decision_id, request_id)
+    REFERENCES public.license_request_hold_decisions (id, request_id) ON DELETE RESTRICT,
+  CONSTRAINT license_request_hold_decision_holds_hold_same_request
+    FOREIGN KEY (hold_id, request_id)
+    REFERENCES public.license_request_holds (id, request_id) ON DELETE RESTRICT
 );
 
 CREATE TRIGGER license_request_hold_decision_holds_append_only
@@ -516,7 +584,16 @@ CREATE TABLE public.license_request_execution_authority (
   request_id             UUID NOT NULL,
   crate_song_id          UUID NOT NULL,
   accepted_assessment_id UUID NOT NULL,
-  decision_id            UUID REFERENCES public.license_request_hold_decisions(id) ON DELETE RESTRICT,
+  -- M4: bound to the SAME REQUEST when present. Deliberately still NULLABLE,
+  -- which is a considered departure from the review's "make it NOT NULL": a
+  -- request that never had a hold still needs authority to execute, and there is
+  -- no hold decision to name in that case. NOT NULL would make the first
+  -- execution of an unheld request unrepresentable.
+  decision_id            UUID,
+
+  -- M4: the contract requires a stated basis, as it does for hold decisions.
+  basis                  TEXT NOT NULL CHECK (btrim(basis) <> ''),
+
   granted_by             UUID NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
   granted_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
 
@@ -525,7 +602,16 @@ CREATE TABLE public.license_request_execution_authority (
     REFERENCES public.license_requests (id, crate_song_id) ON DELETE RESTRICT,
   CONSTRAINT license_request_execution_authority_assessment_same_song
     FOREIGN KEY (accepted_assessment_id, crate_song_id)
-    REFERENCES public.crate_clearance_assessments (id, crate_song_id) ON DELETE RESTRICT
+    REFERENCES public.crate_clearance_assessments (id, crate_song_id) ON DELETE RESTRICT,
+
+  -- M4: one authority per (request, accepted assessment). Re-granting for the
+  -- same assessment is the same act, not a second one.
+  CONSTRAINT license_request_execution_authority_one_per_assessment
+    UNIQUE (request_id, accepted_assessment_id),
+
+  CONSTRAINT license_request_execution_authority_decision_same_request
+    FOREIGN KEY (decision_id, request_id)
+    REFERENCES public.license_request_hold_decisions (id, request_id) ON DELETE RESTRICT
 );
 
 CREATE TRIGGER license_request_execution_authority_append_only
@@ -577,7 +663,24 @@ CREATE TABLE public.crate_delivery_manifests (
     FOREIGN KEY (supersedes_manifest_id, request_id)
     REFERENCES public.crate_delivery_manifests (id, request_id) ON DELETE RESTRICT,
   CONSTRAINT crate_delivery_manifests_linear_chain UNIQUE (supersedes_manifest_id),
-  CONSTRAINT crate_delivery_manifests_no_self_supersede CHECK (supersedes_manifest_id <> id)
+  CONSTRAINT crate_delivery_manifests_no_self_supersede CHECK (supersedes_manifest_id <> id),
+
+  -- M7 (review 2026-11-25): UNIQUE stops a fork, not a cycle. version already
+  -- exists here, so predecessor-version adjacency makes the cycle
+  -- unrepresentable.
+  supersedes_version     INT,
+  CONSTRAINT crate_delivery_manifests_chain_shape CHECK (
+    (supersedes_manifest_id IS NULL) = (version = 1)
+    AND (supersedes_version IS NULL) = (version = 1)
+  ),
+  CONSTRAINT crate_delivery_manifests_chain_adjacent CHECK (
+    supersedes_version IS NULL OR supersedes_version = version - 1
+  ),
+  CONSTRAINT crate_delivery_manifests_id_request_version
+    UNIQUE (id, request_id, version),
+  CONSTRAINT crate_delivery_manifests_predecessor_is_real
+    FOREIGN KEY (supersedes_manifest_id, request_id, supersedes_version)
+    REFERENCES public.crate_delivery_manifests (id, request_id, version) ON DELETE RESTRICT
 );
 
 CREATE TRIGGER crate_delivery_manifests_append_only
@@ -606,6 +709,14 @@ CREATE TABLE public.crate_delivery_manifest_items (
   CONSTRAINT crate_manifest_items_request_same_song
     FOREIGN KEY (request_id, crate_song_id)
     REFERENCES public.license_requests (id, crate_song_id) ON DELETE RESTRICT,
+
+  -- M5 (review 2026-11-25): the header FK proved the manifest belonged to the
+  -- song and the request FK proved the request did, but nothing proved the
+  -- manifest belonged to THAT REQUEST. Two buyers requesting the same song was
+  -- all it took.
+  CONSTRAINT crate_manifest_items_header_same_request
+    FOREIGN KEY (manifest_id, request_id)
+    REFERENCES public.crate_delivery_manifests (id, request_id) ON DELETE RESTRICT,
   CONSTRAINT crate_manifest_items_artifact_same_song_and_role
     FOREIGN KEY (artifact_id, crate_song_id, role)
     REFERENCES public.crate_song_artifacts (id, crate_song_id, role) ON DELETE RESTRICT,
@@ -670,7 +781,16 @@ CREATE TABLE public.crate_contract_snapshots (
     REFERENCES public.license_requests (id, crate_song_id) ON DELETE RESTRICT,
   CONSTRAINT crate_contract_snapshots_assessment_same_song
     FOREIGN KEY (accepted_assessment_id, crate_song_id)
-    REFERENCES public.crate_clearance_assessments (id, crate_song_id) ON DELETE RESTRICT
+    REFERENCES public.crate_clearance_assessments (id, crate_song_id) ON DELETE RESTRICT,
+
+  -- M3 (review 2026-11-25): manifest_id had NO foreign key at all, so a signed
+  -- contract could name another song's manifest or a random UUID.
+  CONSTRAINT crate_contract_snapshots_manifest_same_song
+    FOREIGN KEY (manifest_id, crate_song_id)
+    REFERENCES public.crate_delivery_manifests (id, crate_song_id) ON DELETE RESTRICT,
+  CONSTRAINT crate_contract_snapshots_manifest_same_request
+    FOREIGN KEY (manifest_id, request_id)
+    REFERENCES public.crate_delivery_manifests (id, request_id) ON DELETE RESTRICT
 );
 
 CREATE TRIGGER crate_contract_snapshots_append_only
@@ -754,52 +874,195 @@ ON CONFLICT (id) DO UPDATE SET
   file_size_limit    = EXCLUDED.file_size_limit,
   allowed_mime_types = EXCLUDED.allowed_mime_types;
 
--- ─── (16) RLS and grants ────────────────────────────────────────────────
+-- ─── (16) WHO MAY WRITE — the boundary (contract §4.12) ─────────────────
 --
--- Service-role only: RLS enabled with ZERO policies, and every browser role
--- revoked. Note that a column-level REVOKE over a live table grant is a no-op --
--- this house shipped one to production -- so these are table-level REVOKEs and
--- the absence of policies is what does the work.
+-- M1 (review 2026-11-25). The first version of this migration implemented §4.1
+-- to §4.11 and §4.13 and SKIPPED §4.12 entirely, which made every append-only
+-- and sole-writer claim above false:
+--
+--   * It revoked from PUBLIC, anon and authenticated but never from
+--     `service_role` — the role the privileged application already uses. Supabase
+--     grants service_role direct privileges on new public tables by default, as
+--     migration 197 already documents. So ordinary application code could insert
+--     a manifest item citing a rejected approval, a pending artifact, or a
+--     caller-invented sha256.
+--
+--   * TRUNCATE DOES NOT FIRE ROW-LEVEL TRIGGERS. Every append-only guarantee
+--     above was defeated by one statement:
+--         TRUNCATE public.crate_quality_reviews CASCADE;
+--
+-- This repository has shipped this class of defect before: a column-level REVOKE
+-- that was a no-op over a live table grant, and a SECURITY DEFINER guard whose
+-- GUC comparison evaluated NULL so the check never fired.
 
-ALTER TABLE public.crate_quality_reviews                 ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.crate_songs                           ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.crate_song_artifacts                  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.crate_song_current_artifacts          ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.crate_artifact_approvals              ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.crate_song_current_approvals          ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.crate_clearance_assessments           ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.crate_clearance_assessment_items      ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.crate_song_events                     ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.license_request_holds                 ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.license_request_hold_decisions        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.license_request_hold_decision_holds   ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.license_request_execution_authority   ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.crate_delivery_manifests              ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.crate_delivery_manifest_items         ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.crate_request_current_manifests       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.crate_contract_snapshots              ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.crate_song_terms                      ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.crate_capture_orphans                 ENABLE ROW LEVEL SECURITY;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'funun_crate_evidence') THEN
+    CREATE ROLE funun_crate_evidence NOLOGIN NOINHERIT;
+  END IF;
+END
+$$;
 
-REVOKE ALL ON public.crate_quality_reviews               FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON public.crate_songs                         FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON public.crate_song_artifacts                FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON public.crate_song_current_artifacts        FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON public.crate_artifact_approvals            FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON public.crate_song_current_approvals        FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON public.crate_clearance_assessments         FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON public.crate_clearance_assessment_items    FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON public.crate_song_events                   FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON public.license_request_holds               FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON public.license_request_hold_decisions      FROM PUBLIC, anon, authenticated;
+COMMENT ON ROLE funun_crate_evidence IS
+  'Owns The Crate capture and evidence tables. NOLOGIN, NOINHERIT. Writes reach these tables only through narrow SECURITY DEFINER functions owned by this role; service_role holds SELECT and EXECUTE, never INSERT, UPDATE, DELETE or TRUNCATE.';
+
+ALTER TABLE public.crate_quality_reviews OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_songs OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_song_artifacts OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_song_current_artifacts OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_artifact_approvals OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_song_current_approvals OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_clearance_assessments OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_clearance_assessment_items OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_song_events OWNER TO funun_crate_evidence;
+ALTER TABLE public.license_request_holds OWNER TO funun_crate_evidence;
+ALTER TABLE public.license_request_hold_decisions OWNER TO funun_crate_evidence;
+ALTER TABLE public.license_request_hold_decision_holds OWNER TO funun_crate_evidence;
+ALTER TABLE public.license_request_execution_authority OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_delivery_manifests OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_delivery_manifest_items OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_request_current_manifests OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_contract_snapshots OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_song_terms OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_capture_orphans OWNER TO funun_crate_evidence;
+
+-- RLS on with ZERO policies. Belt, not braces: service_role carries BYPASSRLS
+-- in Supabase, so RLS is not what stops it. The grants below are.
+ALTER TABLE public.crate_quality_reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crate_songs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crate_song_artifacts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crate_song_current_artifacts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crate_artifact_approvals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crate_song_current_approvals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crate_clearance_assessments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crate_clearance_assessment_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crate_song_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.license_request_holds ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.license_request_hold_decisions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.license_request_hold_decision_holds ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.license_request_execution_authority ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crate_delivery_manifests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crate_delivery_manifest_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crate_request_current_manifests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crate_contract_snapshots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crate_song_terms ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crate_capture_orphans ENABLE ROW LEVEL SECURITY;
+
+-- Browser roles: nothing at all.
+REVOKE ALL ON public.crate_quality_reviews FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.crate_songs FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.crate_song_artifacts FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.crate_song_current_artifacts FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.crate_artifact_approvals FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.crate_song_current_approvals FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.crate_clearance_assessments FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.crate_clearance_assessment_items FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.crate_song_events FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.license_request_holds FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.license_request_hold_decisions FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON public.license_request_hold_decision_holds FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON public.license_request_execution_authority FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON public.crate_delivery_manifests            FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON public.crate_delivery_manifest_items       FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON public.crate_request_current_manifests     FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON public.crate_contract_snapshots            FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON public.crate_song_terms                    FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON public.crate_capture_orphans               FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.crate_delivery_manifests FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.crate_delivery_manifest_items FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.crate_request_current_manifests FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.crate_contract_snapshots FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.crate_song_terms FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.crate_capture_orphans FROM PUBLIC, anon, authenticated;
+
+-- service_role: reads yes, writes NO. TRUNCATE is named explicitly because it
+-- is not covered by the row-level triggers.
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_quality_reviews FROM service_role;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_songs FROM service_role;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_song_artifacts FROM service_role;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_song_current_artifacts FROM service_role;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_artifact_approvals FROM service_role;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_song_current_approvals FROM service_role;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_clearance_assessments FROM service_role;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_clearance_assessment_items FROM service_role;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_song_events FROM service_role;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.license_request_holds FROM service_role;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.license_request_hold_decisions FROM service_role;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.license_request_hold_decision_holds FROM service_role;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.license_request_execution_authority FROM service_role;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_delivery_manifests FROM service_role;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_delivery_manifest_items FROM service_role;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_request_current_manifests FROM service_role;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_contract_snapshots FROM service_role;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_song_terms FROM service_role;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_capture_orphans FROM service_role;
+
+GRANT SELECT ON public.crate_quality_reviews TO service_role;
+GRANT SELECT ON public.crate_songs TO service_role;
+GRANT SELECT ON public.crate_song_artifacts TO service_role;
+GRANT SELECT ON public.crate_song_current_artifacts TO service_role;
+GRANT SELECT ON public.crate_artifact_approvals TO service_role;
+GRANT SELECT ON public.crate_song_current_approvals TO service_role;
+GRANT SELECT ON public.crate_clearance_assessments TO service_role;
+GRANT SELECT ON public.crate_clearance_assessment_items TO service_role;
+GRANT SELECT ON public.crate_song_events TO service_role;
+GRANT SELECT ON public.license_request_holds TO service_role;
+GRANT SELECT ON public.license_request_hold_decisions TO service_role;
+GRANT SELECT ON public.license_request_hold_decision_holds TO service_role;
+GRANT SELECT ON public.license_request_execution_authority TO service_role;
+GRANT SELECT ON public.crate_delivery_manifests TO service_role;
+GRANT SELECT ON public.crate_delivery_manifest_items TO service_role;
+GRANT SELECT ON public.crate_request_current_manifests TO service_role;
+GRANT SELECT ON public.crate_contract_snapshots TO service_role;
+GRANT SELECT ON public.crate_song_terms TO service_role;
+GRANT SELECT ON public.crate_capture_orphans TO service_role;
+
+-- Statement-level TRUNCATE guards, because the row-level triggers cover UPDATE
+-- and DELETE only. Defence in depth behind the REVOKE above.
+CREATE TRIGGER crate_quality_reviews_no_truncate
+  BEFORE TRUNCATE ON public.crate_quality_reviews
+  FOR EACH STATEMENT EXECUTE FUNCTION public.crate_append_only();
+CREATE TRIGGER crate_artifact_approvals_no_truncate
+  BEFORE TRUNCATE ON public.crate_artifact_approvals
+  FOR EACH STATEMENT EXECUTE FUNCTION public.crate_append_only();
+CREATE TRIGGER crate_clearance_assessments_no_truncate
+  BEFORE TRUNCATE ON public.crate_clearance_assessments
+  FOR EACH STATEMENT EXECUTE FUNCTION public.crate_append_only();
+CREATE TRIGGER crate_clearance_assessment_items_no_truncate
+  BEFORE TRUNCATE ON public.crate_clearance_assessment_items
+  FOR EACH STATEMENT EXECUTE FUNCTION public.crate_append_only();
+CREATE TRIGGER crate_song_events_no_truncate
+  BEFORE TRUNCATE ON public.crate_song_events
+  FOR EACH STATEMENT EXECUTE FUNCTION public.crate_append_only();
+CREATE TRIGGER license_request_holds_no_truncate
+  BEFORE TRUNCATE ON public.license_request_holds
+  FOR EACH STATEMENT EXECUTE FUNCTION public.crate_append_only();
+CREATE TRIGGER license_request_hold_decisions_no_truncate
+  BEFORE TRUNCATE ON public.license_request_hold_decisions
+  FOR EACH STATEMENT EXECUTE FUNCTION public.crate_append_only();
+CREATE TRIGGER license_request_hold_decision_holds_no_truncate
+  BEFORE TRUNCATE ON public.license_request_hold_decision_holds
+  FOR EACH STATEMENT EXECUTE FUNCTION public.crate_append_only();
+CREATE TRIGGER license_request_execution_authority_no_truncate
+  BEFORE TRUNCATE ON public.license_request_execution_authority
+  FOR EACH STATEMENT EXECUTE FUNCTION public.crate_append_only();
+CREATE TRIGGER crate_delivery_manifests_no_truncate
+  BEFORE TRUNCATE ON public.crate_delivery_manifests
+  FOR EACH STATEMENT EXECUTE FUNCTION public.crate_append_only();
+CREATE TRIGGER crate_delivery_manifest_items_no_truncate
+  BEFORE TRUNCATE ON public.crate_delivery_manifest_items
+  FOR EACH STATEMENT EXECUTE FUNCTION public.crate_append_only();
+CREATE TRIGGER crate_contract_snapshots_no_truncate
+  BEFORE TRUNCATE ON public.crate_contract_snapshots
+  FOR EACH STATEMENT EXECUTE FUNCTION public.crate_append_only();
+
+-- THE WRITERS THEMSELVES ARE NOT IN THIS MIGRATION, AND THAT IS DELIBERATE.
+-- Each slice brings its own narrow SECURITY DEFINER function, owned by
+-- funun_crate_evidence with a fixed search_path, granting EXECUTE to
+-- service_role: the admission capture RPC with 50.5B, assessment and approval
+-- advances with 50.5C, manifest freeze and hold decisions with 50.5E. Until each
+-- arrives the corresponding table cannot be written by anything, which is correct
+-- for slices that ship dark.
+--
+-- WHAT IS NOT PROVEN HERE, STATED PLAINLY. These REVOKEs and this ownership
+-- transfer are asserted, not demonstrated. Before 50.5B's capture path is
+-- enabled, probe the live database: confirm service_role is REFUSED on INSERT,
+-- UPDATE, DELETE and TRUNCATE for each table, with a must-succeed control
+-- alongside. "The migration ran" and "the privilege is gone" are separate claims.
 
 COMMIT;
 
