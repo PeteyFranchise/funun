@@ -3,7 +3,10 @@ export const TRACK_AUDIO_MAX_BYTES = 50 * 1024 * 1024
 
 export type TrackAudioRole = 'master' | 'share'
 
-const EXT_BY_MIME: Record<string, string> = {
+// Exported so the Crate capture path can derive its accepted types from the
+// uploader instead of restating them. A restated list is how 'audio/aiff' was
+// once asserted into a design while three real types went missing.
+export const EXT_BY_MIME: Record<string, string> = {
   'audio/mpeg': 'mp3',
   'audio/mp3': 'mp3',
   'audio/wav': 'wav',
