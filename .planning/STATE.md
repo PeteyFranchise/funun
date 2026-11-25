@@ -5,7 +5,7 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Phases 39 and 40 SHIPPED. Migration ceiling 242 applied and behaviourally verified (230-242; 232 is a deliberate gap, never created). Pass 6 RLS mutation census CLOSED except H-2. The submit-a-song onboarding questionnaire shipped in six slices (PRs #177-#182), untested in a browser. Phase 41 roadmapped, not yet planned. Phase 50 (The Crate Submissions Door) RE-PLANNED 2026-10-04 after an adversarial review returned NO-GO; still blocked on counsel and five owner decisions
-stopped_at: Nothing mid-flight. Next action is a browser pass over submit-a-song, a deliberation on Pass 6 H-2, /gsd-plan-phase 41, or /gsd-discuss-phase 50
+stopped_at: Nothing mid-flight. A Codex review of Phase 46 was commissioned 2026-10-07 and its answer is pending -- read it before touching the marketing pipeline. Otherwise: a browser pass over submit-a-song, a deliberation on Pass 6 H-2, /gsd-plan-phase 41, or /gsd-discuss-phase 50
 last_updated: "2026-10-07T00:00:00.000Z"
 last_activity: 2026-10-07
 progress:
@@ -31,6 +31,45 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 > this paragraph remains the explicit Phase 31.2 record until its own completion pass occurs.
 
 ## Current Position
+
+### UPDATE 2026-10-07 (later) — Phase 46: the page is already live, and the pipeline is lying
+
+Attempted to finish Phase 46. Found two things the roadmap does not reflect, shipped neither,
+and commissioned a Codex review. **Full detail:**
+`.planning/todos/pending/2026-10-07-marketing-bench-artifact-divergence.md`
+
+**1. The marketing page is already live.** `middleware.ts` rewrites `/` to
+`/marketing-document` for anonymous visitors with no flag and no gate. The roadmap still frames
+shipping as a future owner decision. It happened. All five work units of the ship-scope todo are
+complete and the verifier passes.
+
+**2. The bench and the shipped artifact have diverged, and the freeze cannot see it.**
+`FROZEN_SHA256` pins only the bench's own hash, so it cannot tell that the generated artifact was
+hand-edited afterwards. Rebuilding from the **unchanged** bench loses **14 hunks / ~87 lines** --
+PR #150's entire mobile and accessibility sphere fix (`0230e1e1`, 2026-10-04). The build script
+has not changed since, so this is not build drift: the fix was applied to the generated file and
+never back-ported.
+
+The next person to re-freeze legitimately reverts that fix, and every check passes while they do.
+
+**Two defects found and deliberately NOT shipped:**
+- `landing.html:894` links to `crate-ready.html`, which exists only on the gitignored bench --
+  **a 404 on the live homepage**.
+- Both "Submit a song" CTAs point at `/signup`, not `/signup?next=%2Fvault%2Fnew%2Fsong`, so the
+  questionnaire shipped in PRs #177-#182 is unreachable from the page advertising it.
+
+Both were fixed through the documented pipeline, produced a 93-line diff because the rebuild
+reverted PR #150, and were **reverted**. Bench matches the freeze, artifact untouched, verifier
+green. Shipping an 87-line regression to fix a dead link is a bad trade.
+
+**The decision someone owns:** back-port the artifact-only changes into the bench and prove it by
+rebuilding to byte-equality, or declare the artifact the source of truth and rewrite the pipeline.
+Phase 48 (marketing-page editor) presumably assumes one authoritative source, so this picks which.
+
+**Also live and unresolved:** the pricing section promises tiers and caps the code does not
+enforce (Phase 47 is the dependency). The roadmap files these under "blocks publishing" -- written
+before the page was published.
+
 
 ### UPDATE 2026-10-07 — Pass 6 census closed; submit-a-song shipped
 
