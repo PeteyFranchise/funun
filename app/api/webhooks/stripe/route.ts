@@ -38,9 +38,8 @@ import { createServiceClient } from '@/lib/supabase/server'
 //     is acknowledged with 200, writes nothing, and is reported at level
 //     'warning'.
 //   - checkout.session.async_payment_failed and checkout.session.expired:
-//     call reset_license_checkout (migration 247, not applied until the owner
-//     does so) to move the deal back to unpaid so a new checkout can be
-//     issued. The RPC only acts on a deal that is awaiting_payment or
+//     call reset_license_checkout (migration 247, APPLIED as of 2026-11-23)
+//     to move the deal back to unpaid so a new checkout can be issued. The RPC only acts on a deal that is awaiting_payment or
 //     creating_payment with this exact session id, so a paid deal is never
 //     touched. 200 whether or not a row was reset, 503 on RPC error so
 //     Stripe retries. async_payment_failed is also reported to Sentry at

@@ -18,7 +18,8 @@ function isHardBounce(bounceType: unknown): boolean {
 }
 
 // A 500 here is how Resend learns to retry, but nobody reads Resend's retry
-// log. Report it so a stuck write (e.g. migration 246 unapplied) is visible.
+// log. Report it so a stuck write is visible. Migration 246 IS applied
+// (verified 2026-11-23), so an error here is a real failure, not absence.
 // Tags only: the recipient address is PII and is never sent.
 function reportWriteFailure(
   operation: 'curator-write' | 'suppression-write',
@@ -119,12 +120,13 @@ export async function POST(request: Request) {
   // App-wide suppression (GH #190): sendEmail() skips every address in
   // email_suppressions, for any recipient class, not just curators.
   // This runs AFTER the curator flag on purpose: if the table is
-  // missing (migration 246 unapplied) the curator invalidation that
+  // missing (not expected: migration 246 IS applied) the curator invalidation that
   // already worked must not regress. Both writes are idempotent, so a
   // Resend retry after a failure here redoes them safely;
   // ignoreDuplicates keeps the first event id on conflict. A missing
-  // table also 500s here, which is correct: Resend keeps retrying
-  // until the owner applies the migration, so no bounce is lost.
+  // table also 500s here, which is correct: Resend keeps retrying, so no
+  // bounce is lost. Migration 246 IS applied, so absence is not the expected
+  // cause any more.
   const { error: suppressionError } = await service
     .from('email_suppressions')
     .upsert(

@@ -14,7 +14,7 @@ import { GET, PATCH, POST } from './route'
 // `assertMayNominate`, `assertMayRespond` or `isLegalOwnershipTransition`
 // asserts `rpcCalls` is empty, which is only true if the predicate ran.
 //
-// No database is touched. Migrations 197 and 198 are authored but UNAPPLIED;
+// No database is touched. Migrations 197 and 198 ARE applied as of 2026-11-23;
 // the stub below stands in for the RPCs they define.
 
 jest.mock('@/lib/supabase/server', () => ({

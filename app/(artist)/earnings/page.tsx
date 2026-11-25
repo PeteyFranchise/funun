@@ -65,7 +65,8 @@ async function loadImports(): Promise<DsrImportRow[]> {
       .limit(20)
     return (data ?? []) as DsrImportRow[]
   } catch {
-    return [] // table may not exist yet (migration 015 not applied)
+    return [] // defensive: migration 015 IS applied (verified 2026-11-23), so an
+    // error here means a real failure, not a missing table
   }
 }
 

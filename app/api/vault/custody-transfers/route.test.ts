@@ -12,8 +12,9 @@ import { PATCH, POST } from './route'
 // does not.
 //
 // WHAT THIS SUITE CANNOT PROVE, STATED PLAINLY. It cannot prove that
-// `workspace_accept_custody_transfer` works. Migration 198 is authored and
-// UNAPPLIED; no test in this file opens a database connection. The
+// `workspace_accept_custody_transfer` works, and that gap got SHARPER on
+// 2026-11-23: migration 198 is now APPLIED, so the function is live in
+// production while no test in this file opens a database connection. The
 // precedent for why that distinction matters is exact and recent:
 // migration 190's suite was green, its `transfer_vault_project_custody`
 // function existed, and this very route called it correctly — and custody
