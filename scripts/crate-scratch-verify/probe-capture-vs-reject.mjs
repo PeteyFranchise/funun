@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto'
 // Before the fix, capture committed and released its lock, a reject slipped in,
 // and an immutable captured song sat attached to a rejected listing.
 let fails = 0
+const seen = []
 const ok = (c_, l, x='') => { if(!c_) fails++; console.log(`${c_?'OK  ':'*** FAIL ***'}  ${l}${x?': '+x:''}`) }
 const conn = () => new Client({ host:'/private/tmp/pgtest', port:54329, user:'postgres', database:'postgres' })
 const U='11111111-1111-1111-1111-111111111111'
@@ -39,9 +40,17 @@ for (const [trial, rejectDelayMs] of [[1,0],[2,0],[3,60],[4,60]]) {
   const st = (await s.query(`SELECT status FROM public.sync_listings WHERE id=$1`,[L])).rows[0].status
   const songs = (await s.query(`SELECT count(*)::int n FROM public.crate_songs WHERE source_listing_id=$1`,[L])).rows[0].n
   const legal = (st === 'admitted' && songs === 1 && ca.ok) || (st === 'rejected' && songs === 0 && !ca.ok)
+  seen.push(st)
   ok(legal, `trial ${trial} (reject +${rejectDelayMs}ms): status=${st} capturedSongs=${songs} capture=${ca.ok?'ok':'refused'} rejectRows=${rj.rows ?? rj.err}`)
   await A.end(); await B.end()
 }
-console.log(fails===0 ? '\nNO ILLEGAL OUTCOME IN ANY TRIAL' : `\n${fails} ILLEGAL OUTCOME(S)`)
+// Both branches must actually HAPPEN. Validating whatever occurred, without
+// requiring that both occurred, is how a race test passes while exercising one
+// branch four times.
+const sawAdmitted = seen.some(x => x === 'admitted')
+const sawRejected = seen.some(x => x === 'rejected')
+ok(sawAdmitted, 'at least one trial ended admitted-with-capture')
+ok(sawRejected, 'at least one trial ended rejected-without-capture')
+console.log(fails===0 ? '\nNO ILLEGAL OUTCOME, AND BOTH BRANCHES EXERCISED' : `\n${fails} FAILURE(S)`)
 await s.end()
 process.exitCode = fails===0?0:1

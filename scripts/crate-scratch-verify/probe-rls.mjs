@@ -42,18 +42,40 @@ out = await asService(`SELECT public.crate_backfill_capture_song($1,'crate-audio
   [L2, `captured/${L2}/b.wav`, sha('legacy'), OP])
 ok(out.ok, 'backfill succeeds', out.ok ? '' : out.e.message.slice(0,90))
 
-console.log('\n--- and the MUST-FAIL control: remove the policies, the writers die ---')
+console.log('\n--- the MUST-FAIL control, on a listing that REALLY EXISTS ---')
+// The first version of this control called capture with a hard-coded listing id
+// that was never inserted, so "listing does not exist" was the expected error
+// whether or not the policy was present. It proved nothing, and it was reported
+// as proof the policies are load-bearing. The control now uses a real,
+// capturable listing and establishes the positive case FIRST.
+const Lc = await newListing()
+const Dc = sha('control bytes')
+let out2 = await asService(`SELECT public.crate_record_quality_review($1,'track-audio','p',$2,10,'audio/wav',$3,'passed',null)`,[Lc,Dc,U])
+ok(out2.ok, 'control listing has a passing review')
+
+// Positive half: with the policy in place this exact call succeeds.
+await c.query('BEGIN')
+await c.query('SET LOCAL ROLE service_role')
+let capturable = false
+try {
+  await c.query(`SELECT public.crate_capture_admitted_song($1,'crate-audio',$2,$3,10,'audio/wav',$4)`,
+    [Lc, `captured/${Lc}/control.wav`, Dc, U])
+  capturable = true
+} catch (e) { capturable = false }
+await c.query('ROLLBACK')   // roll back so the SAME listing can be retried below
+ok(capturable, 'WITH the policy, that exact listing is capturable')
+
+// Negative half: same listing, same call, policy removed.
 await c.query('BEGIN')
 await c.query('DROP POLICY crate_evidence_reads_listings ON public.sync_listings')
 await c.query('SET LOCAL ROLE service_role')
-const L3id = '55555555-5555-5555-5555-555555555555'
-let died = false
+let died = false, deathMessage = ''
 try {
   await c.query(`SELECT public.crate_capture_admitted_song($1,'crate-audio',$2,$3,10,'audio/wav',$4)`,
-    [L3id, `captured/${L3id}/x.wav`, D, U])
-} catch (e) { died = /does not exist/.test(e.message) }
+    [Lc, `captured/${Lc}/control.wav`, Dc, U])
+} catch (e) { died = /does not exist/.test(e.message); deathMessage = e.message.slice(0,60) }
 await c.query('ROLLBACK')
-ok(died, 'without the listing policy the writer cannot see its row — the policies are what make it work')
+ok(died, 'WITHOUT the policy the same listing becomes invisible — the policy is load-bearing', deathMessage)
 
 console.log('\n--- the boundary still holds as service_role ---')
 out = await asService(`INSERT INTO public.crate_quality_reviews (listing_id,source_bucket,source_path,sha256,size_bytes,mime_type,reviewer_id,verdict)

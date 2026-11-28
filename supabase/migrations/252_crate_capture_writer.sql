@@ -105,10 +105,23 @@ BEGIN
       JOIN public.crate_song_artifacts a ON a.id = c.artifact_id
      WHERE c.crate_song_id = v_existing.id AND c.role = 'review_playback';
 
+    -- MEDIUM (review 2026-11-28): REPLAY IS ONLY TRUTHFUL WHILE THE LISTING IS
+    -- STILL ADMITTED. The first version returned success before looking at the
+    -- status at all, so a listing captured and then WITHDRAWN or REMOVED still
+    -- reported a successful capture on retry. "You already did this" is only
+    -- true if the thing you did still stands.
+    IF v_listing.status <> 'admitted' THEN
+      RAISE EXCEPTION
+        'listing % was captured but is now %; a retry cannot report success for a listing that is no longer admitted',
+        p_listing_id, v_listing.status
+        USING ERRCODE = 'invalid_parameter_value';
+    END IF;
+
     RETURN jsonb_build_object(
       'outcome', 'replayed',
       'crate_song_id', v_existing.id,
-      'artifact_path', v_existing_path
+      'artifact_path', v_existing_path,
+      'admitted', true
     );
   END IF;
 

@@ -370,3 +370,25 @@ describe('round four — L1/L2: the constraint and the claims', () => {
     expect(flatOf(W253)).not.toContain('provenance=backfilled, verdict=unreviewed review row')
   })
 })
+
+// ─── Round five (targeted remediation, 2026-11-28) ─────────────────────
+describe('round five — replay is status-safe and route-reachable', () => {
+  it('the RPC refuses replay for a listing that is no longer admitted', () => {
+    expect(flatOf(W252)).toContain("IF v_listing.status <> 'admitted' THEN")
+    expect(flatOf(W252)).toContain('is no longer admitted')
+  })
+
+  it('the route lets an already-admitted exact retry reach the replay path', () => {
+    const route = readFileSync(
+      path.join(process.cwd(), 'app/api/sync-library/admin/[listingId]/route.ts'), 'utf8')
+    expect(route).toContain("row.status === 'admitted'")
+    expect(route).toContain('sync_library.admit_idempotent_retry')
+  })
+
+  it('the retry does not resend the notification, and says why', () => {
+    const route = readFileSync(
+      path.join(process.cwd(), 'app/api/sync-library/admin/[listingId]/route.ts'), 'utf8')
+    expect(route).toContain('notificationResent: false')
+    expect(route).toContain('NOTIFICATION IS DELIBERATELY NOT RESENT')
+  })
+})

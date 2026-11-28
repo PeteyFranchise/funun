@@ -34,16 +34,26 @@ cp /path/to/repo/scripts/crate-scratch-verify/baseline.sql .
 export MIGRATIONS_DIR=/path/to/repo/supabase/migrations/
 ```
 
-Then:
+Then, one command that runs them all and stops on the first failure:
 
 ```bash
-node apply.mjs             # baseline is applied by hand first, then the four migrations
-node probe-privileges.mjs  # service_role refused on writes; SELECT and the RPC still work
-node probe-truncate.mjs    # the TRUNCATE guard, proven to be the trigger and not a foreign key
-node probe-capture.mjs     # digest mismatch, exact replay, current-review-wins, bucket/path, orphans, backfill
-node probe-codes.mjs       # the SQLSTATE the TypeScript caller maps is the one the database raises
-node probe-concurrency.mjs # two simultaneous captures, and enqueue serialising behind the listing lock
+node run-all.mjs
 ```
+
+An earlier version of this README listed five probes while the results claimed seven passed. The
+orchestrator exists so the evidence cannot drift from what actually ran:
+
+| probe | proves |
+|---|---|
+| `probe-privileges.mjs` | `service_role` refused on every write; SELECT and the sanctioned writer still work |
+| `probe-truncate.mjs` | the TRUNCATE refusal comes from the trigger, and the mutable queue still truncates |
+| `probe-capture.mjs` | digest mismatch, clean capture, current-review-wins, bucket/path, orphans, backfill |
+| `probe-codes.mjs` | the SQLSTATE the TypeScript maps is the one the database raises |
+| `probe-concurrency.mjs` | two captures give created+replayed; enqueue blocks behind the lock, then refuses |
+| `probe-rls.mjs` | the writers work as `service_role` under production RLS, with a real must-fail control |
+| `probe-capture-vs-reject.mjs` | racing admit against reject yields only legal outcomes, both branches exercised |
+| `probe-replay-status.mjs` | replay succeeds while admitted and is refused after withdrawn, removed or rejected |
+
 
 ## The baseline MUST reproduce production RLS, and the first version did not
 

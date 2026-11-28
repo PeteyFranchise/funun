@@ -70,15 +70,14 @@ function extensionOf(path: string): string {
  */
 export async function captureAdmittedSong(
   service: SupabaseClient,
+  // Only what the caller alone can know. Title, artist, track, project and payee
+  // were removed when the RPC began deriving them from the locked listing: a
+  // parameter the function ignores is a parameter that invites someone to
+  // believe it matters.
   input: {
     listingId: string
     sourceAudioPath: string | null
-    title: string
-    primaryArtistName: string
-    payeeUserId: string
     capturedBy: string
-    sourceTrackId: string
-    sourceProjectId: string
   }
 ): Promise<CaptureResult> {
   const source: ReviewedObject | null = resolveReviewedObject(input.sourceAudioPath)

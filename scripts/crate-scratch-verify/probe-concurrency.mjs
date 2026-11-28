@@ -1,4 +1,5 @@
 import { Client } from 'pg'
+let failures = 0
 
 // LOW (review 2026-11-28): a probe that prints a failure and exits 0 lets a
 // scripted run report success while an assertion failed. Every console.log is
@@ -38,7 +39,12 @@ const outcomes = [ra, rb].map(x => x.err ? 'error' : x.out.outcome).sort()
 console.log('\noutcomes:', outcomes.join(' + '))
 console.log('crate_songs rows for this listing:', songs.rows[0].n, '| artifacts:', arts.rows[0].n)
 
+// Assert the OUTCOME PAIR, not merely that nothing errored: the contract is
+// that one session creates and the other replays.
+const pair = outcomes.join(' + ')
 const clean = songs.rows[0].n === 1 && arts.rows[0].n === 1 && !ra.err && !rb.err
+  && pair === 'created + replayed'
+if (!clean) failures++
 console.log(clean
   ? 'OK    both sessions resolved cleanly: one created, one replayed, exactly one song and one artifact'
   : '*** CHECK ***  a session errored or a duplicate exists — the loser is not clean')
@@ -49,10 +55,17 @@ await A.query('BEGIN')
 await A.query(`SELECT 1 FROM public.sync_listings WHERE id=$1 FOR UPDATE`,[L])
 let enqueueResolved = false
 const enq = B.query(`SELECT public.crate_enqueue_capture_orphan($1,'crate-audio',$2)`,[L, winner.artifact_path])
-  .then(()=>{enqueueResolved='succeeded'}).catch(e=>{enqueueResolved=e.message.slice(0,50)})
+  .then(()=>{enqueueResolved='succeeded'}).catch(e=>{enqueueResolved=e.message})
 await new Promise(r=>setTimeout(r,400))
-console.log('\nwhile a capture holds the listing lock, enqueue is:', enqueueResolved === false ? 'BLOCKED (correct)' : `NOT BLOCKED: ${enqueueResolved}`)
+if (enqueueResolved !== false) failures++
+console.log('\nwhile a capture holds the listing lock, enqueue is:', enqueueResolved === false ? 'BLOCKED (correct)' : `*** NOT BLOCKED ***: ${enqueueResolved}`)
 await A.query('ROLLBACK')
 await enq
-console.log('after the lock releases, enqueue returns:', enqueueResolved)
+// After the lock releases it must REFUSE, because the winner's artifact now
+// references that path.
+const refused = typeof enqueueResolved === 'string' && /refusing to queue .* a captured artifact references it/.test(enqueueResolved)
+if (!refused) failures++
+console.log(`after the lock releases, enqueue ${refused ? 'correctly refuses' : '*** DID NOT REFUSE ***'}:`, String(enqueueResolved).slice(0,80))
+console.log(failures === 0 ? '\nCONCURRENCY CONTRACT HELD' : `\n${failures} CONCURRENCY FAILURE(S)`)
+process.exitCode = failures === 0 ? 0 : 1
 await A.end(); await B.end(); await setup.end()

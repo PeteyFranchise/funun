@@ -187,6 +187,62 @@ export async function POST(
 
   const nextStatus: 'admitted' | 'rejected' = decision === 'admit' ? 'admitted' : 'rejected'
 
+  // ─── MEDIUM (review 2026-11-28): the idempotent admit retry ───────────
+  //
+  // Capture and admission are one transaction, so a lost response leaves the
+  // listing ALREADY admitted. The transition guard below then refuses
+  // admitted -> admitted and returns 409, which is how "recovery from a lost
+  // response" came to exist in the RPC and never work through the route: staff
+  // saw a 503 followed by a 409 for an admission that had in fact succeeded.
+  //
+  // So an admit against an already-admitted listing gets one chance to prove it
+  // is THE SAME capture replaying, not a second decision. The RPC is the
+  // authority: it returns 'replayed' only when a captured song exists for this
+  // listing holding the same bytes AND the listing is still admitted. Anything
+  // else still falls through to the 409 below.
+  if (
+    decision === 'admit' &&
+    CRATE_CAPTURE_ENABLED &&
+    row.status === 'admitted' &&
+    !isValidTransition(row.status, 'admitted')
+  ) {
+    const { data: retryTrackRaw } = await service
+      .from('tracks')
+      .select('audio_file_url')
+      .eq('id', row.track_id)
+      .maybeSingle()
+
+    const replay = await captureAdmittedSong(service, {
+      listingId,
+      sourceAudioPath: (retryTrackRaw as { audio_file_url: string | null } | null)?.audio_file_url ?? null,
+      capturedBy: auth.user.id,
+    })
+
+    if (replay.ok && replay.outcome === 'replayed') {
+      if (replay.strayPath) await enqueueCaptureOrphan(service, listingId, replay.strayPath)
+
+      // NOTIFICATION IS DELIBERATELY NOT RESENT, and that is a judgement with a
+      // cost. The admitted-notification fires only on an artist's FIRST
+      // admitted listing, so resending here would re-announce the same
+      // admission to the one artist most likely to notice. We cannot tell
+      // whether the original attempt got far enough to send it, so the choice
+      // is between a possible duplicate and a possible miss. A duplicate is a
+      // visible defect; a miss is recoverable, and the audit line below records
+      // that a retry happened so a human can check.
+      await logStaffAction(service, {
+        actorId: auth.user.id,
+        action: 'sync_library.admit_idempotent_retry',
+        targetType: 'sync_listing',
+        targetId: listingId,
+        changes: { crateSongId: replay.crateSongId, notificationResent: false },
+      })
+
+      return NextResponse.json({
+        data: { listingId, status: 'admitted', replayed: true, crateSongId: replay.crateSongId },
+      })
+    }
+  }
+
   // T-26-22: double-decide guard — the ONE authority for legal transitions.
   if (!isValidTransition(row.status, nextStatus)) {
     return NextResponse.json(
@@ -403,25 +459,10 @@ export async function POST(
     // Dark until 248, 251 and 252 are applied.
     let capturedAndAdmitted = false
     if (CRATE_CAPTURE_ENABLED) {
-      // The captured owner/payee snapshot, read from the SAME place every buyer
-      // surface reads the artist name (user_profiles.artist_name, as
-      // lib/deals/catalog-query.ts does). Captured now so a later profile edit
-      // cannot change who a standing licence says it is for.
-      const { data: ownerRaw } = await service
-        .from('user_profiles')
-        .select('artist_name')
-        .eq('id', row.artist_user_id)
-        .maybeSingle()
-
       const captured = await captureAdmittedSong(service, {
         listingId,
         sourceAudioPath: track.audio_file_url,
-        title: track.title ?? songTitle,
-        primaryArtistName: (ownerRaw as { artist_name: string | null } | null)?.artist_name ?? '',
-        payeeUserId: row.artist_user_id,
         capturedBy: auth.user.id,
-        sourceTrackId: row.track_id,
-        sourceProjectId: row.vault_project_id,
       })
       if (!captured.ok) {
         // M3: only a DEFINITIVE failure carries an orphanPath. An ambiguous one

@@ -47,9 +47,9 @@ await probe('SELECT from crate_quality_reviews', `SELECT count(*) FROM public.cr
 await probe('EXECUTE the sanctioned writer', `SELECT public.crate_record_quality_review('44444444-4444-4444-4444-444444444444','b','p','${'c'.repeat(64)}',5,'audio/wav','11111111-1111-1111-1111-111111111111','failed',null)`, 'allowed')
 
 console.log('--- the append-only trigger, as the OWNER (not just via grants) ---')
-try { await c.query(`UPDATE public.crate_quality_reviews SET verdict='failed'`); console.log('*** HOLE ***  superuser UPDATE succeeded') }
+try { await c.query(`UPDATE public.crate_quality_reviews SET verdict='failed'`); holes++; console.log('*** HOLE ***  superuser UPDATE succeeded') }
 catch (e) { console.log('OK    superuser UPDATE refused by trigger:', e.message.slice(0,60)) }
-try { await c.query(`TRUNCATE public.crate_quality_reviews`); console.log('*** HOLE ***  superuser TRUNCATE succeeded') }
+try { await c.query(`TRUNCATE public.crate_quality_reviews`); holes++; console.log('*** HOLE ***  superuser TRUNCATE succeeded') }
 catch (e) { console.log('OK    superuser TRUNCATE refused by trigger:', e.message.slice(0,60)) }
 console.log(holes === 0 ? '\nNO HOLES FOUND' : `\n${holes} HOLE(S) FOUND`)
 process.exitCode = holes === 0 ? 0 : 1
