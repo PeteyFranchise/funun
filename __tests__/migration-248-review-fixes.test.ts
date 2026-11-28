@@ -171,3 +171,76 @@ describe('migration 248 — M8: the assessment CAS column', () => {
     expect(has('lifecycle_version INT NOT NULL DEFAULT 0')).toBe(true)
   })
 })
+
+// ─── Round three (review 2026-11-28): the writer findings ───────────────
+const W251 = readFileSync(path.join(process.cwd(), 'supabase/migrations/251_crate_quality_review_writer.sql'), 'utf8')
+const W252 = readFileSync(path.join(process.cwd(), 'supabase/migrations/252_crate_capture_writer.sql'), 'utf8')
+const W253 = readFileSync(path.join(process.cwd(), 'supabase/migrations/253_crate_backfill_writer.sql'), 'utf8')
+const flatOf = (s: string) => s.replace(/\s+/g, ' ')
+
+describe('writers — M1: ownership transfer can actually happen', () => {
+  it('every writer migration reacquires the membership 248 revoked', () => {
+    for (const sql of [W251, W252, W253]) {
+      expect(flatOf(sql)).toContain('GRANT funun_crate_evidence TO CURRENT_USER;')
+      expect(flatOf(sql)).toContain('REVOKE funun_crate_evidence FROM CURRENT_USER;')
+    }
+  })
+
+  it('248 grants the evidence role the legacy reads its functions need', () => {
+    expect(has('GRANT SELECT (id, status, track_id, vault_project_id, artist_user_id) ON public.sync_listings TO funun_crate_evidence;')).toBe(true)
+    expect(has('ON public.tracks TO funun_crate_evidence;')).toBe(true)
+    expect(has('ON public.user_profiles TO funun_crate_evidence;')).toBe(true)
+  })
+})
+
+describe('writers — M3/M4: the RPC derives and validates rather than trusting', () => {
+  it('capture locks the listing first', () => {
+    expect(flatOf(W252)).toContain('FROM public.sync_listings WHERE id = p_listing_id FOR UPDATE')
+  })
+
+  it('capture selects the CURRENT review instead of accepting one', () => {
+    expect(flatOf(W252)).toContain('ORDER BY reviewed_at DESC, id DESC')
+    expect(flatOf(W252)).not.toContain('p_quality_review_id')
+  })
+
+  it('capture requires the listing to be pending_admit', () => {
+    expect(flatOf(W252)).toContain("v_listing.status <> 'pending_admit'")
+  })
+
+  it('capture no longer accepts identity from the caller', () => {
+    for (const arg of ['p_source_track_id', 'p_source_project_id', 'p_payee_user_id', 'p_title']) {
+      expect(W252).not.toContain(arg)
+    }
+  })
+
+  it('idempotency is EXACT REPLAY: a different-bytes capture is a conflict', () => {
+    expect(flatOf(W252)).toContain('is already captured as song % holding different bytes')
+  })
+
+  it('the destination bucket and path prefix are enforced in the database', () => {
+    expect(flatOf(W252)).toContain("IF p_bucket <> 'crate-audio' THEN")
+    expect(flatOf(W252)).toContain("'^captured/' || p_listing_id::text || '/'")
+  })
+})
+
+describe('writers — M2/M5: the orphan queue cannot eat a live artifact', () => {
+  it('refuses to queue a path a captured artifact references', () => {
+    expect(flatOf(W252)).toContain('refusing to queue %/% for deletion: a captured artifact references it')
+  })
+
+  it('a reused path is reset to a fresh job, but lease_generation only increases', () => {
+    expect(flatOf(W252)).toContain("SET state = 'pending', attempts = 0")
+    expect(flatOf(W252)).toContain('lease_generation = public.crate_capture_orphans.lease_generation + 1')
+  })
+})
+
+describe('writers — M7: a backfill is an operator act', () => {
+  it('requires an operator and refuses the artist structurally', () => {
+    expect(flatOf(W253)).toContain('backfill requires an explicit operator id')
+    expect(flatOf(W253)).toContain('the artist cannot be recorded as the backfill operator')
+  })
+
+  it('does not claim the backfilled bytes are the admitted recording', () => {
+    expect(flatOf(W253)).toContain('does NOT establish that they are the recording that was admitted')
+  })
+})

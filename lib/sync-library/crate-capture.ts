@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { createHash } from 'crypto'
+import { createHash, randomUUID } from 'crypto'
 import { resolveReviewedObject, type ReviewedObject } from '@/lib/sync-library/crate-byte-tied-review'
 
 // ─── Phase 50.5B — capture at admission ─────────────────────────────────
@@ -33,9 +33,19 @@ export type CaptureResult =
   | { ok: true; crateSongId: string; artifactPath: string }
   | { ok: false; reason: CaptureFailure; orphanPath?: string }
 
-/** Where the captured copy lives. Keyed by listing so a retry addresses the same object. */
-export function captureObjectPath(listingId: string, ext: string): string {
-  return `captured/${listingId}/review_playback.${ext}`
+/**
+ * Where a capture ATTEMPT writes. Per attempt, not per listing.
+ *
+ * M2 (review 2026-11-28): a deterministic per-listing path plus `upsert: true`
+ * meant two concurrent admissions wrote the same object. The loser's failure
+ * then enqueued for deletion the very path holding the WINNER's live
+ * review_playback, so a cleanup sweep could delete the surviving song's required
+ * artifact. A unique suffix per attempt means a loser only ever cleans up its
+ * own file. The database refuses to queue a referenced path as well; this is the
+ * half that stops the collision happening at all.
+ */
+export function captureObjectPath(listingId: string, ext: string, attemptId: string): string {
+  return `captured/${listingId}/${attemptId}.review_playback.${ext}`
 }
 
 function extensionOf(path: string): string {
@@ -86,10 +96,12 @@ export async function captureAdmittedSong(
   if (download.error || !download.data) return { ok: false, reason: 'source_unreadable' }
   const sourceBytes = Buffer.from(await download.data.arrayBuffer())
 
-  const destPath = captureObjectPath(input.listingId, extensionOf(source.path))
+  const destPath = captureObjectPath(input.listingId, extensionOf(source.path), randomUUID())
+  // No upsert: a path collision should fail loudly rather than overwrite bytes
+  // another attempt may already have hashed and recorded.
   const upload = await service.storage
     .from(CRATE_AUDIO_BUCKET)
-    .upload(destPath, sourceBytes, { contentType: source.mimeType, upsert: true })
+    .upload(destPath, sourceBytes, { contentType: source.mimeType, upsert: false })
   if (upload.error) return { ok: false, reason: 'copy_failed' }
 
   // Read the COPY back. This is the step that makes the digest describe what The
@@ -108,20 +120,19 @@ export async function captureAdmittedSong(
     return { ok: false, reason: 'digest_mismatch', orphanPath: destPath }
   }
 
+  // M4: the caller now supplies ONLY what it alone can know — the digest of the
+  // bytes it uploaded, and the acting staff id. Track, project, payee, title and
+  // artist name are derived inside the function from the locked listing, because
+  // service_role is shared by ordinary application code and a caller-supplied
+  // identity is a forgery interface.
   const { data, error } = await service.rpc('crate_capture_admitted_song', {
     p_listing_id: input.listingId,
-    p_quality_review_id: review.id,
     p_bucket: CRATE_AUDIO_BUCKET,
     p_path: destPath,
     p_sha256: sha256,
     p_size_bytes: copiedBytes.byteLength,
     p_mime_type: source.mimeType,
-    p_title: input.title,
-    p_primary_artist_name: input.primaryArtistName,
-    p_payee_user_id: input.payeeUserId,
     p_captured_by: input.capturedBy,
-    p_source_track_id: input.sourceTrackId,
-    p_source_project_id: input.sourceProjectId,
   })
   if (error || typeof data !== 'string') {
     return { ok: false, reason: 'commit_failed', orphanPath: destPath }
@@ -130,13 +141,25 @@ export async function captureAdmittedSong(
   return { ok: true, crateSongId: data, artifactPath: destPath }
 }
 
-/** Record a copy left behind by a failed capture, so a sweep can remove it. */
+/**
+ * Record a copy left behind by a failed capture, so a sweep can remove it.
+ *
+ * M5 (review 2026-11-28): this used to ignore the RPC result, so a route could
+ * return having lost the only record of the file it left behind. Now the result
+ * is propagated, and if the durable record cannot be written we try to delete
+ * the object immediately rather than leaking it silently. Both failing is worth
+ * surfacing: it means an unreferenced object exists with nothing tracking it.
+ */
 export async function enqueueCaptureOrphan(
   service: SupabaseClient,
   path: string
-): Promise<void> {
-  await service.rpc('crate_enqueue_capture_orphan', {
+): Promise<{ ok: true } | { ok: false; deleted: boolean }> {
+  const { error } = await service.rpc('crate_enqueue_capture_orphan', {
     p_bucket: CRATE_AUDIO_BUCKET,
     p_path: path,
   })
+  if (!error) return { ok: true }
+
+  const removal = await service.storage.from(CRATE_AUDIO_BUCKET).remove([path])
+  return { ok: false, deleted: !removal.error }
 }

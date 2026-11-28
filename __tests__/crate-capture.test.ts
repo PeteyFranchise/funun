@@ -70,22 +70,30 @@ describe('captureAdmittedSong', () => {
   it('captures a clean admission and names the review_playback object', async () => {
     const { service, rpc } = client({ review: { id: 'rev-1', sha256: SOURCE_SHA, verdict: 'passed' } })
     const out = await captureAdmittedSong(service, input)
-    expect(out).toEqual({ ok: true, crateSongId: 'song-1', artifactPath: captureObjectPath('listing-1', 'wav') })
+    expect(out.ok).toBe(true)
+    // The path is per ATTEMPT, so assert its shape rather than a fixed string.
+    expect((out as { artifactPath: string }).artifactPath)
+      .toMatch(/^captured\/listing-1\/[0-9a-f-]{36}\.review_playback\.wav$/)
     expect(rpc).toHaveBeenCalledWith('crate_capture_admitted_song', expect.objectContaining({
       p_listing_id: 'listing-1',
-      p_quality_review_id: 'rev-1',
       p_bucket: CRATE_AUDIO_BUCKET,
       p_sha256: SOURCE_SHA,
+      p_captured_by: 'staff-1',
     }))
+    // M4: identity is derived in the database, never sent by the caller.
+    const sent = rpc.mock.calls[0][1] as Record<string, unknown>
+    for (const forbidden of ['p_source_track_id', 'p_source_project_id', 'p_payee_user_id',
+                             'p_title', 'p_primary_artist_name', 'p_quality_review_id']) {
+      expect(sent).not.toHaveProperty(forbidden)
+    }
   })
 
   it('REFUSES when the audio changed between review and admission', async () => {
     // The artist swapped the file: the review holds a digest of other bytes.
     const { service, rpc } = client({ review: { id: 'rev-1', sha256: 'b'.repeat(64), verdict: 'passed' } })
     const out = await captureAdmittedSong(service, input)
-    expect(out).toEqual({
-      ok: false, reason: 'digest_mismatch', orphanPath: captureObjectPath('listing-1', 'wav'),
-    })
+    expect(out).toMatchObject({ ok: false, reason: 'digest_mismatch' })
+    expect((out as { orphanPath: string }).orphanPath).toMatch(/^captured\/listing-1\//)
     // nothing is committed
     expect(rpc).not.toHaveBeenCalled()
   })
@@ -122,8 +130,8 @@ describe('captureAdmittedSong', () => {
     const { service } = client({
       review: { id: 'rev-1', sha256: SOURCE_SHA, verdict: 'passed' }, readbackError: true,
     })
-    expect(await captureAdmittedSong(service, input)).toEqual({
-      ok: false, reason: 'readback_failed', orphanPath: captureObjectPath('listing-1', 'wav'),
+    expect(await captureAdmittedSong(service, input)).toMatchObject({
+      ok: false, reason: 'readback_failed',
     })
   })
 
@@ -137,15 +145,21 @@ describe('captureAdmittedSong', () => {
   it('reports commit_failed with an orphan when the writer refuses', async () => {
     const rpc = jest.fn().mockResolvedValue({ data: null, error: { message: 'mismatch' } })
     const { service } = client({ review: { id: 'rev-1', sha256: SOURCE_SHA, verdict: 'passed' }, rpc })
-    expect(await captureAdmittedSong(service, input)).toEqual({
-      ok: false, reason: 'commit_failed', orphanPath: captureObjectPath('listing-1', 'wav'),
+    expect(await captureAdmittedSong(service, input)).toMatchObject({
+      ok: false, reason: 'commit_failed',
     })
   })
 })
 
 describe('captureObjectPath', () => {
-  it('is keyed by listing, so a retry addresses the same object', () => {
-    expect(captureObjectPath('l-1', 'flac')).toBe('captured/l-1/review_playback.flac')
+  it('is per ATTEMPT, so a concurrent loser can never clean up the winner’s object', () => {
+    expect(captureObjectPath('l-1', 'flac', 'attempt-a')).toBe('captured/l-1/attempt-a.review_playback.flac')
+    expect(captureObjectPath('l-1', 'flac', 'attempt-a'))
+      .not.toBe(captureObjectPath('l-1', 'flac', 'attempt-b'))
+  })
+
+  it('stays inside the listing prefix the database enforces', () => {
+    expect(captureObjectPath('l-1', 'wav', 'x')).toMatch(/^captured\/l-1\//)
   })
 })
 

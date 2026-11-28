@@ -1133,6 +1133,19 @@ CREATE TRIGGER crate_contract_snapshots_no_truncate
   BEFORE TRUNCATE ON public.crate_contract_snapshots
   FOR EACH STATEMENT EXECUTE FUNCTION public.crate_append_only();
 
+-- M1 (review 2026-11-28): the definer functions run AS funun_crate_evidence,
+-- which is NOINHERIT and owns none of the legacy tables. Without these grants
+-- they fail at runtime with permission denied on the first SELECT. Column-level
+-- so the role can read exactly the facts it must derive and nothing else —
+-- note these are GRANTS, which are precise; a column-level REVOKE over a table
+-- grant is the no-op this house shipped to production once already.
+GRANT SELECT (id, status, track_id, vault_project_id, artist_user_id)
+  ON public.sync_listings TO funun_crate_evidence;
+GRANT SELECT (id, title, audio_file_url, project_id)
+  ON public.tracks TO funun_crate_evidence;
+GRANT SELECT (id, artist_name)
+  ON public.user_profiles TO funun_crate_evidence;
+
 -- OWNERSHIP TRANSFER LAST, with explicit temporary membership. PostgreSQL
 -- requires the executor to be able to SET ROLE to the new owner; hosted Supabase
 -- has no true superuser, so relying on an implicit grant is not portable.
@@ -1163,10 +1176,14 @@ REVOKE funun_crate_evidence FROM CURRENT_USER;
 
 -- THE WRITERS THEMSELVES ARE NOT IN THIS MIGRATION. Each slice brings its own
 -- narrow SECURITY DEFINER function, owned by funun_crate_evidence with a fixed
--- search_path, granting EXECUTE to service_role. See the owner decision recorded
--- in 50.5B-PLAN.md about which migration numbers those arrive in: this umbrella
--- declares only 248 expand and 250 contract, and 250 is too late for the 50.5C
--- and 50.5E consumers.
+-- search_path, granting EXECUTE to service_role.
+--
+-- MIGRATION NUMBERING (owner decision 2026-11-27, correcting what this comment
+-- said before): the "exactly two migrations" rule is retired. Writer expands are
+-- 251+, allocated per slice, and the CONTRACT migration number is deliberately
+-- UNALLOCATED until every expand is numbered, so it can sit above all of them. A
+-- contract numbered below a later expand would, on a clean replay, tear down
+-- transitional schema before that expand's consumers existed.
 --
 -- WHAT IS NOT PROVEN HERE, STATED PLAINLY. These REVOKEs and this ownership
 -- transfer are asserted, not demonstrated. Before 50.5B's capture path is

@@ -423,7 +423,21 @@ export async function POST(
         sourceProjectId: row.vault_project_id,
       })
       if (!captured.ok) {
-        if (captured.orphanPath) await enqueueCaptureOrphan(service, captured.orphanPath)
+        if (captured.orphanPath) {
+          // M5: the enqueue result is checked. If neither the durable record nor
+          // the immediate deletion succeeded, an untracked object now exists in
+          // the private bucket and that is worth an audit line, not silence.
+          const swept = await enqueueCaptureOrphan(service, captured.orphanPath)
+          if (!swept.ok && !swept.deleted) {
+            await logStaffAction(service, {
+              actorId: auth.user.id,
+              action: 'sync_library.capture_orphan_untracked',
+              targetType: 'sync_listing',
+              targetId: listingId,
+              changes: { bucket: 'crate-audio', path: captured.orphanPath },
+            })
+          }
+        }
         const status = captured.reason === 'digest_mismatch' ? 409 : 503
         return NextResponse.json(
           {

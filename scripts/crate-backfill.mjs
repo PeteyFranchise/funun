@@ -11,9 +11,19 @@
 // script.
 
 import { createClient } from '@supabase/supabase-js'
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 
 const APPLY = process.argv.includes('--apply')
+
+// M7 (review 2026-11-28): a backfill is an OPERATOR act. The first version passed
+// the artist's id as the capture actor, so an append-only row would have recorded
+// the artist as having performed a migration an operator ran. The database now
+// refuses that outright; this is the caller half.
+const OPERATOR = process.env.CRATE_BACKFILL_OPERATOR_ID
+if (APPLY && !OPERATOR) {
+  console.error('CRATE_BACKFILL_OPERATOR_ID is required with --apply: a backfill is an operator act, and the row recording it is immutable.')
+  process.exit(2)
+}
 const LIMIT = Number(process.argv.find((a) => a.startsWith('--limit='))?.split('=')[1] ?? '0')
 
 const url = process.env.SUPABASE_URL
@@ -53,19 +63,23 @@ for (const listing of todo) {
   if (src.error || !src.data) { failures.push({ listing: listing.id, reason: 'source_unreadable' }); continue }
   const bytes = Buffer.from(await src.data.arrayBuffer())
   const ext = sourcePath.slice(sourcePath.lastIndexOf('.') + 1).toLowerCase()
-  const destPath = `captured/${listing.id}/review_playback.${ext}`
+  const destPath = `captured/${listing.id}/${randomUUID()}.review_playback.${ext}`
 
-  const up = await db.storage.from('crate-audio').upload(destPath, bytes, { upsert: true })
+  const up = await db.storage.from('crate-audio').upload(destPath, bytes, { upsert: false })
   if (up.error) { failures.push({ listing: listing.id, reason: 'copy_failed' }); continue }
 
   // Hash the COPY, not the source: the digest must describe what The Crate holds.
   const back = await db.storage.from('crate-audio').download(destPath)
-  if (back.error || !back.data) { failures.push({ listing: listing.id, reason: 'readback_failed' }); continue }
+  if (back.error || !back.data) {
+    // M5: do not leak the copy. Delete it, and record the leak if that fails too.
+    const rm = await db.storage.from('crate-audio').remove([destPath])
+    failures.push({ listing: listing.id, reason: rm.error ? 'readback_failed_object_leaked' : 'readback_failed' })
+    continue
+  }
   const copied = Buffer.from(await back.data.arrayBuffer())
 
-  const { data: owner } = await db
-    .from('user_profiles').select('artist_name').eq('id', listing.artist_user_id).maybeSingle()
-
+  // M4: title, artist, track, project and payee are derived inside the function
+  // from the locked listing. The caller sends only the digest and the operator.
   const { error } = await db.rpc('crate_backfill_capture_song', {
     p_listing_id: listing.id,
     p_bucket: 'crate-audio',
@@ -73,16 +87,13 @@ for (const listing of todo) {
     p_sha256: createHash('sha256').update(copied).digest('hex'),
     p_size_bytes: copied.byteLength,
     p_mime_type: src.data.type || 'application/octet-stream',
-    p_source_bucket: 'track-audio',
-    p_source_path: sourcePath,
-    p_title: track.title ?? 'Untitled',
-    p_primary_artist_name: owner?.artist_name ?? '',
-    p_payee_user_id: listing.artist_user_id,
-    p_captured_by: listing.artist_user_id,
-    p_source_track_id: listing.track_id,
-    p_source_project_id: listing.vault_project_id,
+    p_operator_id: OPERATOR,
   })
-  if (error) { failures.push({ listing: listing.id, reason: error.message }); continue }
+  if (error) {
+    const rm = await db.storage.from('crate-audio').remove([destPath])
+    failures.push({ listing: listing.id, reason: rm.error ? `${error.message} (object leaked)` : error.message })
+    continue
+  }
   done += 1
 }
 

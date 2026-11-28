@@ -81,6 +81,13 @@ BEGIN
 END;
 $$;
 
+-- M1 (review 2026-11-28): REACQUIRE THE MEMBERSHIP. 248 grants
+-- funun_crate_evidence to CURRENT_USER, transfers ownership, then REVOKES it
+-- again. PostgreSQL requires the executor to be able to SET ROLE to the new
+-- owner, so without this every ALTER FUNCTION ... OWNER TO below fails on a
+-- hosted runner that has no superuser bypass.
+GRANT funun_crate_evidence TO CURRENT_USER;
+
 -- Owned by the evidence role, which is what gives it the rights its callers lack.
 ALTER FUNCTION public.crate_record_quality_review(
   UUID, TEXT, TEXT, TEXT, BIGINT, TEXT, UUID, TEXT, TEXT
@@ -99,6 +106,8 @@ COMMENT ON FUNCTION public.crate_record_quality_review(
   UUID, TEXT, TEXT, TEXT, BIGINT, TEXT, UUID, TEXT, TEXT
 ) IS
   'Records a quality review against the exact bytes reviewed. The ONLY write path into crate_quality_reviews: 248 revokes direct write from service_role. The digest is computed by trusted server code that downloaded and read back the object, because Postgres cannot read Storage; this function validates and records it. A correction is a new row, never an update, enforced by the append-only trigger in 248.';
+
+REVOKE funun_crate_evidence FROM CURRENT_USER;
 
 COMMIT;
 
