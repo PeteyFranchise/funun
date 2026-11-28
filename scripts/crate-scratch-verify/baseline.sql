@@ -16,6 +16,23 @@ CREATE ROLE authenticated NOLOGIN;
 CREATE ROLE service_role NOLOGIN BYPASSRLS;
 CREATE ROLE authenticator NOLOGIN;
 
+-- THE MIGRATION RUNNER, and this is the most important role in this file.
+--
+-- Supabase's hosted runner is NOT a superuser. Applying as a local superuser is
+-- how the harness certified a migration that failed twice in production: once
+-- on uuid_generate_v4 resolution, once on ALTER ROLE ... NOSUPERUSER, which
+-- only a superuser may issue. Both would have failed here immediately if the
+-- harness had applied the way production does.
+--
+-- CREATEROLE because the migration creates funun_crate_evidence; NOSUPERUSER
+-- and NOBYPASSRLS because that is the constraint being modelled.
+CREATE ROLE migration_runner NOLOGIN NOSUPERUSER NOBYPASSRLS CREATEROLE CREATEDB;
+GRANT ALL ON SCHEMA public TO migration_runner;
+-- Ownership of the legacy tables is transferred to the runner at the end of
+-- this file, mirroring production where the migration role owns them. Without
+-- it the runner cannot GRANT on sync_listings and 248 fails — which the harness
+-- found the moment it stopped applying as a superuser.
+
 CREATE SCHEMA IF NOT EXISTS auth;
 CREATE TABLE auth.users (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), email TEXT);
 
@@ -139,3 +156,26 @@ INSERT INTO public.tracks (id, project_id, title, audio_file_url) VALUES
 INSERT INTO public.tracks (project_id, title, audio_file_url)
 SELECT '22222222-2222-2222-2222-222222222222', 'Spare ' || g, 'u/p/t.wav'
 FROM generate_series(1, 80) g;
+
+-- ─── The runner owns what it must be able to grant on ───────────────────
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'public'
+  LOOP
+    EXECUTE format('ALTER TABLE public.%I OWNER TO migration_runner', r.tablename);
+  END LOOP;
+END
+$$;
+-- 248 both REVOKEs CREATE on schema public from service_role and GRANTs it to
+-- the evidence role, which requires owning the schema.
+--
+-- ASSUMPTION, STATED BECAUSE IT IS NOT VERIFIED: Supabase's migration role owns
+-- schema public. The first production apply reached statement 72 before
+-- failing, so it had not yet reached these schema grants — we do not yet know
+-- they succeed there. If the next apply fails on one, this line is the thing
+-- that was wrong, not the migration.
+ALTER SCHEMA public OWNER TO migration_runner;
+
+GRANT USAGE ON SCHEMA auth, storage TO migration_runner;
+GRANT ALL ON auth.users, storage.buckets TO migration_runner;

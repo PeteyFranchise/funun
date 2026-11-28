@@ -1041,7 +1041,36 @@ BEGIN
 END
 $$;
 
-ALTER ROLE funun_crate_evidence NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
+-- ASSERT the two attributes we cannot set, ENFORCE the ones we can.
+--
+-- The first hosted apply failed here with 42501: "Only roles with the SUPERUSER
+-- attribute may alter roles with the SUPERUSER attribute." Setting NOSUPERUSER
+-- or NOBYPASSRLS requires superuser, and Supabase's migration runner is not
+-- one. My scratch harness ran as a local superuser and sailed through it, which
+-- is exactly the hosted-runner gap the review predicted.
+--
+-- A freshly CREATEd role already has neither attribute, so the normal path is
+-- unaffected. The check exists for a role that already existed when this
+-- migration ran: it refuses loudly rather than quietly transferring the
+-- evidence tables into a role that can bypass the boundary they depend on.
+DO $$
+DECLARE
+  v_super  BOOLEAN;
+  v_bypass BOOLEAN;
+BEGIN
+  SELECT rolsuper, rolbypassrls INTO v_super, v_bypass
+    FROM pg_roles WHERE rolname = 'funun_crate_evidence';
+  IF v_super OR v_bypass THEN
+    RAISE EXCEPTION
+      'funun_crate_evidence must be NOSUPERUSER and NOBYPASSRLS before it can own the evidence tables (found rolsuper=%, rolbypassrls=%). A superuser must correct it; this migration deliberately will not.',
+      v_super, v_bypass
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+END
+$$;
+
+-- These do not require superuser, so they are still enforced rather than assumed.
+ALTER ROLE funun_crate_evidence NOLOGIN NOINHERIT NOCREATEDB NOCREATEROLE;
 
 -- An application role that is a MEMBER of the owner inherits its rights and the
 -- boundary is theatre. Fail loudly rather than transferring ownership into it.

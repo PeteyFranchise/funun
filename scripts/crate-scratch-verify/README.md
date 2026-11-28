@@ -55,6 +55,24 @@ orchestrator exists so the evidence cannot drift from what actually ran:
 | `probe-replay-status.mjs` | replay succeeds while admitted and is refused after withdrawn, removed or rejected |
 
 
+## Apply AS A NON-SUPERUSER. This harness certified SQL that production rejected twice.
+
+The first two production applies of 248 failed on things a local superuser never meets:
+
+1. `uuid_generate_v4()` does not resolve — `uuid-ossp` lives in `extensions`, not `public`, and the
+   baseline had installed it into `public`.
+2. `ALTER ROLE ... NOSUPERUSER NOBYPASSRLS` is superuser-only, and Supabase's runner is not one.
+
+Both would have failed here immediately had the harness applied the way production does. It now
+creates a `migration_runner` role — `NOSUPERUSER NOBYPASSRLS CREATEROLE` — owns the legacy tables
+and schema `public` with it, and `apply.mjs` does `SET ROLE migration_runner` before applying.
+
+Chasing those permissions surfaced three more dependencies in a row: the runner must own the legacy
+tables to GRANT on them, and must own schema `public` to grant and revoke `CREATE` there. **That
+last one is an assumption, not a verified fact** — the first production apply never reached those
+statements, so whether Supabase's role owns `public` is still unknown. If the next apply fails on a
+schema grant, the baseline is what was wrong.
+
 ## The baseline MUST reproduce production RLS, and the first version did not
 
 This harness's first version created the legacy tables **without their RLS**, and every probe

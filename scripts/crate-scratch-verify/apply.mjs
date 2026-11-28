@@ -5,6 +5,9 @@ const files = ['248_crate_song_expand.sql','251_crate_quality_review_writer.sql'
                '252_crate_capture_writer.sql','253_crate_backfill_writer.sql']
 const c = new Client({ host: process.env.PGHOST ?? '/private/tmp/pgtest', port: Number(process.env.PGPORT ?? 54329), user:'postgres', database:'postgres' })
 await c.connect()
+// Apply AS THE NON-SUPERUSER RUNNER, not as postgres. Applying as a superuser
+// is how this harness certified SQL that production rejected twice.
+await c.query('SET ROLE migration_runner')
 for (const f of files) {
   const sql = readFileSync(M + f, 'utf8')
   try { await c.query(sql); console.log('APPLIED  ' + f) }
