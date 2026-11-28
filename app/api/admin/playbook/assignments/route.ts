@@ -11,9 +11,9 @@ import { logStaffAction } from '@/lib/staff/audit'
 const AssignmentSchema = z
   .object({
     roomKey: z.string().trim().min(1).max(80),
-    entryId: z.string().uuid(),
+    entryId: z.string().guid(),
     targetKind: z.enum(['user', 'role']),
-    targetUserId: z.string().uuid().nullable(),
+    targetUserId: z.string().guid().nullable(),
     targetRole: z.enum(ALL_STAFF_ROLES as [string, ...string[]]).nullable(),
     required: z.boolean(),
     dueAt: z.string().datetime({ offset: true }).nullable(),

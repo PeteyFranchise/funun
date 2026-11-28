@@ -32,7 +32,7 @@ import { queuePreviewRender } from '@/lib/watermark/preview-queue'
 //      OR return a 'download preparing' status — NEVER a clean master").
 const SIGNED_DOWNLOAD_TTL_SECONDS = 60 * 5
 
-const DownloadParamsSchema = z.object({ trackId: z.string().uuid() })
+const DownloadParamsSchema = z.object({ trackId: z.string().guid() })
 
 type DownloadResult =
   | { status: 'ok'; url: string }

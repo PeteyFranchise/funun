@@ -6,7 +6,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 
 const Schema = z.object({ roomKey: z.string().min(1).max(80), status: z.enum(['pending','completed','skipped','blocked']) }).strict()
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
-  const id = z.string().uuid().safeParse((await context.params).id); const parsed = Schema.safeParse(await request.json().catch(() => ({}))); if (!id.success || !parsed.success) return NextResponse.json({ error: 'Invalid workflow task' }, { status: 400 })
+  const id = z.string().guid().safeParse((await context.params).id); const parsed = Schema.safeParse(await request.json().catch(() => ({}))); if (!id.success || !parsed.success) return NextResponse.json({ error: 'Invalid workflow task' }, { status: 400 })
   const auth = await requireRoomAccess(parsed.data.roomKey); if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status }); const service = createServiceClient()
   const task = await service.from('playbook_workflow_run_tasks').select('id, run_id, playbook_workflow_runs!inner(owner_id, playbook_workflow_templates!inner(playbook_rooms!inner(key)))').eq('id', id.data).maybeSingle(); if (!task.data) return NextResponse.json({ error: 'Task not found' }, { status: 404 })
   const nested = task.data as unknown as { run_id: string; playbook_workflow_runs: { owner_id: string | null; playbook_workflow_templates: { playbook_rooms: { key: string } } } }

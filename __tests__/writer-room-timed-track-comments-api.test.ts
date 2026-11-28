@@ -33,7 +33,8 @@ describe("Writer's Room timed track comments API and wiring", () => {
   it('keeps resolution and carry choices behind scoped RPCs', () => {
     expect(resolutionRoute).toContain(".eq('version_id', versionId)")
     expect(resolutionRoute).toContain("supabase.rpc('set_work_version_comment_resolution'")
-    expect(carryRoute).toContain('sourceCommentIds: z.array(z.string().uuid()).max(100)')
+    // .guid() is zod 3's .uuid() semantics; see the lyric-snapshots lock.
+    expect(carryRoute).toContain('sourceCommentIds: z.array(z.string().guid()).max(100)')
     expect(carryRoute).toContain("supabase.rpc('review_work_version_comment_carry'")
   })
 

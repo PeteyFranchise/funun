@@ -7,14 +7,14 @@ import { logStaffAction } from '@/lib/staff/audit'
 
 const TemplateLinkSchema = z
   .object({
-    templateId: z.string().uuid(),
+    templateId: z.string().guid(),
     relationshipKind: z.enum(['reference', 'required_reading']),
   })
   .strict()
 
 const MetadataSchema = z
   .object({
-    ownerId: z.string().uuid().nullable(),
+    ownerId: z.string().guid().nullable(),
     reviewDueAt: z.string().datetime({ offset: true }).nullable(),
     reviewIntervalDays: z.number().int().min(1).max(730).nullable(),
     templateLinks: z.array(TemplateLinkSchema).max(50),
@@ -30,7 +30,7 @@ const MetadataSchema = z
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  if (!z.string().uuid().safeParse(id).success) {
+  if (!z.string().guid().safeParse(id).success) {
     return NextResponse.json({ error: 'Invalid entry id' }, { status: 400 })
   }
   const parsed = MetadataSchema.safeParse(await request.json().catch(() => ({})))

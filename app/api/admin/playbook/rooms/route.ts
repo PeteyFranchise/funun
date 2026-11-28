@@ -21,7 +21,7 @@ import {
 
 const RoomGrantPatchSchema = z
   .object({
-    roomId: z.string().uuid(),
+    roomId: z.string().guid(),
     role: z.string(),
     granted: z.boolean(),
   })

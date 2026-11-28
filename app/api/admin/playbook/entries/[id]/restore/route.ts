@@ -16,7 +16,7 @@ const RestoreSchema = z
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  if (!z.string().uuid().safeParse(id).success) return NextResponse.json({ error: 'Invalid entry id' }, { status: 400 })
+  if (!z.string().guid().safeParse(id).success) return NextResponse.json({ error: 'Invalid entry id' }, { status: 400 })
   const parsed = RestoreSchema.safeParse(await request.json().catch(() => ({})))
   if (!parsed.success) return NextResponse.json({ error: 'Invalid restore request' }, { status: 400 })
 

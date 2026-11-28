@@ -27,7 +27,7 @@ export async function GET(
   { params }: { params: Promise<{ projectId: string; docId: string }> }
 ) {
   const { projectId, docId } = await params
-  const uuid = z.string().uuid()
+  const uuid = z.string().guid()
   if (!uuid.safeParse(projectId).success || !uuid.safeParse(docId).success) {
     return NextResponse.json({ error: 'Invalid document' }, { status: 400 })
   }

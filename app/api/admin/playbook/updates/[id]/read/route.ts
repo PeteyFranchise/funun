@@ -6,7 +6,7 @@ import { changeBroadcastAppliesToViewer, isChangeBroadcastSchemaMissing, type Ch
 import { canAccessRoom } from '@/lib/playbook/rooms'
 import { createServiceClient } from '@/lib/supabase/server'
 
-const IdSchema = z.string().uuid()
+const IdSchema = z.string().guid()
 
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params

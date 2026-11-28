@@ -5,13 +5,13 @@ import { createWorkAccessDeps, resolveWorkAccess } from '@/lib/catalogue/access'
 
 const ClaimSchema = z
   .object({
-    session_id: z.string().uuid(),
+    session_id: z.string().guid(),
     takeover: z.boolean().optional().default(false),
   })
   .strict()
 
 const ReleaseSchema = z
-  .object({ session_id: z.string().uuid() })
+  .object({ session_id: z.string().guid() })
   .strict()
 
 type LockRpcRow = {

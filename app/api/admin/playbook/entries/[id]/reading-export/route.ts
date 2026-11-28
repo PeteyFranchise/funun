@@ -9,7 +9,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const roomKey = new URL(request.url).searchParams.get('roomKey') ?? ''
-  if (!z.string().uuid().safeParse(id).success || !z.string().trim().min(1).max(80).safeParse(roomKey).success) {
+  if (!z.string().guid().safeParse(id).success || !z.string().trim().min(1).max(80).safeParse(roomKey).success) {
     return NextResponse.json({ error: 'Invalid reading export request' }, { status: 400 })
   }
   const auth = await requireRoomAccess(roomKey)

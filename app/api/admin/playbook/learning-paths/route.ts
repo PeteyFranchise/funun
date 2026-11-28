@@ -6,7 +6,7 @@ import { isRoomLead } from '@/lib/playbook/entries'
 import { isPlaybookEnablementSchemaMissing } from '@/lib/playbook/enablement'
 import { createServiceClient } from '@/lib/supabase/server'
 
-const Schema = z.object({ roomKey: z.string().trim().min(1).max(80), title: z.string().trim().min(1).max(180), description: z.string().trim().min(1).max(2000), entryIds: z.array(z.string().uuid()).min(1).max(50), targetRole: z.enum(ALL_STAFF_ROLES as [string, ...string[]]), dueAt: z.string().datetime({ offset: true }).nullable() }).strict()
+const Schema = z.object({ roomKey: z.string().trim().min(1).max(80), title: z.string().trim().min(1).max(180), description: z.string().trim().min(1).max(2000), entryIds: z.array(z.string().guid()).min(1).max(50), targetRole: z.enum(ALL_STAFF_ROLES as [string, ...string[]]), dueAt: z.string().datetime({ offset: true }).nullable() }).strict()
 
 export async function POST(request: Request) {
   const parsed = Schema.safeParse(await request.json().catch(() => ({}))); if (!parsed.success) return NextResponse.json({ error: 'Invalid learning path' }, { status: 400 })

@@ -8,7 +8,7 @@ type RouteCtx = { params: Promise<{ handoffId: string }> }
 
 const ActivitySchema = z.object({
   kind: z.enum(['listened', 'compared']),
-  versionId: z.string().uuid().nullable().default(null),
+  versionId: z.string().guid().nullable().default(null),
 }).strict()
 
 export async function POST(request: Request, { params }: RouteCtx) {

@@ -52,7 +52,7 @@ const WORKSPACE_ACCESS_DISABLED = 'Workspace access is temporarily disabled.'
 
 const PatchEvidenceSchema = z
   .object({
-    evidenceId: z.string().uuid(),
+    evidenceId: z.string().guid(),
     action: z.enum(['confirm', 'withdraw']),
   })
   .strict()

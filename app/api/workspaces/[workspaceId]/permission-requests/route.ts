@@ -65,7 +65,7 @@ import {
 
 const CreateRequestSchema = z
   .object({
-    relationshipId: z.string().uuid(),
+    relationshipId: z.string().guid(),
     // Deliberately `z.string()`, not `z.enum`. The recognised /
     // structurally-excluded decision belongs to `request-service.ts`, which
     // refuses each case BY NAME (403 for a D-42 capability, 400 for an
@@ -82,14 +82,14 @@ const CreateRequestSchema = z
     // "unrecognized key" error that says nothing about why. The service is
     // the SINGLE source of the rule; this route neither restates it nor
     // rewords the refusal on its way out.
-    projectId: z.string().uuid().nullable().optional(),
+    projectId: z.string().guid().nullable().optional(),
     note: z.string().trim().max(1000).optional(),
   })
   .strict()
 
 const WithdrawRequestSchema = z
   .object({
-    requestId: z.string().uuid(),
+    requestId: z.string().guid(),
   })
   .strict()
 

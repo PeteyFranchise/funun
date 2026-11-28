@@ -27,7 +27,10 @@ describe("Writer's Room lyric snapshot API", () => {
   })
 
   it('requires a UUID tab session and delegates restore atomically to the lock-aware RPC', () => {
-    expect(restoreRoute).toContain('session_id: z.string().uuid()')
+    // zod 4 made .uuid() version-aware, rejecting the non-v4 ids this codebase
+    // uses. .guid() is the zod 3 semantics under a new name, so the guarantee
+    // this lock protects — a UUID-shaped session id is required — is unchanged.
+    expect(restoreRoute).toContain('session_id: z.string().guid()')
     expect(restoreRoute).toContain("resolveWorkAccess(createWorkAccessDeps(supabase), workId, user.id, 'contribute')")
     expect(restoreRoute).toContain("supabase.rpc('restore_locked_lyric_block_snapshot'")
     expect(restoreRoute).toContain('p_snapshot_id: snapshotId')

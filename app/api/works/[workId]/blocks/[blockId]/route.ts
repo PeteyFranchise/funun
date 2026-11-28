@@ -34,8 +34,8 @@ const BLOCK_TYPE_VALUES = [
 const PerformerRefSchema = z
   .object({
     kind: z.enum(['self', 'collaborator', 'guest']),
-    collaboratorId: z.string().uuid().nullable().optional(),
-    userId: z.string().uuid().nullable().optional(),
+    collaboratorId: z.string().guid().nullable().optional(),
+    userId: z.string().guid().nullable().optional(),
     name: z.string().trim().max(120).nullable().optional(),
   })
   .strict()
@@ -53,7 +53,7 @@ const PatchFieldsSchema = z
     custom_label: z.string().trim().max(80).nullable().optional(),
     performers: z.array(PerformerRefSchema).max(12).optional(),
     vocal_direction: z.string().trim().min(1).max(160).nullable().optional(),
-    lock_session_id: z.string().uuid().optional(),
+    lock_session_id: z.string().guid().optional(),
   })
   .strict()
 

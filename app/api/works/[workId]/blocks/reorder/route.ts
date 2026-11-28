@@ -19,7 +19,7 @@ const ORDER_ENTRY_LIMIT = 200
 
 const ReorderEntrySchema = z
   .object({
-    id: z.string().uuid(),
+    id: z.string().guid(),
     position: z.number().int().min(0).max(ORDER_ENTRY_LIMIT - 1),
   })
   .strict()

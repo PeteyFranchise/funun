@@ -14,7 +14,7 @@ import { insertOnboardingTask } from '@/lib/client-partners/onboarding'
 // mirroring GamePlanTopicSchema's note cap) — previously unbounded.
 const AeAssignBodySchema = z
   .object({
-    ae_user_id: z.string().uuid().nullable(),
+    ae_user_id: z.string().guid().nullable(),
     note: z.string().trim().max(2000).optional(),
   })
   .strict()

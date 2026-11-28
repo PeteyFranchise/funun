@@ -49,7 +49,7 @@ const AddNewCollaboratorSchema = z
 
 const AddExistingCollaboratorSchema = z
   .object({
-    collaborator_id: z.string().uuid(),
+    collaborator_id: z.string().guid(),
     tier: TierEnum,
     is_writer: z.boolean(),
   })

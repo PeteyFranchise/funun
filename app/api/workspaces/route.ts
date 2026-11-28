@@ -81,7 +81,7 @@ const CreateWorkspaceSchema = z
     workspaceType: z.enum(WORKSPACE_TYPE_VALUES),
     rosterEnabled: z.boolean().optional(),
     catalogueEnabled: z.boolean().optional(),
-    subjectMemberId: z.string().uuid().optional(),
+    subjectMemberId: z.string().guid().optional(),
   })
   .strict()
 

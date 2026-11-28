@@ -6,7 +6,7 @@ import { isReviewSchemaMissing, REVIEW_SCHEMA_UNAVAILABLE, ReviewResubmitSchema 
 import { createServiceClient } from '@/lib/supabase/server'
 import { logStaffAction } from '@/lib/staff/audit'
 
-const idSchema = z.string().uuid()
+const idSchema = z.string().guid()
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params

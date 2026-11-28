@@ -5,7 +5,7 @@ import { isRoomLead } from '@/lib/playbook/entries'
 import { canTransitionFeedback, type ReaderFeedbackStatus } from '@/lib/playbook/enablement'
 import { createServiceClient } from '@/lib/supabase/server'
 
-const Id = z.string().uuid()
+const Id = z.string().guid()
 const Body = z.object({ roomKey: z.string().trim().min(1).max(80), status: z.enum(['open','triaged','resolved','declined']), note: z.string().trim().max(4000).nullable() }).strict()
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {

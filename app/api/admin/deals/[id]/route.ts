@@ -15,7 +15,7 @@ const ADMIN_DEAL_COLUMNS =
 const DealPatchBodySchema = z
   .object({
     stage: z.enum(DEAL_STAGE_VALUES).optional(),
-    owner_id: z.union([z.string().uuid(), z.null()]).optional(),
+    owner_id: z.union([z.string().guid(), z.null()]).optional(),
     commission_pct: z.union([z.number().min(0).max(100), z.null()]).optional(),
     gross_fee_cents: z.union([z.number().int().min(0), z.null()]).optional(),
     admin_notes: z.union([z.string().trim().max(5000), z.null()]).optional(),

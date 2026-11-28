@@ -106,7 +106,7 @@ type RosterRelationshipRow = {
 // constraint".
 const ProposeRosterSchema = z
   .object({
-    memberUserId: z.string().uuid(),
+    memberUserId: z.string().guid(),
     professionalRole: z.string().trim().max(200).optional(),
     effectiveFrom: optionalIsoDate,
     terminatesOn: optionalIsoDate,
@@ -121,7 +121,7 @@ const ProposeRosterSchema = z
 // refusal is in the PATCH handler below.
 const PatchRosterSchema = z
   .object({
-    relationshipId: z.string().uuid(),
+    relationshipId: z.string().guid(),
     action: z.string().trim().max(50).optional(),
     professional_role: z.union([z.string().trim().max(200), z.null()]).optional(),
     // `optionalIsoDate` is nullish, so an explicit null still clears a bound.

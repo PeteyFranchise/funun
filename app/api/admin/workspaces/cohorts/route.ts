@@ -7,7 +7,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 
 const AddSchema = z.object({
   action: z.literal('add'),
-  accountUserId: z.string().uuid(),
+  accountUserId: z.string().guid(),
   startsAt: z.string().datetime({ offset: true }).optional(),
   endsAt: z.string().datetime({ offset: true }).nullable().optional(),
 }).strict().superRefine((value, context) => {
@@ -18,7 +18,7 @@ const AddSchema = z.object({
 
 const SetEnabledSchema = z.object({
   action: z.literal('set_enabled'),
-  cohortId: z.string().uuid(),
+  cohortId: z.string().guid(),
   enabled: z.boolean(),
 }).strict()
 

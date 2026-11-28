@@ -15,7 +15,7 @@ const Schema = z
       'incident',
       'simulation',
     ]),
-    roomId: z.string().uuid().nullable(),
+    roomId: z.string().guid().nullable(),
     severity: z.number().int().min(1).max(4).nullable(),
     acknowledgeMinutes: z.number().int().min(1).max(525600),
     resolveMinutes: z.number().int().min(1).max(5256000),

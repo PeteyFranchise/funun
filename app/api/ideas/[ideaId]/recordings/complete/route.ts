@@ -8,10 +8,10 @@ import { createNotification } from '@/lib/notifications'
 
 type RouteCtx = { params: Promise<{ ideaId: string }> }
 const CompleteSchema = z.object({
-  recordingId: z.string().uuid(), path: z.string().min(1).max(500),
+  recordingId: z.string().guid(), path: z.string().min(1).max(500),
   durationSeconds: z.number().int().min(0).nullable(), label: z.string().max(200).nullable(),
   kind: z.enum(['voice', 'melody', 'lyric', 'rhythm', 'harmony', 'reference', 'import']),
-  parentRecordingId: z.string().uuid().nullable(),
+  parentRecordingId: z.string().guid().nullable(),
   markers: z.array(z.object({ timestampMs: z.number().int().min(0), label: z.string().max(100).nullable().optional() }).strict()).max(100),
 }).strict()
 

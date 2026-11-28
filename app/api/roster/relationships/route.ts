@@ -89,7 +89,7 @@ type RosterTransitionOutcome = {
 
 const PatchRelationshipSchema = z
   .object({
-    relationshipId: z.string().uuid(),
+    relationshipId: z.string().guid(),
     action: z.enum(['accept', 'refuse', 'block', 'end']),
   })
   .strict()

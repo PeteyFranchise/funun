@@ -34,8 +34,8 @@ export type RunContext = z.infer<typeof RunContextSchema>
 
 export const StartRunSchema = z
   .object({
-    memberId: z.string().uuid(),
-    templateId: z.string().uuid(),
+    memberId: z.string().guid(),
+    templateId: z.string().guid(),
     context: RunContextSchema.optional(),
   })
   .strict()

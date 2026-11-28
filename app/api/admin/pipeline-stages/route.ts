@@ -27,7 +27,7 @@ const StageCreateSchema = z
   })
   .strict()
 
-const StagePatchIdSchema = z.object({ id: z.string().uuid() })
+const StagePatchIdSchema = z.object({ id: z.string().guid() })
 
 const StagePatchFieldsSchema = z
   .object({
@@ -39,7 +39,7 @@ const StagePatchFieldsSchema = z
   .partial()
   .strict()
 
-const StageDeleteSchema = z.object({ id: z.string().uuid() }).strict()
+const StageDeleteSchema = z.object({ id: z.string().guid() }).strict()
 
 // Pure allowlist filter, mirrors lib/client-partners/contacts.ts's
 // pickContactFields — the mass-assignment backstop independent of zod.

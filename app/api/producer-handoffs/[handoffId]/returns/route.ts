@@ -16,11 +16,11 @@ import { checkRateLimit } from '@/lib/security/rate-limit'
 type RouteCtx = { params: Promise<{ handoffId: string }> }
 
 const ReturnSchema = z.object({
-  versionId: z.string().uuid(),
+  versionId: z.string().guid(),
   note: z.string().max(PRODUCER_HANDOFF_NOTE_MAX).nullable(),
   roundLabel: z.string().max(PRODUCER_HANDOFF_ROUND_LABEL_MAX).nullable().optional(),
   feedbackResponses: z.array(z.object({
-    feedbackId: z.string().uuid(),
+    feedbackId: z.string().guid(),
     status: z.enum(['done', 'tried', 'discuss']),
   }).strict()).max(25).default([]),
 }).strict()

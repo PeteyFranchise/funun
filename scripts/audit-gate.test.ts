@@ -282,8 +282,13 @@ describe('evaluate', () => {
 })
 
 describe('AUDIT_DEFERRALS (committed const guard)', () => {
-  it('has at least one entry', () => {
-    expect(AUDIT_DEFERRALS.length).toBeGreaterThan(0)
+  // The old assertion here required at least one entry, written when there was
+  // one. That encodes the wrong invariant: an EMPTY list is the ideal state, and
+  // on 2026-11-28 it became the real one when the zod upgrade landed and its
+  // deferral was removed. A guard that fails when the last advisory is fixed
+  // would pressure someone into keeping a suspension alive for the test's sake.
+  it('is an array, and may legitimately be empty when nothing is deferred', () => {
+    expect(Array.isArray(AUDIT_DEFERRALS)).toBe(true)
   })
 
   it('every entry has a parseable expires, a non-empty reason, and a non-empty approvedBy', () => {

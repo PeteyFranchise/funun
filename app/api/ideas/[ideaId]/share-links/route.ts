@@ -38,7 +38,7 @@ export async function DELETE(request: Request, { params }: RouteCtx) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const access = await resolveIdeaAccess(supabase, ideaId, user.id)
   if (!access.granted || access.permission !== 'owner') return NextResponse.json({ error: 'Idea not found.' }, { status: 404 })
-  const parsed = z.object({ id: z.string().uuid() }).strict().safeParse(await request.json().catch(() => null))
+  const parsed = z.object({ id: z.string().guid() }).strict().safeParse(await request.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: 'Invalid private link.' }, { status: 400 })
   const { error } = await createServiceClient().from('idea_share_links')
     .update({ revoked_at: new Date().toISOString() }).eq('id', parsed.data.id).eq('idea_id', ideaId).eq('created_by', user.id)

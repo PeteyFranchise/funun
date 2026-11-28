@@ -12,7 +12,7 @@ import {
 } from '@/lib/member-onboarding/game-plan'
 
 const TemplateRowSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   key: z.string(),
   title: z.string(),
   version: z.number().int().positive(),
