@@ -592,12 +592,19 @@ CREATE TABLE public.license_request_execution_authority (
   request_id             UUID NOT NULL,
   crate_song_id          UUID NOT NULL,
   accepted_assessment_id UUID NOT NULL,
-  -- M4: bound to the SAME REQUEST when present. Deliberately still NULLABLE,
-  -- which is a considered departure from the review's "make it NOT NULL": a
-  -- request that never had a hold still needs authority to execute, and there is
-  -- no hold decision to name in that case. NOT NULL would make the first
-  -- execution of an unheld request unrepresentable.
+  -- OWNER DECISION 2026-11-27: authority is GENERAL, with its provenance
+  -- recorded. The review asked for decision_id NOT NULL on the grounds that
+  -- authority only ever arises from a hold decision; the owner's answer is that a
+  -- request whose clearance never changed must still be executable, so NOT NULL
+  -- would make a clean first execution unrepresentable. Nullability is therefore
+  -- kept AND tied to a declared kind, so the record always says which human act
+  -- granted it rather than leaving a NULL to be interpreted.
+  authority_kind         TEXT NOT NULL
+    CHECK (authority_kind IN ('initial_acceptance', 'hold_decision')),
   decision_id            UUID,
+  CONSTRAINT license_request_execution_authority_kind_matches_provenance CHECK (
+    (authority_kind = 'hold_decision') = (decision_id IS NOT NULL)
+  ),
 
   -- M4: the contract requires a stated basis, as it does for hold decisions.
   basis                  TEXT NOT NULL CHECK (btrim(basis) <> ''),

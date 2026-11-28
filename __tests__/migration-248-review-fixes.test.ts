@@ -105,6 +105,18 @@ describe('migration 248 — M2 to M6: the same-song and same-request bindings', 
   })
 })
 
+describe('migration 248 — owner decision 2026-11-27: authority provenance', () => {
+  it('records which kind of act granted authority', () => {
+    expect(has("authority_kind TEXT NOT NULL CHECK (authority_kind IN ('initial_acceptance', 'hold_decision'))")).toBe(true)
+  })
+
+  it('ties decision_id nullability to that kind, so a NULL is never ambiguous', () => {
+    expect(
+      has("CHECK ( (authority_kind = 'hold_decision') = (decision_id IS NOT NULL) )")
+    ).toBe(true)
+  })
+})
+
 describe('migration 248 — M7: supersession chains cannot cycle', () => {
   it('an approval cannot supersede itself', () => {
     expect(has('crate_artifact_approvals_no_self_supersede CHECK (supersedes_approval_id <> id)')).toBe(true)
