@@ -45,7 +45,8 @@ DECLARE
   v_existing_sha TEXT;
   v_attestation_id UUID;
   v_artifact_id  UUID;
-  v_listing      public.sync_listings%ROWTYPE;
+  -- A narrow record type, because the function may only read five columns.
+  v_listing      RECORD;
   v_title        TEXT;
   v_artist_name  TEXT;
   v_source_path  TEXT;
@@ -54,7 +55,14 @@ BEGIN
   -- signature took the track, project, payee, title and artist name from the
   -- caller, so a backfill could invent a catalogue entry's provenance wholesale.
   -- M3: the listing is locked first, matching the global lock order.
-  SELECT * INTO v_listing FROM public.sync_listings WHERE id = p_listing_id FOR UPDATE;
+  -- M1 (review 2026-11-28): explicit columns, not SELECT *. SELECT * requires
+  -- SELECT on EVERY column of the table, and the evidence role is granted five.
+  -- The row lock stays: it is step 1 of the global lock order.
+  SELECT id, status, track_id, vault_project_id, artist_user_id
+    INTO v_listing
+    FROM public.sync_listings
+   WHERE id = p_listing_id
+     FOR UPDATE;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'listing % does not exist', p_listing_id USING ERRCODE = 'foreign_key_violation';
   END IF;
@@ -169,7 +177,7 @@ GRANT EXECUTE ON FUNCTION public.crate_backfill_capture_song(UUID, TEXT, TEXT, T
 
 COMMENT ON FUNCTION public.crate_backfill_capture_song(UUID, TEXT, TEXT, TEXT, BIGINT, TEXT, UUID)
   IS
-  'Captures a song admitted before byte-tied review existed. Produces a provenance=backfilled, verdict=unreviewed review row with no reviewer, because no human approved these exact bytes and saying otherwise would forge evidence. Admitted listings only, idempotent on source_listing_id.';
+  'Captures a song admitted before byte-tied review existed. Produces a row in crate_backfill_attestations and NO quality review: nobody approved these bytes, and nothing here establishes they are the recording that was admitted, because the upload route permits replacing a track''s audio afterwards. Admitted listings only, operator actor required and never the artist, idempotent on source_listing_id by exact replay.';
 
 REVOKE funun_crate_evidence FROM CURRENT_USER;
 

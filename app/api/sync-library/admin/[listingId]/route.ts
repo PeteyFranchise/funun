@@ -423,33 +423,45 @@ export async function POST(
         sourceProjectId: row.vault_project_id,
       })
       if (!captured.ok) {
+        // M3: only a DEFINITIVE failure carries an orphanPath. An ambiguous one
+        // deliberately does not, because we cannot tell whether the transaction
+        // committed, and deleting a possibly-live object is worse than leaving a
+        // possibly-stray one for a reconciling sweep.
         if (captured.orphanPath) {
-          // M5: the enqueue result is checked. If neither the durable record nor
-          // the immediate deletion succeeded, an untracked object now exists in
-          // the private bucket and that is worth an audit line, not silence.
-          const swept = await enqueueCaptureOrphan(service, captured.orphanPath)
+          const swept = await enqueueCaptureOrphan(service, listingId, captured.orphanPath)
           if (!swept.ok && !swept.deleted) {
             await logStaffAction(service, {
               actorId: auth.user.id,
-              action: 'sync_library.capture_orphan_untracked',
+              action: swept.refusedAsLive
+                ? 'sync_library.capture_orphan_refused_live'
+                : 'sync_library.capture_orphan_untracked',
               targetType: 'sync_listing',
               targetId: listingId,
               changes: { bucket: 'crate-audio', path: captured.orphanPath },
             })
           }
         }
-        const status = captured.reason === 'digest_mismatch' ? 409 : 503
+
+        // A conflict a retry cannot cure is a 409. A transient or unknown
+        // outcome is a 503, which invites exactly the retry that can cure it.
+        const conflict =
+          captured.reason === 'digest_mismatch' ||
+          captured.reason === 'already_captured_different_bytes'
+        const message =
+          captured.reason === 'digest_mismatch'
+            ? 'The audio has changed since it was reviewed, so this song was not admitted. Review the current file first.'
+            : captured.reason === 'already_captured_different_bytes'
+              ? 'This song is already in The Crate holding different audio. It was not admitted again.'
+              : 'This song could not be captured, so it was not admitted. Nothing changed; try again.'
         return NextResponse.json(
-          {
-            error:
-              captured.reason === 'digest_mismatch'
-                ? 'The audio has changed since it was reviewed, so this song was not admitted. Review the current file first.'
-                : 'This song could not be captured, so it was not admitted. Nothing changed; try again.',
-            data: { listingId, status: row.status, reason: captured.reason },
-          },
-          { status }
+          { error: message, data: { listingId, status: row.status, reason: captured.reason } },
+          { status: conflict ? 409 : 503 }
         )
       }
+
+      // M3: on a replay our own upload is unreferenced. Clean up the copy this
+      // attempt made rather than leaving it for nobody to find.
+      if (captured.strayPath) await enqueueCaptureOrphan(service, listingId, captured.strayPath)
     }
 
     const { data: updatedRows, error: updateError } = await service

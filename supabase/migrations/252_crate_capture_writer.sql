@@ -31,7 +31,7 @@ CREATE OR REPLACE FUNCTION public.crate_capture_admitted_song(
   p_mime_type    TEXT,
   p_captured_by  UUID
 )
-RETURNS UUID
+RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
@@ -40,8 +40,10 @@ DECLARE
   v_song_id      UUID;
   v_existing     public.crate_songs%ROWTYPE;
   v_existing_sha TEXT;
+  v_existing_path TEXT;
   v_review       public.crate_quality_reviews%ROWTYPE;
-  v_listing      public.sync_listings%ROWTYPE;
+  -- A narrow record type, because the function may only read five columns.
+  v_listing      RECORD;
   v_title        TEXT;
   v_artist_name  TEXT;
   v_artifact_id  UUID;
@@ -57,7 +59,14 @@ BEGIN
   -- M3: the listing row is locked FIRST, which is also step 1 of the global lock
   -- order, so a concurrent assessment advance and this capture cannot interleave
   -- into a cycle.
-  SELECT * INTO v_listing FROM public.sync_listings WHERE id = p_listing_id FOR UPDATE;
+  -- M1 (review 2026-11-28): explicit columns, not SELECT *. SELECT * requires
+  -- SELECT on EVERY column of the table, and the evidence role is granted five.
+  -- The row lock stays: it is step 1 of the global lock order.
+  SELECT id, status, track_id, vault_project_id, artist_user_id
+    INTO v_listing
+    FROM public.sync_listings
+   WHERE id = p_listing_id
+     FOR UPDATE;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'listing % does not exist', p_listing_id USING ERRCODE = 'foreign_key_violation';
   END IF;
@@ -127,7 +136,22 @@ BEGIN
         p_listing_id, v_existing.id, v_existing_sha, p_sha256
         USING ERRCODE = 'unique_violation';
     END IF;
-    RETURN v_existing.id;
+    -- M3 (review 2026-11-28): REPLAY IS NOT CREATION, AND THE CALLER MUST BE
+    -- ABLE TO TELL. A bare id made a replay indistinguishable from a fresh
+    -- capture, so the caller went on reporting ITS OWN uploaded path as the
+    -- artifact path while no row referenced it: an object leaked, queued by
+    -- nobody. Returning the authoritative path lets the caller clean up the copy
+    -- it made and stop claiming it.
+    SELECT a.storage_path INTO v_existing_path
+      FROM public.crate_song_current_artifacts c
+      JOIN public.crate_song_artifacts a ON a.id = c.artifact_id
+     WHERE c.crate_song_id = v_existing.id AND c.role = 'review_playback';
+
+    RETURN jsonb_build_object(
+      'outcome', 'replayed',
+      'crate_song_id', v_existing.id,
+      'artifact_path', v_existing_path
+    );
   END IF;
 
   -- Derived, not supplied.
@@ -164,7 +188,11 @@ BEGIN
   VALUES (v_song_id, 0, 'captured', p_captured_by,
           jsonb_build_object('listing_id', p_listing_id, 'quality_review_id', v_review.id));
 
-  RETURN v_song_id;
+  RETURN jsonb_build_object(
+    'outcome', 'created',
+    'crate_song_id', v_song_id,
+    'artifact_path', p_path
+  );
 END;
 $$;
 
@@ -193,8 +221,9 @@ COMMENT ON FUNCTION public.crate_capture_admitted_song(
 -- on every table including the queue. Without this, a failed capture could not
 -- even record the file it left behind.
 CREATE OR REPLACE FUNCTION public.crate_enqueue_capture_orphan(
-  p_bucket TEXT,
-  p_path   TEXT
+  p_listing_id UUID,
+  p_bucket     TEXT,
+  p_path       TEXT
 )
 RETURNS UUID
 LANGUAGE plpgsql
@@ -204,6 +233,14 @@ AS $$
 DECLARE
   v_id UUID;
 BEGIN
+  -- M4 (review 2026-11-28): TAKE THE LISTING LOCK FIRST. The artifact check
+  -- below was a check-before-commit: enqueue could run on another connection
+  -- while a capture transaction was still open, see no artifact row, queue the
+  -- path, and have the capture then commit and make that path live. Locking the
+  -- same row capture locks removes the interleaving — enqueue waits for the
+  -- capture to finish, then sees the committed artifact and refuses.
+  PERFORM 1 FROM public.sync_listings WHERE id = p_listing_id FOR UPDATE;
+
   -- M2 (review 2026-11-28): REFUSE TO QUEUE A LIVE ARTIFACT. Two concurrent
   -- admissions of one listing used to share a destination path, so the loser
   -- enqueued for deletion the very object holding the WINNER's required
@@ -239,11 +276,11 @@ BEGIN
 END;
 $$;
 
-ALTER FUNCTION public.crate_enqueue_capture_orphan(TEXT, TEXT) OWNER TO funun_crate_evidence;
-REVOKE ALL ON FUNCTION public.crate_enqueue_capture_orphan(TEXT, TEXT) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.crate_enqueue_capture_orphan(TEXT, TEXT) TO service_role;
+ALTER FUNCTION public.crate_enqueue_capture_orphan(UUID, TEXT, TEXT) OWNER TO funun_crate_evidence;
+REVOKE ALL ON FUNCTION public.crate_enqueue_capture_orphan(UUID, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.crate_enqueue_capture_orphan(UUID, TEXT, TEXT) TO service_role;
 
-COMMENT ON FUNCTION public.crate_enqueue_capture_orphan(TEXT, TEXT) IS
+COMMENT ON FUNCTION public.crate_enqueue_capture_orphan(UUID, TEXT, TEXT) IS
   'Records a copied object left behind by a failed capture. Refuses any path a captured artifact references, so a concurrent loser can never queue the winner''s live review_playback for deletion. A reused path is reset to a fresh job, except lease_generation which only increases so a fenced-out worker''s late result is still rejected.';
 
 REVOKE funun_crate_evidence FROM CURRENT_USER;

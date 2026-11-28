@@ -27,10 +27,15 @@ export type CaptureFailure =
   | 'copy_failed'
   | 'readback_failed'
   | 'digest_mismatch'
+  | 'already_captured_different_bytes'
   | 'commit_failed'
+  | 'commit_ambiguous'
 
 export type CaptureResult =
-  | { ok: true; crateSongId: string; artifactPath: string }
+  // `outcome` distinguishes a fresh capture from a replay. On a replay the
+  // authoritative path is the EXISTING artifact's, not the one this attempt
+  // uploaded, and `strayPath` is this attempt's copy, which is now unreferenced.
+  | { ok: true; outcome: 'created' | 'replayed'; crateSongId: string; artifactPath: string; strayPath?: string }
   | { ok: false; reason: CaptureFailure; orphanPath?: string }
 
 /**
@@ -134,11 +139,45 @@ export async function captureAdmittedSong(
     p_mime_type: source.mimeType,
     p_captured_by: input.capturedBy,
   })
-  if (error || typeof data !== 'string') {
-    return { ok: false, reason: 'commit_failed', orphanPath: destPath }
+  // M3 (review 2026-11-28): AN ERROR IS NOT PROOF THAT NOTHING COMMITTED.
+  // Previously every error became commit_failed and the caller queued its path
+  // as an orphan. If the transaction had in fact committed and only the response
+  // was lost, that queued the LIVE object for deletion. So a definitive
+  // database refusal and an ambiguous transport failure are now different
+  // things, and only the definitive one is allowed to trigger cleanup.
+  if (error) {
+    const code = (error as { code?: string }).code
+    if (code === '23505') {
+      // The database says this listing is already captured holding other bytes.
+      // Definitive, and retrying cannot cure it.
+      return { ok: false, reason: 'already_captured_different_bytes', orphanPath: destPath }
+    }
+    if (code && code !== '08000' && code !== '08006' && code !== '57014') {
+      return { ok: false, reason: 'commit_failed', orphanPath: destPath }
+    }
+    // No SQLSTATE, or a connection/cancellation class: we do not know whether it
+    // committed. Leave the object alone. A sweep that reconciles against the
+    // database can resolve it later; deleting now can destroy a live artifact.
+    return { ok: false, reason: 'commit_ambiguous' }
   }
 
-  return { ok: true, crateSongId: data, artifactPath: destPath }
+  const outcome = (data as { outcome?: string } | null)?.outcome
+  const crateSongId = (data as { crate_song_id?: string } | null)?.crate_song_id
+  const artifactPath = (data as { artifact_path?: string } | null)?.artifact_path
+  if ((outcome !== 'created' && outcome !== 'replayed') || !crateSongId || !artifactPath) {
+    // A shape we do not recognise is also not proof that nothing committed.
+    return { ok: false, reason: 'commit_ambiguous' }
+  }
+
+  return {
+    ok: true,
+    outcome,
+    crateSongId,
+    artifactPath,
+    // On a replay our upload is unreferenced: report it so the caller can clean
+    // up its own copy rather than leaking it, which the old bare-id return did.
+    ...(outcome === 'replayed' && artifactPath !== destPath ? { strayPath: destPath } : {}),
+  }
 }
 
 /**
@@ -152,14 +191,24 @@ export async function captureAdmittedSong(
  */
 export async function enqueueCaptureOrphan(
   service: SupabaseClient,
+  listingId: string,
   path: string
-): Promise<{ ok: true } | { ok: false; deleted: boolean }> {
+): Promise<{ ok: true } | { ok: false; deleted: boolean; refusedAsLive: boolean }> {
   const { error } = await service.rpc('crate_enqueue_capture_orphan', {
+    p_listing_id: listingId,
     p_bucket: CRATE_AUDIO_BUCKET,
     p_path: path,
   })
   if (!error) return { ok: true }
 
+  // M3 (review 2026-11-28): the database refuses to queue a path a captured
+  // artifact references. That refusal means the object is LIVE, and deleting it
+  // is precisely the wrong response — it was the response the first version
+  // gave, because it treated every enqueue error as permission to delete.
+  const refusedAsLive = (error as { code?: string }).code === '23514'
+    || /captured artifact references it/i.test((error as { message?: string }).message ?? '')
+  if (refusedAsLive) return { ok: false, deleted: false, refusedAsLive: true }
+
   const removal = await service.storage.from(CRATE_AUDIO_BUCKET).remove([path])
-  return { ok: false, deleted: !removal.error }
+  return { ok: false, deleted: !removal.error, refusedAsLive: false }
 }

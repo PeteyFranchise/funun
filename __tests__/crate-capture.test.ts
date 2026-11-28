@@ -23,7 +23,10 @@ function client(opts: {
   rpc?: jest.Mock
 }) {
   const uploaded: Buffer[] = []
-  const rpc = opts.rpc ?? jest.fn().mockResolvedValue({ data: 'song-1', error: null })
+  const rpc = opts.rpc ?? jest.fn().mockResolvedValue({
+    data: { outcome: 'created', crate_song_id: 'song-1', artifact_path: 'captured/listing-1/x.review_playback.wav' },
+    error: null,
+  })
   const service = {
     from: () => ({
       select: () => ({
@@ -71,9 +74,10 @@ describe('captureAdmittedSong', () => {
     const { service, rpc } = client({ review: { id: 'rev-1', sha256: SOURCE_SHA, verdict: 'passed' } })
     const out = await captureAdmittedSong(service, input)
     expect(out.ok).toBe(true)
+    expect((out as { outcome: string }).outcome).toBe('created')
     // The path is per ATTEMPT, so assert its shape rather than a fixed string.
-    expect((out as { artifactPath: string }).artifactPath)
-      .toMatch(/^captured\/listing-1\/[0-9a-f-]{36}\.review_playback\.wav$/)
+    // The authoritative path now comes from the database, not from the caller.
+    expect((out as { artifactPath: string }).artifactPath).toBe('captured/listing-1/x.review_playback.wav')
     expect(rpc).toHaveBeenCalledWith('crate_capture_admitted_song', expect.objectContaining({
       p_listing_id: 'listing-1',
       p_bucket: CRATE_AUDIO_BUCKET,
@@ -143,7 +147,7 @@ describe('captureAdmittedSong', () => {
   })
 
   it('reports commit_failed with an orphan when the writer refuses', async () => {
-    const rpc = jest.fn().mockResolvedValue({ data: null, error: { message: 'mismatch' } })
+    const rpc = jest.fn().mockResolvedValue({ data: null, error: { message: 'refused', code: '23514' } })
     const { service } = client({ review: { id: 'rev-1', sha256: SOURCE_SHA, verdict: 'passed' }, rpc })
     expect(await captureAdmittedSong(service, input)).toMatchObject({
       ok: false, reason: 'commit_failed',
@@ -166,5 +170,51 @@ describe('captureObjectPath', () => {
 describe('the slice ships dark', () => {
   it('capture is disabled until 248, 251 and 252 are applied', () => {
     expect(CRATE_CAPTURE_ENABLED).toBe(false)
+  })
+})
+
+describe('M3 — ambiguity is never treated as failure', () => {
+  const review = { id: 'rev-1', sha256: SOURCE_SHA, verdict: 'passed' }
+
+  it('a lost response does NOT mark the object an orphan', async () => {
+    // The transaction may have committed. Queuing this path would hand a live
+    // object to the sweeper, which is what the first version did.
+    const rpc = jest.fn().mockResolvedValue({ data: null, error: { message: 'socket hang up' } })
+    const { service } = client({ review, rpc })
+    const out = await captureAdmittedSong(service, input)
+    expect(out).toEqual({ ok: false, reason: 'commit_ambiguous' })
+    expect(out).not.toHaveProperty('orphanPath')
+  })
+
+  it('a connection-class SQLSTATE is also ambiguous', async () => {
+    const rpc = jest.fn().mockResolvedValue({ data: null, error: { message: 'gone', code: '08006' } })
+    const { service } = client({ review, rpc })
+    expect(await captureAdmittedSong(service, input)).toEqual({ ok: false, reason: 'commit_ambiguous' })
+  })
+
+  it('a definitive duplicate is a conflict a retry cannot cure', async () => {
+    const rpc = jest.fn().mockResolvedValue({ data: null, error: { message: 'dupe', code: '23505' } })
+    const { service } = client({ review, rpc })
+    expect(await captureAdmittedSong(service, input)).toMatchObject({
+      ok: false, reason: 'already_captured_different_bytes',
+    })
+  })
+
+  it('an unrecognised response shape is ambiguous, not success', async () => {
+    const rpc = jest.fn().mockResolvedValue({ data: 'song-1', error: null })
+    const { service } = client({ review, rpc })
+    expect(await captureAdmittedSong(service, input)).toEqual({ ok: false, reason: 'commit_ambiguous' })
+  })
+
+  it('a replay reports the EXISTING path and flags our upload as stray', async () => {
+    const rpc = jest.fn().mockResolvedValue({
+      data: { outcome: 'replayed', crate_song_id: 'song-A', artifact_path: 'captured/listing-1/A.review_playback.wav' },
+      error: null,
+    })
+    const { service } = client({ review, rpc })
+    const out = await captureAdmittedSong(service, input)
+    expect(out).toMatchObject({ ok: true, outcome: 'replayed', artifactPath: 'captured/listing-1/A.review_playback.wav' })
+    // our own upload is unreferenced and must be cleaned up, not leaked
+    expect((out as { strayPath?: string }).strayPath).toMatch(/^captured\/listing-1\//)
   })
 })

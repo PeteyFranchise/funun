@@ -79,7 +79,10 @@ CREATE TABLE public.crate_quality_reviews (
   mime_type      TEXT NOT NULL,
 
   -- OWNER DECISION 2026-11-28: this table means ONE thing — a named human
-  -- approved THESE EXACT BYTES. An earlier attempt added a 'provenance' column
+  -- REVIEWED these exact bytes. Note "reviewed", not "approved": a row with
+  -- verdict 'failed' is equally a review, and only verdict = 'passed' is
+  -- approval. The earlier comments here said approved throughout, which would
+  -- have misled exactly the future writer this separation exists to protect. An earlier attempt added a 'provenance' column
   -- so a backfill could live here as an "unreviewed review", which is a
   -- permanent semantic contradiction, and left every future consumer obliged to
   -- filter for it. Backfills now live in crate_backfill_attestations instead, so
@@ -110,10 +113,21 @@ COMMENT ON TABLE public.crate_quality_reviews IS
 --                        confirmed it is the recording that was admitted
 --
 -- They are separate relations so the difference is structural rather than a
--- predicate every future writer must remember. A 50.5C approval writer holding
--- only an artifact id can require a passed quality review; a backfill
--- attestation cannot accidentally satisfy that, because it is not the same kind
--- of object and no foreign key reaches it.
+-- predicate every future writer must remember. A 50.5C approval writer that
+-- follows an artifact's quality_review_id and requires verdict = 'passed'
+-- cannot accidentally accept an attestation, because no quality_review_id can
+-- ever reference one.
+--
+-- SAY THE WEAKER TRUE THING (review 2026-11-28). An earlier version of this
+-- comment claimed "no foreign key reaches an attestation", which is literally
+-- false: crate_song_artifacts.backfill_attestation_id is exactly such a key.
+-- What is true is narrower, and is the part that matters: the separation closes
+-- TYPE CONFUSION. It is not a blanket proof of approval. A future writer must
+-- still select the CURRENT review_playback artifact, follow ITS
+-- quality_review_id rather than any review of the listing, and require
+-- verdict = 'passed'. The schema does not force an artifact's digest and
+-- listing to equal those of its referenced review; the sanctioned writers do,
+-- and future ones must keep doing so.
 --
 -- An attestation is NEVER erased by a later re-review. It stays as truthful
 -- historical evidence of how the song entered The Crate; the re-review appends a
@@ -257,9 +271,15 @@ CREATE TABLE public.crate_song_artifacts (
   -- be both, and cannot be neither.
   quality_review_id       UUID REFERENCES public.crate_quality_reviews(id) ON DELETE RESTRICT,
   backfill_attestation_id UUID REFERENCES public.crate_backfill_attestations(id) ON DELETE RESTRICT,
+  -- L1 (review 2026-11-28): this was an IMPLICATION, so every non-playback
+  -- artifact passed regardless of what it carried — artwork could claim a
+  -- quality review, or both bases at once. review_playback needs exactly one
+  -- basis; every other role needs none, because nothing reviews a stems archive.
   CONSTRAINT crate_song_artifacts_playback_basis_xor CHECK (
-    role <> 'review_playback'
-    OR ((quality_review_id IS NOT NULL) <> (backfill_attestation_id IS NOT NULL))
+    CASE WHEN role = 'review_playback'
+      THEN (quality_review_id IS NOT NULL) <> (backfill_attestation_id IS NOT NULL)
+      ELSE quality_review_id IS NULL AND backfill_attestation_id IS NULL
+    END
   ),
 
   CONSTRAINT crate_song_artifacts_no_self_supersede CHECK (supersedes_artifact_id <> id),
@@ -1181,6 +1201,14 @@ CREATE TRIGGER crate_contract_snapshots_no_truncate
 -- grant is the no-op this house shipped to production once already.
 GRANT SELECT (id, status, track_id, vault_project_id, artist_user_id)
   ON public.sync_listings TO funun_crate_evidence;
+
+-- M1 (review 2026-11-28): PostgreSQL requires UPDATE privilege on at least one
+-- column to take `SELECT ... FOR UPDATE`, and SELECT alone is not enough. The
+-- writers never update a listing — they only lock it — so this is the narrowest
+-- column that makes the lock legal. `updated_at` rather than `id`: if the grant
+-- is ever misused, a touched timestamp is a far smaller problem than a rewritten
+-- primary key.
+GRANT UPDATE (updated_at) ON public.sync_listings TO funun_crate_evidence;
 GRANT SELECT (id, title, audio_file_url, project_id)
   ON public.tracks TO funun_crate_evidence;
 GRANT SELECT (id, artist_name)

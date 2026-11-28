@@ -92,6 +92,15 @@ for (const listing of todo) {
     p_operator_id: OPERATOR,
   })
   if (error) {
+    // M3 (review 2026-11-28): an error is not proof that nothing committed. Only
+    // delete the copy when the database definitively refused; on an ambiguous
+    // failure leave it, because deleting after a lost response destroys the live
+    // object a committed artifact needs.
+    const definitive = Boolean(error.code) && !['08000', '08006', '57014'].includes(error.code)
+    if (!definitive) {
+      failures.push({ listing: listing.id, reason: `${error.message} (ambiguous: object left for reconciliation)` })
+      continue
+    }
     const rm = await db.storage.from('crate-audio').remove([destPath])
     failures.push({ listing: listing.id, reason: rm.error ? `${error.message} (object leaked)` : error.message })
     continue

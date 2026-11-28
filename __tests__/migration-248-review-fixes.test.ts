@@ -246,7 +246,6 @@ describe('writers — M7: a backfill is an operator act', () => {
 })
 
 // ─── Owner decisions 2026-11-28: backfill topology and exposure ─────────
-const W254 = readFileSync(path.join(process.cwd(), 'supabase/migrations/254_crate_review_captured_artifact.sql'), 'utf8')
 
 describe('backfill topology — a backfill is not a review', () => {
   it('attestations are their own relation, not a row in crate_quality_reviews', () => {
@@ -278,27 +277,72 @@ describe('backfill topology — a backfill is not a review', () => {
   })
 })
 
-describe('promotion — re-review reviews the CAPTURED object', () => {
-  it('rechecks the digest against the artifact, not the live Vault file', () => {
-    expect(flatOf(W254)).toContain('p_sha256 IS DISTINCT FROM v_current.sha256')
-    expect(flatOf(W254)).toContain('no longer hashes to its recorded digest')
-    // It must never READ the mutable pointer. The identifier appears in the
-    // header comment explaining exactly that, so the assertion is on code.
-    const codeOnly = W254.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n')
-    expect(codeOnly).not.toContain('audio_file_url')
-    expect(codeOnly).not.toContain('public.tracks')
+// ─── Round four (static second round, 2026-11-28) ──────────────────────
+describe('round four — M1: the writer role can actually lock and read', () => {
+  it('reads explicit columns, never SELECT *', () => {
+    for (const sql of [W252, W253]) {
+      expect(flatOf(sql)).toContain('SELECT id, status, track_id, vault_project_id, artist_user_id')
+      expect(flatOf(sql)).not.toContain('SELECT * INTO v_listing')
+    }
   })
 
-  it('only promotes something that is actually backfilled', () => {
-    expect(flatOf(W254)).toContain('v_current.backfill_attestation_id IS NULL')
+  it('grants the UPDATE privilege FOR UPDATE requires, on the narrowest column', () => {
+    expect(has('GRANT UPDATE (updated_at) ON public.sync_listings TO funun_crate_evidence;')).toBe(true)
+  })
+})
+
+describe('round four — M2: migration 254 is cut from this slice', () => {
+  it('no promotion migration ships in 50.5B', () => {
+    // Every PASSING promotion rolled back: the successor artifact reused the
+    // predecessor's bucket and path against UNIQUE (storage_bucket,
+    // storage_path). Whether an artifact version is a new stored object or a new
+    // evidentiary state over the same one is an open design question, and it
+    // belongs with the approval slice.
+    expect(() =>
+      readFileSync(path.join(process.cwd(), 'supabase/migrations/254_crate_review_captured_artifact.sql'))
+    ).toThrow()
+  })
+})
+
+describe('round four — M3: outcomes are distinguishable', () => {
+  it('capture returns a structured outcome, not a bare id', () => {
+    expect(flatOf(W252)).toContain('RETURNS JSONB')
+    expect(flatOf(W252)).toContain("'outcome', 'created'")
+    expect(flatOf(W252)).toContain("'outcome', 'replayed'")
   })
 
-  it('is append-only: the attestation survives and the artifact gets a successor', () => {
-    expect(flatOf(W254)).toContain('supersedes_artifact_id, chain_version, supersedes_version')
-    expect(flatOf(W254)).not.toContain('DELETE FROM public.crate_backfill_attestations')
+  it('a replay returns the EXISTING artifact path, not the caller’s', () => {
+    expect(flatOf(W252)).toContain('SELECT a.storage_path INTO v_existing_path')
+  })
+})
+
+describe('round four — M4: enqueue serialises with capture', () => {
+  it('takes the same listing lock capture takes, closing the check-before-commit window', () => {
+    expect(flatOf(W252)).toContain('PERFORM 1 FROM public.sync_listings WHERE id = p_listing_id FOR UPDATE;')
+    expect(flatOf(W252)).toContain('crate_enqueue_capture_orphan( p_listing_id UUID')
+  })
+})
+
+describe('round four — L1/L2: the constraint and the claims', () => {
+  it('a non-playback artifact may carry NO basis at all', () => {
+    expect(has('ELSE quality_review_id IS NULL AND backfill_attestation_id IS NULL')).toBe(true)
   })
 
-  it('a failed review changes nothing but the record that someone looked', () => {
-    expect(flatOf(W254)).toContain("IF p_verdict = 'failed' THEN RETURN v_review_id;")
+  it('no longer claims no foreign key reaches an attestation', () => {
+    // The phrase survives in the comment that CORRECTS it, which is the point
+    // of keeping it. Assert on the original claim's exact wording instead —
+    // this is the third assertion in this file to match explanatory prose
+    // rather than the thing it explains.
+    // Phrases must sit on ONE line: has() collapses whitespace but does not
+    // strip the leading `--`, so a phrase spanning a comment break can never
+    // match no matter how true it is.
+    expect(SQL).not.toContain('and no foreign key reaches it.')
+    expect(has('is exactly such a key')).toBe(true)
+    expect(has('It is not a blanket proof of approval.')).toBe(true)
+  })
+
+  it('253’s comment describes what it actually writes', () => {
+    expect(flatOf(W253)).toContain('Produces a row in crate_backfill_attestations and NO quality review')
+    expect(flatOf(W253)).not.toContain('provenance=backfilled, verdict=unreviewed review row')
   })
 })
