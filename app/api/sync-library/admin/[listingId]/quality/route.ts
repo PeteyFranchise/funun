@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
+import {
+  BYTE_TIED_QUALITY_REVIEW_ENABLED,
+  resolveReviewedObject,
+  digestStorageObject,
+  recordByteTiedReview,
+} from '@/lib/sync-library/crate-byte-tied-review'
 
 // ─── POST /api/sync-library/admin/[listingId]/quality ──────────────────
 // Write of the Sync Library inclusion gate's manual quality-bar verdict +
@@ -29,7 +35,7 @@ import { logStaffAction } from '@/lib/staff/audit'
 const NOTE_MAX_LENGTH = 1000
 
 type RequestBody = { quality_ok?: unknown; quality_note?: unknown; staff_notes?: unknown }
-type ListingRow = { id: string; status: string }
+type ListingRow = { id: string; status: string; track_id: string }
 
 /** Trims + length-caps an optional free-text field; empty string clears it (null). */
 function normalizeNote(raw: string): string | null {
@@ -80,7 +86,7 @@ export async function POST(
   // a listing identity.
   const { data: listingRaw, error: listingError } = await service
     .from('sync_listings')
-    .select('id, status')
+    .select('id, status, track_id')
     .eq('id', listingId)
     .maybeSingle()
   if (listingError) {
@@ -111,13 +117,64 @@ export async function POST(
     return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
+  // ─── Phase 50.5B: tie the verdict to the bytes it is about ───────────
+  // The five migration-107 columns above record THAT a review happened. They
+  // say nothing about WHAT was reviewed, so an artist can replace the audio
+  // afterwards and the verdict still reads "ok" against bytes nobody heard.
+  //
+  // Dark until migrations 248 and 251 are applied: while the flag is false this
+  // block does nothing and the route behaves exactly as before.
+  //
+  // When it IS enabled, a failure here is a hard failure rather than a
+  // best-effort miss. A verdict that cannot name its bytes is the defect this
+  // slice exists to close, so recording one anyway would reintroduce it under a
+  // new name. The legacy columns are already written at this point, which is
+  // deliberate: they keep today's behaviour working, and the byte-tied row is
+  // the thing admission will actually require.
+  let qualityReviewId: string | null = null
+  if (BYTE_TIED_QUALITY_REVIEW_ENABLED && hasQualityOk) {
+    const { data: trackRaw } = await service
+      .from('tracks')
+      .select('audio_file_url')
+      .eq('id', row.track_id)
+      .maybeSingle()
+
+    const object = resolveReviewedObject((trackRaw as { audio_file_url: string | null } | null)?.audio_file_url)
+    if (!object) {
+      return NextResponse.json(
+        { error: 'This song has no reviewable audio, so a quality verdict cannot be recorded against it.' },
+        { status: 409 }
+      )
+    }
+
+    const digested = await digestStorageObject(service, object)
+    if (!digested) {
+      return NextResponse.json(
+        { error: 'The reviewed audio could not be read back, so the verdict was not recorded.' },
+        { status: 503 }
+      )
+    }
+
+    const recorded = await recordByteTiedReview(service, {
+      listingId,
+      reviewerId: auth.user.id,
+      verdict: (body.quality_ok as boolean) ? 'passed' : 'failed',
+      notes: hasQualityNote ? normalizeNote(body.quality_note as string) : null,
+      review: digested,
+    })
+    if (!recorded.ok) {
+      return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
+    }
+    qualityReviewId = recorded.reviewId
+  }
+
   // T-30-05: UNCONDITIONAL, after the write.
   await logStaffAction(service, {
     actorId: auth.user.id,
     action: 'sync_library.quality_review',
     targetType: 'sync_listing',
     targetId: listingId,
-    changes: update,
+    changes: qualityReviewId ? { ...update, crate_quality_review_id: qualityReviewId } : update,
   })
 
   return NextResponse.json({ data: { listingId, ...update } })
