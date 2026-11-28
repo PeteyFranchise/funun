@@ -29,13 +29,37 @@ describe('migration 248 — M1: the write boundary exists', () => {
     }
   })
 
-  it('revokes write AND TRUNCATE from service_role on every created table', () => {
+  it('revokes ALL from service_role on every created table, then grants back only SELECT', () => {
     const created = [...SQL.matchAll(/CREATE TABLE public\.([a-z_]+) \(/g)].map((m) => m[1])
     for (const t of created) {
-      expect(
-        has(`REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.${t} FROM service_role;`)
-      ).toBe(true)
+      // Round two: the enumerated form left the TRIGGER privilege behind, which
+      // was enough for service_role to attach the append-only guard to a mutable
+      // projection and block every sanctioned UPDATE.
+      expect(has(`REVOKE ALL ON public.${t} FROM service_role;`)).toBe(true)
+      expect(has(`GRANT SELECT ON public.${t} TO service_role;`)).toBe(true)
+      expect(has(`REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.${t} FROM service_role;`)).toBe(false)
     }
+  })
+
+  it('revokes CREATE on schema public from service_role', () => {
+    expect(has('REVOKE CREATE ON SCHEMA public FROM service_role;')).toBe(true)
+  })
+
+  it('hardens the owner role unconditionally, not only when creating it', () => {
+    expect(has('ALTER ROLE funun_crate_evidence NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;')).toBe(true)
+  })
+
+  it('refuses to transfer ownership if an application role is a member of the owner', () => {
+    expect(has("m.rolname IN ('service_role', 'authenticated', 'anon', 'authenticator')")).toBe(true)
+    expect(has('the write boundary would be inherited away')).toBe(true)
+  })
+
+  it('takes temporary membership explicitly and transfers ownership LAST', () => {
+    expect(has('GRANT funun_crate_evidence TO CURRENT_USER;')).toBe(true)
+    expect(has('REVOKE funun_crate_evidence FROM CURRENT_USER;')).toBe(true)
+    // ownership must come after the grants, not before
+    expect(SQL.indexOf('ALTER TABLE public.crate_songs OWNER TO funun_crate_evidence;'))
+      .toBeGreaterThan(SQL.indexOf('GRANT SELECT ON public.crate_songs TO service_role;'))
   })
 
   it('guards every append-only table against TRUNCATE, which row triggers do not catch', () => {
@@ -89,6 +113,13 @@ describe('migration 248 — M7: supersession chains cannot cycle', () => {
   it('approvals carry monotonic adjacency, so a two-row cycle is unrepresentable', () => {
     expect(has('crate_artifact_approvals_chain_adjacent')).toBe(true)
     expect(has('crate_artifact_approvals_predecessor_is_real')).toBe(true)
+  })
+
+  it('an artifact cannot have two independent approval roots', () => {
+    // Round two: adjacency closed cycles and UNIQUE (supersedes) closed forks
+    // from one predecessor, but two version-1 rows with NULL predecessors both
+    // inserted cleanly and each could grow its own chain.
+    expect(has('crate_artifact_approvals_one_root_per_artifact UNIQUE (artifact_id, chain_version)')).toBe(true)
   })
 
   it('manifests carry the same adjacency', () => {

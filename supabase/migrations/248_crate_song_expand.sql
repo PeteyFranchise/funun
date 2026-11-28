@@ -302,6 +302,14 @@ CREATE TABLE public.crate_artifact_approvals (
   ),
   CONSTRAINT crate_artifact_approvals_id_artifact_version
     UNIQUE (id, artifact_id, chain_version),
+
+  -- M7, round two (review 2026-11-27): adjacency stopped cycles and
+  -- UNIQUE (supersedes_approval_id) stopped forks from one predecessor, but
+  -- nothing stopped MULTIPLE INDEPENDENT ROOTS. Two rows with chain_version = 1
+  -- and a NULL predecessor both inserted cleanly, and each could then acquire its
+  -- own version-2 successor, leaving parallel orphaned heads for one artifact.
+  CONSTRAINT crate_artifact_approvals_one_root_per_artifact
+    UNIQUE (artifact_id, chain_version),
   CONSTRAINT crate_artifact_approvals_predecessor_is_real
     FOREIGN KEY (supersedes_approval_id, artifact_id, supersedes_version)
     REFERENCES public.crate_artifact_approvals (id, artifact_id, chain_version) ON DELETE RESTRICT,
@@ -876,25 +884,27 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- ─── (16) WHO MAY WRITE — the boundary (contract §4.12) ─────────────────
 --
--- M1 (review 2026-11-25). The first version of this migration implemented §4.1
--- to §4.11 and §4.13 and SKIPPED §4.12 entirely, which made every append-only
--- and sole-writer claim above false:
+-- Round one of review skipped §4.12 entirely. Round two (2026-11-27) found the
+-- first attempt still open, for three reasons worth stating because each is a
+-- different way a privilege claim can read well and enforce nothing:
 --
---   * It revoked from PUBLIC, anon and authenticated but never from
---     `service_role` — the role the privileged application already uses. Supabase
---     grants service_role direct privileges on new public tables by default, as
---     migration 197 already documents. So ordinary application code could insert
---     a manifest item citing a rejected approval, a pending artifact, or a
---     caller-invented sha256.
+--   * Revoking only INSERT, UPDATE, DELETE and TRUNCATE left service_role with
+--     the default TRIGGER privilege. It could attach crate_append_only() to a
+--     MUTABLE projection such as crate_songs and block every future sanctioned
+--     UPDATE. The fix is REVOKE ALL and then grant back only SELECT.
+--   * §4.12 also required revoking CREATE on schema public from service_role.
+--   * TRUNCATE does not fire row-level triggers, so statement-level guards are
+--     needed behind the revoke, not instead of it.
 --
---   * TRUNCATE DOES NOT FIRE ROW-LEVEL TRIGGERS. Every append-only guarantee
---     above was defeated by one statement:
---         TRUNCATE public.crate_quality_reviews CASCADE;
---
--- This repository has shipped this class of defect before: a column-level REVOKE
--- that was a no-op over a live table grant, and a SECURITY DEFINER guard whose
--- GUC comparison evaluated NULL so the check never fired.
+-- Ownership transfer is LAST, after RLS, grants and triggers, and the executor's
+-- temporary membership of the owning role is explicit: hosted Supabase has no
+-- true superuser, and PostgreSQL requires the executor to be able to SET ROLE to
+-- the new owner, so an implicit transfer can fail depending on server version and
+-- createrole_self_grant.
 
+-- The evidence owner. Attributes are hardened UNCONDITIONALLY rather than only at
+-- creation: a role that already exists from an earlier environment could be
+-- LOGIN or privileged, and trusting it would hand the boundary to whatever made it.
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'funun_crate_evidence') THEN
@@ -903,31 +913,36 @@ BEGIN
 END
 $$;
 
+ALTER ROLE funun_crate_evidence NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
+
+-- An application role that is a MEMBER of the owner inherits its rights and the
+-- boundary is theatre. Fail loudly rather than transferring ownership into it.
+DO $$
+DECLARE offender TEXT;
+BEGIN
+  SELECT m.rolname INTO offender
+    FROM pg_auth_members am
+    JOIN pg_roles r ON r.oid = am.roleid
+    JOIN pg_roles m ON m.oid = am.member
+   WHERE r.rolname = 'funun_crate_evidence'
+     AND m.rolname IN ('service_role', 'authenticated', 'anon', 'authenticator')
+   LIMIT 1;
+  IF offender IS NOT NULL THEN
+    RAISE EXCEPTION
+      'role % is a member of funun_crate_evidence; the write boundary would be inherited away', offender
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+END
+$$;
+
 COMMENT ON ROLE funun_crate_evidence IS
-  'Owns The Crate capture and evidence tables. NOLOGIN, NOINHERIT. Writes reach these tables only through narrow SECURITY DEFINER functions owned by this role; service_role holds SELECT and EXECUTE, never INSERT, UPDATE, DELETE or TRUNCATE.';
+  'Owns The Crate capture and evidence tables. NOLOGIN, NOINHERIT. Writes reach these tables only through narrow SECURITY DEFINER functions owned by this role; service_role holds SELECT and EXECUTE, never INSERT, UPDATE, DELETE, TRUNCATE or TRIGGER.';
 
-ALTER TABLE public.crate_quality_reviews OWNER TO funun_crate_evidence;
-ALTER TABLE public.crate_songs OWNER TO funun_crate_evidence;
-ALTER TABLE public.crate_song_artifacts OWNER TO funun_crate_evidence;
-ALTER TABLE public.crate_song_current_artifacts OWNER TO funun_crate_evidence;
-ALTER TABLE public.crate_artifact_approvals OWNER TO funun_crate_evidence;
-ALTER TABLE public.crate_song_current_approvals OWNER TO funun_crate_evidence;
-ALTER TABLE public.crate_clearance_assessments OWNER TO funun_crate_evidence;
-ALTER TABLE public.crate_clearance_assessment_items OWNER TO funun_crate_evidence;
-ALTER TABLE public.crate_song_events OWNER TO funun_crate_evidence;
-ALTER TABLE public.license_request_holds OWNER TO funun_crate_evidence;
-ALTER TABLE public.license_request_hold_decisions OWNER TO funun_crate_evidence;
-ALTER TABLE public.license_request_hold_decision_holds OWNER TO funun_crate_evidence;
-ALTER TABLE public.license_request_execution_authority OWNER TO funun_crate_evidence;
-ALTER TABLE public.crate_delivery_manifests OWNER TO funun_crate_evidence;
-ALTER TABLE public.crate_delivery_manifest_items OWNER TO funun_crate_evidence;
-ALTER TABLE public.crate_request_current_manifests OWNER TO funun_crate_evidence;
-ALTER TABLE public.crate_contract_snapshots OWNER TO funun_crate_evidence;
-ALTER TABLE public.crate_song_terms OWNER TO funun_crate_evidence;
-ALTER TABLE public.crate_capture_orphans OWNER TO funun_crate_evidence;
+-- Owning a table in a schema requires CREATE on that schema.
+GRANT CREATE ON SCHEMA public TO funun_crate_evidence;
 
--- RLS on with ZERO policies. Belt, not braces: service_role carries BYPASSRLS
--- in Supabase, so RLS is not what stops it. The grants below are.
+-- RLS on with ZERO policies. Belt, not braces: service_role carries BYPASSRLS in
+-- Supabase, so RLS is not what stops it. The grants below are.
 ALTER TABLE public.crate_quality_reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.crate_songs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.crate_song_artifacts ENABLE ROW LEVEL SECURITY;
@@ -969,28 +984,29 @@ REVOKE ALL ON public.crate_contract_snapshots FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON public.crate_song_terms FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON public.crate_capture_orphans FROM PUBLIC, anon, authenticated;
 
--- service_role: reads yes, writes NO. TRUNCATE is named explicitly because it
--- is not covered by the row-level triggers.
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_quality_reviews FROM service_role;
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_songs FROM service_role;
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_song_artifacts FROM service_role;
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_song_current_artifacts FROM service_role;
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_artifact_approvals FROM service_role;
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_song_current_approvals FROM service_role;
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_clearance_assessments FROM service_role;
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_clearance_assessment_items FROM service_role;
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_song_events FROM service_role;
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.license_request_holds FROM service_role;
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.license_request_hold_decisions FROM service_role;
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.license_request_hold_decision_holds FROM service_role;
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.license_request_execution_authority FROM service_role;
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_delivery_manifests FROM service_role;
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_delivery_manifest_items FROM service_role;
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_request_current_manifests FROM service_role;
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_contract_snapshots FROM service_role;
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_song_terms FROM service_role;
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.crate_capture_orphans FROM service_role;
+-- service_role: REVOKE ALL, not an enumerated list. The enumerated form left
+-- TRIGGER behind, which was enough to sabotage the mutable projections.
+REVOKE ALL ON public.crate_quality_reviews FROM service_role;
+REVOKE ALL ON public.crate_songs FROM service_role;
+REVOKE ALL ON public.crate_song_artifacts FROM service_role;
+REVOKE ALL ON public.crate_song_current_artifacts FROM service_role;
+REVOKE ALL ON public.crate_artifact_approvals FROM service_role;
+REVOKE ALL ON public.crate_song_current_approvals FROM service_role;
+REVOKE ALL ON public.crate_clearance_assessments FROM service_role;
+REVOKE ALL ON public.crate_clearance_assessment_items FROM service_role;
+REVOKE ALL ON public.crate_song_events FROM service_role;
+REVOKE ALL ON public.license_request_holds FROM service_role;
+REVOKE ALL ON public.license_request_hold_decisions FROM service_role;
+REVOKE ALL ON public.license_request_hold_decision_holds FROM service_role;
+REVOKE ALL ON public.license_request_execution_authority FROM service_role;
+REVOKE ALL ON public.crate_delivery_manifests FROM service_role;
+REVOKE ALL ON public.crate_delivery_manifest_items FROM service_role;
+REVOKE ALL ON public.crate_request_current_manifests FROM service_role;
+REVOKE ALL ON public.crate_contract_snapshots FROM service_role;
+REVOKE ALL ON public.crate_song_terms FROM service_role;
+REVOKE ALL ON public.crate_capture_orphans FROM service_role;
 
+-- Then exactly one privilege back.
 GRANT SELECT ON public.crate_quality_reviews TO service_role;
 GRANT SELECT ON public.crate_songs TO service_role;
 GRANT SELECT ON public.crate_song_artifacts TO service_role;
@@ -1010,6 +1026,10 @@ GRANT SELECT ON public.crate_request_current_manifests TO service_role;
 GRANT SELECT ON public.crate_contract_snapshots TO service_role;
 GRANT SELECT ON public.crate_song_terms TO service_role;
 GRANT SELECT ON public.crate_capture_orphans TO service_role;
+
+-- §4.12: service_role must not be able to create objects in this schema either,
+-- which would let it introduce its own writers beside these tables.
+REVOKE CREATE ON SCHEMA public FROM service_role;
 
 -- Statement-level TRUNCATE guards, because the row-level triggers cover UPDATE
 -- and DELETE only. Defence in depth behind the REVOKE above.
@@ -1050,19 +1070,47 @@ CREATE TRIGGER crate_contract_snapshots_no_truncate
   BEFORE TRUNCATE ON public.crate_contract_snapshots
   FOR EACH STATEMENT EXECUTE FUNCTION public.crate_append_only();
 
--- THE WRITERS THEMSELVES ARE NOT IN THIS MIGRATION, AND THAT IS DELIBERATE.
--- Each slice brings its own narrow SECURITY DEFINER function, owned by
--- funun_crate_evidence with a fixed search_path, granting EXECUTE to
--- service_role: the admission capture RPC with 50.5B, assessment and approval
--- advances with 50.5C, manifest freeze and hold decisions with 50.5E. Until each
--- arrives the corresponding table cannot be written by anything, which is correct
--- for slices that ship dark.
+-- OWNERSHIP TRANSFER LAST, with explicit temporary membership. PostgreSQL
+-- requires the executor to be able to SET ROLE to the new owner; hosted Supabase
+-- has no true superuser, so relying on an implicit grant is not portable.
+GRANT funun_crate_evidence TO CURRENT_USER;
+
+ALTER TABLE public.crate_quality_reviews OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_songs OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_song_artifacts OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_song_current_artifacts OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_artifact_approvals OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_song_current_approvals OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_clearance_assessments OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_clearance_assessment_items OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_song_events OWNER TO funun_crate_evidence;
+ALTER TABLE public.license_request_holds OWNER TO funun_crate_evidence;
+ALTER TABLE public.license_request_hold_decisions OWNER TO funun_crate_evidence;
+ALTER TABLE public.license_request_hold_decision_holds OWNER TO funun_crate_evidence;
+ALTER TABLE public.license_request_execution_authority OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_delivery_manifests OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_delivery_manifest_items OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_request_current_manifests OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_contract_snapshots OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_song_terms OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_capture_orphans OWNER TO funun_crate_evidence;
+ALTER FUNCTION public.crate_append_only() OWNER TO funun_crate_evidence;
+
+REVOKE funun_crate_evidence FROM CURRENT_USER;
+
+-- THE WRITERS THEMSELVES ARE NOT IN THIS MIGRATION. Each slice brings its own
+-- narrow SECURITY DEFINER function, owned by funun_crate_evidence with a fixed
+-- search_path, granting EXECUTE to service_role. See the owner decision recorded
+-- in 50.5B-PLAN.md about which migration numbers those arrive in: this umbrella
+-- declares only 248 expand and 250 contract, and 250 is too late for the 50.5C
+-- and 50.5E consumers.
 --
 -- WHAT IS NOT PROVEN HERE, STATED PLAINLY. These REVOKEs and this ownership
 -- transfer are asserted, not demonstrated. Before 50.5B's capture path is
 -- enabled, probe the live database: confirm service_role is REFUSED on INSERT,
--- UPDATE, DELETE and TRUNCATE for each table, with a must-succeed control
--- alongside. "The migration ran" and "the privilege is gone" are separate claims.
+-- UPDATE, DELETE, TRUNCATE and TRIGGER for each table, with a must-succeed
+-- control alongside. "The migration ran" and "the privilege is gone" are
+-- separate claims, and this repository has shipped the gap between them before.
 
 COMMIT;
 
