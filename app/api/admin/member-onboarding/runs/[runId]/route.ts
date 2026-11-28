@@ -20,7 +20,7 @@ export async function PATCH(
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   const { runId } = await params
-  if (!z.string().uuid().safeParse(runId).success) {
+  if (!z.string().guid().safeParse(runId).success) {
     return NextResponse.json({ error: 'Invalid game plan.' }, { status: 400 })
   }
 

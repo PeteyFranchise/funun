@@ -86,16 +86,16 @@ import { createNotification } from '@/lib/notifications'
 
 const OfferSchema = z
   .object({
-    projectId: z.string().uuid(),
-    toUserId: z.string().uuid(),
-    workspaceId: z.string().uuid().nullable().optional(),
+    projectId: z.string().guid(),
+    toUserId: z.string().guid(),
+    workspaceId: z.string().guid().nullable().optional(),
     note: z.string().max(1000).nullable().optional(),
   })
   .strict()
 
 const RespondSchema = z
   .object({
-    transferId: z.string().uuid(),
+    transferId: z.string().guid(),
     action: z.enum(['accept', 'decline', 'withdraw']),
   })
   .strict()

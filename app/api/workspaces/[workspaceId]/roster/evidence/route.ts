@@ -57,9 +57,9 @@ import {
 
 const RecordEvidenceSchema = z
   .object({
-    relationshipId: z.string().uuid(),
+    relationshipId: z.string().guid(),
     declaredScope: z.string().trim().min(1, 'A declared scope is required.'),
-    documentId: z.string().uuid(),
+    documentId: z.string().guid(),
     // effective_from is a DATE column and expires_at is a TIMESTAMPTZ
     // (migration 183) — the two schemas differ deliberately.
     effectiveFrom: optionalIsoDate,
@@ -69,8 +69,8 @@ const RecordEvidenceSchema = z
 
 const SupersedeEvidenceSchema = z
   .object({
-    evidenceId: z.string().uuid(),
-    replacementId: z.string().uuid().optional(),
+    evidenceId: z.string().guid(),
+    replacementId: z.string().guid().optional(),
   })
   .strict()
 

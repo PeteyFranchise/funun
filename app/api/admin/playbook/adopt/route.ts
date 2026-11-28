@@ -24,7 +24,7 @@ const AdoptionSchema = z
     action: z.enum(['check', 'adopt', 'propose_update']),
     manifestKey: z.string().trim().min(1).max(100).optional(),
     roomKey: z.string().trim().min(1).max(100),
-    subGroupId: z.string().uuid().optional(),
+    subGroupId: z.string().guid().optional(),
     title: z.string().trim().min(1).max(PLAYBOOK_TITLE_MAX),
     sourcePath: z.string().trim().min(1).max(PLAYBOOK_SOURCE_PATH_MAX),
     markdown: z.string().min(1),

@@ -22,7 +22,7 @@ const RelationshipLogPostSchema = z
   .object({
     kind: z.enum(['note', 'conversation']),
     body: z.string().trim().min(1, 'A note cannot be empty.').max(5000),
-    contact_id: z.union([z.string().uuid(), z.null()]).optional(),
+    contact_id: z.union([z.string().guid(), z.null()]).optional(),
   })
   .strict()
 

@@ -42,14 +42,14 @@ import type { RosterRelationshipState } from '@/lib/workspaces/types'
 
 const AttachSchema = z
   .object({
-    projectId: z.string().uuid(),
-    relationshipId: z.string().uuid(),
+    projectId: z.string().guid(),
+    relationshipId: z.string().guid(),
   })
   .strict()
 
 const DetachSchema = z
   .object({
-    projectId: z.string().uuid(),
+    projectId: z.string().guid(),
   })
   .strict()
 

@@ -43,8 +43,8 @@ type BundleRow = { id: string; permissions: unknown }
 
 const IssueGrantsSchema = z
   .object({
-    relationshipId: z.string().uuid(),
-    projectId: z.string().uuid().nullable().optional(),
+    relationshipId: z.string().guid(),
+    projectId: z.string().guid().nullable().optional(),
     permissions: z.array(z.string()).min(1).optional(),
     bundleKey: z.string().min(1).optional(),
   })
@@ -55,8 +55,8 @@ const IssueGrantsSchema = z
 
 const RevokeGrantsSchema = z
   .object({
-    relationshipId: z.string().uuid(),
-    projectId: z.string().uuid().nullable().optional(),
+    relationshipId: z.string().guid(),
+    projectId: z.string().guid().nullable().optional(),
     permissions: z.array(z.string()).min(1),
   })
   .strict()

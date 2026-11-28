@@ -103,22 +103,16 @@ export type EvaluateResult = {
 // ─── The one committed deferral ─────────────────────────────────────────
 
 export const AUDIT_DEFERRALS: readonly AuditDeferral[] = [
-  {
-    advisory: 'GHSA-MRHX-C7XC-M3W5',
-    package: 'zod',
-    reason:
-      'The only published fix is Zod 4.x, a semver-major migration from the pinned ^3.23.0. ' +
-      'Zod is imported by 142 files across app/, lib/, components/, and scripts/, so this is ' +
-      'scheduled migration work rather than a safe dependency bump. Keeping the repository ' +
-      'blocked until that migration finishes would leave every pull request unmergeable, which ' +
-      'is the state this deferral exists to end. Exposure is bounded but not zero: exploitation ' +
-      'requires an attacker-supplied oversized constrained collection, and request-body parsing ' +
-      'routes are behind authentication. Those constraints support a one-month deferral; they ' +
-      'do not make the vulnerability harmless.',
-    approvedBy: 'Pete Zora (repo owner)',
-    approvedOn: '2026-11-21',
-    expires: '2026-12-21',
-  },
+  // Empty, and that is the mechanism working rather than a gap.
+  //
+  // The zod deferral (GHSA-MRHX-C7XC-M3W5) was removed on 2026-11-28 when the
+  // upgrade actually landed, nearly a month before its 2026-12-21 expiry. The
+  // gate itself flagged it: "matches nothing in the current audit report -- the
+  // advisory appears fixed. Remove this entry."
+  //
+  // A dated entry here suspends a real advisory. It is not a note, and it is not
+  // free: it expires on purpose, and the correct response to an expiry is to
+  // re-evaluate the advisory, never to push the date out.
 ]
 
 // ─── Severity threshold (D-06 — applied in our code, not via npm's flag) ──

@@ -13,7 +13,7 @@ const Schema = z
   .strict()
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
-  const id = z.string().uuid().safeParse((await context.params).id)
+  const id = z.string().guid().safeParse((await context.params).id)
   const parsed = Schema.safeParse(await request.json().catch(() => ({})))
   if (!id.success || !parsed.success) {
     return NextResponse.json({ error: 'Invalid incident update' }, { status: 400 })

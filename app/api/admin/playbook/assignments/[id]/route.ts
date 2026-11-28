@@ -34,7 +34,7 @@ async function authorize(roomKey: string, id: string) {
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  if (!z.string().uuid().safeParse(id).success) return NextResponse.json({ error: 'Invalid assignment id' }, { status: 400 })
+  if (!z.string().guid().safeParse(id).success) return NextResponse.json({ error: 'Invalid assignment id' }, { status: 400 })
   const parsed = UpdateSchema.safeParse(await request.json().catch(() => ({})))
   if (!parsed.success) return NextResponse.json({ error: 'Invalid assignment update' }, { status: 400 })
   const access = await authorize(parsed.data.roomKey, id)
@@ -49,7 +49,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  if (!z.string().uuid().safeParse(id).success) return NextResponse.json({ error: 'Invalid assignment id' }, { status: 400 })
+  if (!z.string().guid().safeParse(id).success) return NextResponse.json({ error: 'Invalid assignment id' }, { status: 400 })
   const parsed = RoomSchema.safeParse(await request.json().catch(() => ({})))
   if (!parsed.success) return NextResponse.json({ error: 'Invalid revoke request' }, { status: 400 })
   const access = await authorize(parsed.data.roomKey, id)

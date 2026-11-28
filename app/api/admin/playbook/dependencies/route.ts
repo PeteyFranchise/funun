@@ -8,7 +8,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 const Schema = z
   .object({
     roomKey: z.string().min(1).max(80),
-    sourceEntryId: z.string().uuid(),
+    sourceEntryId: z.string().guid(),
     sourceRevision: z.number().int().positive(),
     dependencyKind: z.enum([
       'required',

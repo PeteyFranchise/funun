@@ -7,7 +7,7 @@ import { checkRateLimit } from '@/lib/security/rate-limit'
 type RouteContext = { params: Promise<{ workId: string; versionId: string }> }
 
 const CarrySchema = z.object({
-  sourceCommentIds: z.array(z.string().uuid()).max(100),
+  sourceCommentIds: z.array(z.string().guid()).max(100),
 }).strict()
 
 export async function POST(request: Request, { params }: RouteContext) {

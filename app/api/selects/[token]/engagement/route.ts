@@ -38,7 +38,7 @@ const DELTA_EVENT_VALUES = ['heartbeat', 'pause', 'ended', 'unload'] as const
 
 const DeltaBodySchema = z
   .object({
-    selectsTrackId: z.string().uuid(),
+    selectsTrackId: z.string().guid(),
     deltaSeconds: z.number().finite(),
     event: z.enum(DELTA_EVENT_VALUES),
     viewerKey: z.string().trim().min(8).max(200),

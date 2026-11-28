@@ -34,7 +34,7 @@ export async function POST(
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   const id = z
     .string()
-    .uuid()
+    .guid()
     .safeParse((await context.params).id)
   const parsed = Schema.safeParse(await request.json().catch(() => ({})))
   if (!id.success || !parsed.success)

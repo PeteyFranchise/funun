@@ -78,18 +78,18 @@ export const ReviewCreateSchema = z.object({
   anchorLabel: z.string().trim().max(240).nullable(),
   feedbackKind: z.enum(['suggestion', 'requested_change']),
   body: z.string().trim().min(1).max(4000),
-  mentionedUserIds: z.array(z.string().uuid()).max(20).default([]),
+  mentionedUserIds: z.array(z.string().guid()).max(20).default([]),
 }).strict()
 
 export const ReviewReplySchema = z.object({
   roomKey: z.string().trim().min(1).max(80),
   body: z.string().trim().min(1).max(4000),
-  mentionedUserIds: z.array(z.string().uuid()).max(20).default([]),
+  mentionedUserIds: z.array(z.string().guid()).max(20).default([]),
 }).strict()
 
 export const ReviewResubmitSchema = z.object({
   roomKey: z.string().trim().min(1).max(80),
-  previousRoundId: z.string().uuid(),
+  previousRoundId: z.string().guid(),
   expectedDraftVersion: z.number().int().positive(),
 }).strict()
 

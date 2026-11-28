@@ -15,7 +15,7 @@ import { safeParsePlaybookContent } from '@/lib/playbook/content'
 const EntryCreateSchema = z
   .object({
     roomKey: z.string().trim().min(1),
-    subGroupId: z.string().uuid().optional(),
+    subGroupId: z.string().guid().optional(),
     entryType: z.enum(['sop', 'topic', 'document']),
     title: z.string().trim().min(1).max(300),
     content: z.unknown(),

@@ -124,11 +124,11 @@ function pickFields(
   return picked
 }
 
-const NominateSchema = z.object({ successorUserId: z.string().uuid() }).strict()
+const NominateSchema = z.object({ successorUserId: z.string().guid() }).strict()
 
 const RespondSchema = z
   .object({
-    transferId: z.string().uuid(),
+    transferId: z.string().guid(),
     action: z.enum(['accept', 'decline', 'withdraw']),
     expectedState: z.enum(['offered', 'accepted', 'declined', 'withdrawn']).optional(),
   })

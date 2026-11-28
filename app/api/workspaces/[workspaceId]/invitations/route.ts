@@ -269,7 +269,7 @@ export async function GET(
   return NextResponse.json({ data: data ?? [] })
 }
 
-const RevokeInvitationSchema = z.object({ invitationId: z.string().uuid() }).strict()
+const RevokeInvitationSchema = z.object({ invitationId: z.string().guid() }).strict()
 
 // ─── REVOCATION IS ONE TRANSACTION — public.workspace_revoke_invitation ────
 //

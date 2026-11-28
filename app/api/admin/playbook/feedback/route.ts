@@ -6,7 +6,7 @@ import { createNotification } from '@/lib/notifications'
 import { isPlaybookEnablementSchemaMissing } from '@/lib/playbook/enablement'
 import { logStaffAction } from '@/lib/staff/audit'
 
-const Schema = z.object({ roomKey: z.string().trim().min(1).max(80), entryId: z.string().uuid(), revision: z.number().int().positive(), kind: z.enum(['question','outdated','suggestion','missing_doctrine']), body: z.string().trim().min(1).max(4000) }).strict()
+const Schema = z.object({ roomKey: z.string().trim().min(1).max(80), entryId: z.string().guid(), revision: z.number().int().positive(), kind: z.enum(['question','outdated','suggestion','missing_doctrine']), body: z.string().trim().min(1).max(4000) }).strict()
 
 export async function POST(request: Request) {
   const parsed = Schema.safeParse(await request.json().catch(() => ({})))

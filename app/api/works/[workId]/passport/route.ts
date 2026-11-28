@@ -17,18 +17,18 @@ import { createNotification } from '@/lib/notifications'
 type RouteCtx = { params: Promise<{ workId: string }> }
 
 const OperationSchema = z.discriminatedUnion('operation', [
-  z.object({ operation: z.literal('propose'), valueId: z.string().uuid(), value: z.unknown(), reason: z.string().trim().max(1000).optional() }).strict(),
-  z.object({ operation: z.literal('confirm'), valueId: z.string().uuid() }).strict(),
-  z.object({ operation: z.literal('dispute'), valueId: z.string().uuid(), reason: z.string().trim().min(1).max(1000) }).strict(),
+  z.object({ operation: z.literal('propose'), valueId: z.string().guid(), value: z.unknown(), reason: z.string().trim().max(1000).optional() }).strict(),
+  z.object({ operation: z.literal('confirm'), valueId: z.string().guid() }).strict(),
+  z.object({ operation: z.literal('dispute'), valueId: z.string().guid(), reason: z.string().trim().min(1).max(1000) }).strict(),
   z.object({ operation: z.literal('approve'), scope: z.enum(['composition', 'release']), reason: z.string().trim().max(1000).optional() }).strict(),
-  z.object({ operation: z.literal('select_master'), versionId: z.string().uuid(), note: z.string().trim().max(1000).optional() }).strict(),
-  z.object({ operation: z.literal('graduate_release'), masterDesignationId: z.string().uuid(), releaseTitle: z.string().trim().min(1).max(200) }).strict(),
-  z.object({ operation: z.literal('attach_final_mix'), trackId: z.string().uuid() }).strict(),
+  z.object({ operation: z.literal('select_master'), versionId: z.string().guid(), note: z.string().trim().max(1000).optional() }).strict(),
+  z.object({ operation: z.literal('graduate_release'), masterDesignationId: z.string().guid(), releaseTitle: z.string().trim().min(1).max(200) }).strict(),
+  z.object({ operation: z.literal('attach_final_mix'), trackId: z.string().guid() }).strict(),
   z.object({ operation: z.literal('grant_self'), permission: z.enum(['view_legal', 'approve_composition', 'approve_release', 'select_master', 'export_delivery_safe', 'deliver_clean_master', 'transfer_custody']), acknowledge: z.literal(true) }).strict(),
-  z.object({ operation: z.literal('record_custody_transfer'), newControllerName: z.string().trim().min(1).max(200), newControllerUserId: z.string().uuid().optional(), evidence: z.string().trim().min(3).max(2000), acknowledge: z.literal(true) }).strict(),
+  z.object({ operation: z.literal('record_custody_transfer'), newControllerName: z.string().trim().min(1).max(200), newControllerUserId: z.string().guid().optional(), evidence: z.string().trim().min(3).max(2000), acknowledge: z.literal(true) }).strict(),
   z.object({ operation: z.literal('retention_request'), requestType: z.enum(['portable_copy', 'archive', 'delete_personal_data', 'delete_passport']), reason: z.string().trim().max(2000).optional() }).strict(),
-  z.object({ operation: z.literal('task_update'), taskId: z.string().uuid(), status: z.enum(['open', 'in_progress', 'blocked', 'completed', 'dismissed']) }).strict(),
-  z.object({ operation: z.literal('resolve_issue'), issueId: z.string().uuid(), status: z.enum(['resolved', 'dismissed']), note: z.string().trim().min(1).max(2000) }).strict(),
+  z.object({ operation: z.literal('task_update'), taskId: z.string().guid(), status: z.enum(['open', 'in_progress', 'blocked', 'completed', 'dismissed']) }).strict(),
+  z.object({ operation: z.literal('resolve_issue'), issueId: z.string().guid(), status: z.enum(['resolved', 'dismissed']), note: z.string().trim().min(1).max(2000) }).strict(),
 ])
 
 export async function GET(_request: Request, context: RouteCtx) {

@@ -10,8 +10,8 @@ const ResolutionSchema = z
   .object({
     source: z.enum(['song', 'audio', 'lyrics']),
     resolved: z.boolean(),
-    versionId: z.string().uuid().nullable().optional(),
-    blockId: z.string().uuid().nullable().optional(),
+    versionId: z.string().guid().nullable().optional(),
+    blockId: z.string().guid().nullable().optional(),
   })
   .strict()
   .superRefine((value, context) => {

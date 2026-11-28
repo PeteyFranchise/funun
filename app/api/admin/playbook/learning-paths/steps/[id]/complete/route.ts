@@ -6,7 +6,7 @@ import { staffTargetApplies } from '@/lib/playbook/enablement'
 import { canAccessRoom } from '@/lib/playbook/rooms'
 import { createServiceClient } from '@/lib/supabase/server'
 
-const Id = z.string().uuid(); const Body = z.object({ response: z.string().trim().max(4000).nullable(), selfConfirmed: z.boolean() }).strict()
+const Id = z.string().guid(); const Body = z.object({ response: z.string().trim().max(4000).nullable(), selfConfirmed: z.boolean() }).strict()
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff(ALL_STAFF_ROLES); if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
   const { id } = await params; const parsed = Body.safeParse(await request.json().catch(() => ({}))); if (!Id.safeParse(id).success || !parsed.success) return NextResponse.json({ error: 'Invalid learning completion' }, { status: 400 })

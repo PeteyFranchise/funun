@@ -53,7 +53,7 @@ const EntryPatchSchema = z
     }
   })
 
-const idParamSchema = z.string().uuid()
+const idParamSchema = z.string().guid()
 
 function entryMutationErrorStatus(message: string): number {
   return message.startsWith('This entry changed') || message.startsWith('Entry has no pending draft') ? 409 : 500

@@ -23,7 +23,7 @@ import { isSelectsReactionCapError } from '@/lib/selects/reaction-cap'
 // mirrors [[project_guest_lead_identification]]'s consent-first posture).
 const ReactBodySchema = z
   .object({
-    selectsTrackId: z.string().uuid(),
+    selectsTrackId: z.string().guid(),
     reaction: z.union([z.enum(SELECTS_REACTION_VALUES), z.null()]),
     viewerKey: z.string().trim().min(8).max(200).optional(),
   })

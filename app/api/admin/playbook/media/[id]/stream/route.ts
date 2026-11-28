@@ -5,7 +5,7 @@ import { canAccessRoom } from '@/lib/playbook/rooms'
 import { createServiceClient } from '@/lib/supabase/server'
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
-  const parsed = z.string().uuid().safeParse((await context.params).id)
+  const parsed = z.string().guid().safeParse((await context.params).id)
   if (!parsed.success) return NextResponse.json({ error: 'Invalid media asset' }, { status: 400 })
   const auth = await requireStaff(ALL_STAFF_ROLES)
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })

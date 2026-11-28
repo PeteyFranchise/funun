@@ -5,8 +5,8 @@ import { isPlaybookEnablementSchemaMissing } from '@/lib/playbook/enablement'
 import { requireRoomAccess } from '@/lib/playbook/rooms'
 import { createServiceClient } from '@/lib/supabase/server'
 
-const CreateTemplate = z.object({ action: z.literal('create_template'), roomKey: z.string().min(1).max(80), entryId: z.string().uuid(), title: z.string().trim().min(1).max(180), steps: z.array(z.object({ label: z.string().trim().min(1).max(500), required: z.boolean() }).strict()).min(1).max(100) }).strict()
-const StartRun = z.object({ action: z.literal('start_run'), roomKey: z.string().min(1).max(80), templateId: z.string().uuid(), contextType: z.string().trim().min(1).max(80), contextId: z.string().trim().min(1).max(180), contextLabel: z.string().trim().min(1).max(300) }).strict()
+const CreateTemplate = z.object({ action: z.literal('create_template'), roomKey: z.string().min(1).max(80), entryId: z.string().guid(), title: z.string().trim().min(1).max(180), steps: z.array(z.object({ label: z.string().trim().min(1).max(500), required: z.boolean() }).strict()).min(1).max(100) }).strict()
+const StartRun = z.object({ action: z.literal('start_run'), roomKey: z.string().min(1).max(80), templateId: z.string().guid(), contextType: z.string().trim().min(1).max(80), contextId: z.string().trim().min(1).max(180), contextLabel: z.string().trim().min(1).max(300) }).strict()
 const Schema = z.discriminatedUnion('action', [CreateTemplate, StartRun])
 
 export async function POST(request: Request) {

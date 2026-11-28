@@ -25,7 +25,7 @@ type ProfileRow = {
 const CommentBodySchema = z
   .object({
     body: z.string().trim().min(1).max(2000),
-    parentCommentId: z.string().uuid().nullable().optional(),
+    parentCommentId: z.string().guid().nullable().optional(),
   })
   .strict()
 

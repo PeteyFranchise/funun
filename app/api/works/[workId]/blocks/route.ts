@@ -47,7 +47,7 @@ const RepeatShape = z
   .object({
     kind: z.literal('repeat'),
     block_type: z.enum(BLOCK_TYPE_VALUES),
-    source_block_id: z.string().uuid(),
+    source_block_id: z.string().guid(),
     index: IndexSchema.optional(),
   })
   .strict()

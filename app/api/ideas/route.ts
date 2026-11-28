@@ -8,7 +8,7 @@ const CreateIdeaSchema = z.object({
   title: z.string().max(200).optional(),
   note: z.string().max(IDEA_NOTE_MAX).nullable().optional(),
   moods: z.array(z.string().max(80)).max(20).optional(),
-  parentIdeaId: z.string().uuid().nullable().optional(),
+  parentIdeaId: z.string().guid().nullable().optional(),
 }).strict()
 
 export async function POST(request: Request) {

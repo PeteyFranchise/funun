@@ -10,7 +10,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 const LinkSchema = z
   .object({
     roomKey: z.string().min(1).max(80),
-    workflowRunId: z.string().uuid(),
+    workflowRunId: z.string().guid(),
     entityType: z.enum(OPERATIONAL_ENTITY_TYPES),
     entityId: z.string().trim().min(1).max(180),
   })

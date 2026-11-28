@@ -22,16 +22,16 @@ import { checkRateLimit } from '@/lib/security/rate-limit'
 type RouteCtx = { params: Promise<{ workId: string; sessionId: string }> }
 
 const CompleteHandoffSchema = z.object({
-  handoffId: z.string().uuid(),
+  handoffId: z.string().guid(),
   path: z.string().min(1).max(500),
-  roughVersionId: z.string().uuid(),
-  recipientUserId: z.string().uuid(),
+  roughVersionId: z.string().guid(),
+  recipientUserId: z.string().guid(),
   note: z.string().max(PRODUCER_HANDOFF_NOTE_MAX).nullable(),
   roundLabel: z.string().max(PRODUCER_HANDOFF_ROUND_LABEL_MAX).nullable().optional(),
   bpm: z.number().int().min(20).max(300).nullable().optional(),
   musicalKey: z.string().max(PRODUCER_HANDOFF_KEY_MAX).nullable().optional(),
   referenceUrl: z.string().max(PRODUCER_HANDOFF_REFERENCE_MAX).nullable().optional(),
-  feedbackIds: z.array(z.string().uuid()).max(25).default([]),
+  feedbackIds: z.array(z.string().guid()).max(25).default([]),
 }).strict()
 
 export async function POST(request: Request, { params }: RouteCtx) {

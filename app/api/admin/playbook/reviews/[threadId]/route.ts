@@ -7,7 +7,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { logStaffAction } from '@/lib/staff/audit'
 import { createNotification } from '@/lib/notifications'
 
-const idSchema = z.string().uuid()
+const idSchema = z.string().guid()
 const TransitionSchema = z.object({
   roomKey: z.string().trim().min(1).max(80),
   expectedStatus: z.enum(['open', 'addressed', 'resolved']),

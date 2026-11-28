@@ -5,7 +5,7 @@ import { resolveIdeaAccess } from '@/lib/ideas/access'
 import { createWorkAccessDeps, resolveWorkAccess } from '@/lib/catalogue/access'
 
 type RouteCtx = { params: Promise<{ ideaId: string; recordingId: string }> }
-const InputSchema = z.object({ workId: z.string().uuid() }).strict()
+const InputSchema = z.object({ workId: z.string().guid() }).strict()
 
 export async function POST(request: Request, { params }: RouteCtx) {
   const { ideaId, recordingId } = await params

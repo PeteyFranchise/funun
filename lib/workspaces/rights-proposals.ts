@@ -19,14 +19,14 @@ export const WORKSPACE_RIGHTS_FIELD_LABELS: Record<WorkspaceRightsField, string>
 }
 
 export const WorkspaceRightsProposalSchema = z.object({
-  relationshipId: z.string().uuid(),
+  relationshipId: z.string().guid(),
   field: z.enum(WORKSPACE_RIGHTS_FIELD_VALUES),
   proposedValue: z.string().trim().min(1).max(300),
   note: z.string().trim().max(1000).nullable().optional(),
 }).strict()
 
 export const MemberRightsDecisionSchema = z.object({
-  proposalId: z.string().uuid(),
+  proposalId: z.string().guid(),
   decision: z.enum(['confirmed', 'declined']),
 }).strict()
 

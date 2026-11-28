@@ -32,7 +32,7 @@ const CommentBodySchema = z.object({
   body: z.string().trim().min(1).max(2000),
   timestampMs: z.number().int().min(0).max(86400000),
   endTimestampMs: z.number().int().min(1).max(86400000).nullable().optional(),
-  parentCommentId: z.string().uuid().nullable().optional(),
+  parentCommentId: z.string().guid().nullable().optional(),
 }).strict().refine(
   data => data.endTimestampMs == null || data.endTimestampMs > data.timestampMs,
   { message: 'endTimestampMs must be strictly after timestampMs', path: ['endTimestampMs'] }

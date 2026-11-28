@@ -32,11 +32,11 @@ const CreateStudioNoteSchema = z
   .object({
     source: z.enum(['song', 'audio', 'lyrics']),
     body: z.string().trim().min(1).max(2000),
-    recipientUserIds: z.array(z.string().uuid()).max(25).default([]),
-    parentId: z.string().uuid().nullable().optional(),
-    versionId: z.string().uuid().nullable().optional(),
+    recipientUserIds: z.array(z.string().guid()).max(25).default([]),
+    parentId: z.string().guid().nullable().optional(),
+    versionId: z.string().guid().nullable().optional(),
     timestampMs: z.number().int().min(0).max(86400000).nullable().optional(),
-    blockId: z.string().uuid().nullable().optional(),
+    blockId: z.string().guid().nullable().optional(),
   })
   .strict()
   .superRefine((value, context) => {

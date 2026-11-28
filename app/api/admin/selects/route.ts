@@ -10,10 +10,10 @@ const SELECTS_COLUMNS =
 
 const CreateSelectsBodySchema = z
   .object({
-    orgId: z.string().uuid(),
+    orgId: z.string().guid(),
     name: z.string().trim().min(1, 'name is required').max(200, 'name is too long'),
     coverNote: z.union([z.string().trim().max(4000, 'cover note is too long'), z.null()]).optional(),
-    briefId: z.union([z.string().uuid(), z.null()]).optional(),
+    briefId: z.union([z.string().guid(), z.null()]).optional(),
   })
   .strict()
 

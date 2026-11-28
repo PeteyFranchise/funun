@@ -8,7 +8,7 @@ import { createNotification } from '@/lib/notifications'
 type RouteCtx = { params: Promise<{ ideaId: string }> }
 const CommentSchema = z.object({
   body: z.string().trim().min(1).max(2000),
-  recordingId: z.string().uuid().nullable().optional(),
+  recordingId: z.string().guid().nullable().optional(),
   timestampMs: z.number().int().min(0).nullable().optional(),
 }).strict()
 

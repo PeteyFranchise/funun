@@ -8,7 +8,7 @@ type RouteContext = { params: Promise<{ workId: string; liftId: string }> }
 
 const ReorderSchema = z.object({
   order: z.array(z.object({
-    id: z.string().uuid(),
+    id: z.string().guid(),
     position: z.number().int().min(0).max(199),
   }).strict()).min(1).max(200),
 }).strict()

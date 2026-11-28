@@ -6,7 +6,7 @@ import { createNotification } from '@/lib/notifications'
 
 type RouteCtx = { params: Promise<{ ideaId: string }> }
 const MemberSchema = z.object({
-  userId: z.string().uuid(),
+  userId: z.string().guid(),
   permission: z.enum(['listen', 'comment', 'contribute']),
 }).strict()
 
@@ -44,7 +44,7 @@ export async function DELETE(request: Request, { params }: RouteCtx) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const access = await resolveIdeaAccess(supabase, ideaId, user.id)
   if (!access.granted || access.permission !== 'owner') return NextResponse.json({ error: 'Idea not found.' }, { status: 404 })
-  const parsed = z.object({ userId: z.string().uuid() }).strict().safeParse(await request.json().catch(() => null))
+  const parsed = z.object({ userId: z.string().guid() }).strict().safeParse(await request.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: 'Choose a collaborator.' }, { status: 400 })
   const { error } = await createServiceClient().from('idea_members').delete()
     .eq('idea_id', ideaId).eq('user_id', parsed.data.userId)

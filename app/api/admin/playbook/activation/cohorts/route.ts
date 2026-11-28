@@ -13,29 +13,29 @@ const Create = z
 const Add = z
   .object({
     action: z.literal('add_member'),
-    cohortId: z.string().uuid(),
-    userId: z.string().uuid(),
+    cohortId: z.string().guid(),
+    userId: z.string().guid(),
     expiresAt: z.string().datetime({ offset: true }).nullable(),
   })
   .strict()
 const Grant = z
   .object({
     action: z.literal('grant_feature'),
-    cohortId: z.string().uuid(),
+    cohortId: z.string().guid(),
     featureKey: z.string().regex(/^[a-z0-9][a-z0-9_-]{1,79}$/),
   })
   .strict()
 const RevokeMember = z
   .object({
     action: z.literal('revoke_member'),
-    cohortId: z.string().uuid(),
-    userId: z.string().uuid(),
+    cohortId: z.string().guid(),
+    userId: z.string().guid(),
   })
   .strict()
 const RevokeFeature = z
   .object({
     action: z.literal('revoke_feature'),
-    cohortId: z.string().uuid(),
+    cohortId: z.string().guid(),
     featureKey: z.string().regex(/^[a-z0-9][a-z0-9_-]{1,79}$/),
   })
   .strict()

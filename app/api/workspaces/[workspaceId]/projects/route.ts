@@ -32,7 +32,7 @@ const VALID_TYPES: readonly VaultProjectType[] = ['single', 'snippet', 'ep', 'al
 
 const CreateWorkspaceProjectSchema = z
   .object({
-    relationshipId: z.string().uuid(),
+    relationshipId: z.string().guid(),
     title: z.string().trim().min(1),
     type: z.enum(['single', 'snippet', 'ep', 'album', 'unreleased']),
     // R-14 / WSR-22: `vault_projects.release_date` is a DATE column, so the

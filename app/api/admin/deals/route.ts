@@ -142,10 +142,10 @@ function buildManualIntakeNote(
 
 const ManualIntakeBodySchema = z
   .object({
-    buyer_org_id: z.string().uuid(),
-    created_by: z.string().uuid(),
-    vault_project_id: z.string().uuid(),
-    track_ids: z.array(z.string().uuid()).min(1, 'Select at least one track.'),
+    buyer_org_id: z.string().guid(),
+    created_by: z.string().guid(),
+    vault_project_id: z.string().guid(),
+    track_ids: z.array(z.string().guid()).min(1, 'Select at least one track.'),
     usage_types: z.array(z.enum(USAGE_TYPE_VALUES)).min(1, 'Select at least one usage type.'),
     territories: z.array(z.enum(TERRITORY_VALUES)).min(1, 'Select at least one territory.'),
     term_months: z.number().int().min(1, 'Term must be at least 1 month.').max(1200, 'Term is too long.'),

@@ -4,7 +4,7 @@ import { ALL_STAFF_ROLES, getStaffRoles, requireStaff } from '@/lib/admin/gate'
 import { canAccessRoom } from '@/lib/playbook/rooms'
 import { createServiceClient } from '@/lib/supabase/server'
 
-const Params = z.object({ id: z.string().uuid() })
+const Params = z.object({ id: z.string().guid() })
 
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
   const parsed = Params.safeParse(await context.params)

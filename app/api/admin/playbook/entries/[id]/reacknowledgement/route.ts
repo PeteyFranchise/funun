@@ -16,7 +16,7 @@ const Schema = z.object({
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  if (!z.string().uuid().safeParse(id).success) return NextResponse.json({ error: 'Invalid entry id' }, { status: 400 })
+  if (!z.string().guid().safeParse(id).success) return NextResponse.json({ error: 'Invalid entry id' }, { status: 400 })
   const parsed = Schema.safeParse(await request.json().catch(() => ({})))
   if (!parsed.success) return NextResponse.json({ error: 'Invalid re-acknowledgement request' }, { status: 400 })
 

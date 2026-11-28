@@ -21,21 +21,21 @@ export type EvidenceDerivedMasterCapability =
   (typeof EVIDENCE_DERIVED_MASTER_CAPABILITIES)[number]
 
 export const MasterOwnershipClaimSchema = z.object({
-  workVersionId: z.string().uuid(),
+  workVersionId: z.string().guid(),
   note: z.string().trim().max(1000).optional(),
 }).strict()
 
 export const MasterOwnershipDecisionSchema = z.discriminatedUnion('action', [
-  z.object({ claimId: z.string().uuid(), action: z.literal('confirm') }),
+  z.object({ claimId: z.string().guid(), action: z.literal('confirm') }),
   z.object({
-    claimId: z.string().uuid(),
+    claimId: z.string().guid(),
     action: z.literal('dispute'),
     note: z.string().trim().min(1).max(1000),
   }),
   z.object({
-    claimId: z.string().uuid(),
+    claimId: z.string().guid(),
     action: z.literal('support'),
-    documentId: z.string().uuid(),
+    documentId: z.string().guid(),
   }),
 ])
 

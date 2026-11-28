@@ -4,7 +4,7 @@ import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { resolveIdeaAccess } from '@/lib/ideas/access'
 
 type RouteCtx = { params: Promise<{ ideaId: string }> }
-const BranchSchema = z.object({ requestId: z.string().uuid() }).strict()
+const BranchSchema = z.object({ requestId: z.string().guid() }).strict()
 
 export async function POST(request: Request, { params }: RouteCtx) {
   const { ideaId } = await params

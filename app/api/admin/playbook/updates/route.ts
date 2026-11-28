@@ -10,7 +10,7 @@ import { logStaffAction } from '@/lib/staff/audit'
 const UpdateSchema = z
   .object({
     roomKey: z.string().trim().min(1).max(80),
-    entryId: z.string().uuid(),
+    entryId: z.string().guid(),
     expectedRevision: z.number().int().positive(),
     headline: z.string().trim().min(1).max(180),
     changeSummary: z.string().trim().min(1).max(2000),
@@ -19,7 +19,7 @@ const UpdateSchema = z
     priority: z.enum(['standard', 'important', 'urgent']),
     audienceKind: z.enum(['all_team', 'role', 'user']),
     targetRole: z.enum(ALL_STAFF_ROLES as [string, ...string[]]).nullable(),
-    targetUserId: z.string().uuid().nullable(),
+    targetUserId: z.string().guid().nullable(),
     effectiveAt: z.string().datetime({ offset: true }),
     readingRequired: z.boolean(),
     readingDueAt: z.string().datetime({ offset: true }).nullable(),

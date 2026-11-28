@@ -13,7 +13,7 @@ import { SELECTS_TRACK_SOURCE_VALUES } from '@/lib/selects/types'
 
 const AddTrackBodySchema = z
   .object({
-    trackId: z.string().uuid(),
+    trackId: z.string().guid(),
     note: z.union([z.string().trim().max(2000, 'note is too long'), z.null()]).optional(),
     source: z.enum(SELECTS_TRACK_SOURCE_VALUES).optional(),
   })
@@ -21,7 +21,7 @@ const AddTrackBodySchema = z
 
 const PatchTrackBodySchema = z
   .object({
-    trackRowId: z.string().uuid(),
+    trackRowId: z.string().guid(),
     note: z.union([z.string().trim().max(2000, 'note is too long'), z.null()]).optional(),
     position: z.number().int().min(0).optional(),
   })
@@ -155,7 +155,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   if (!selects) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const trackRowId = new URL(request.url).searchParams.get('trackRowId')
-  if (!trackRowId || !z.string().uuid().safeParse(trackRowId).success) {
+  if (!trackRowId || !z.string().guid().safeParse(trackRowId).success) {
     return NextResponse.json({ error: 'trackRowId is required' }, { status: 400 })
   }
 

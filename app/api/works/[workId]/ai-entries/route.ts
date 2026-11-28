@@ -43,9 +43,9 @@ const AiEntryBodySchema = z
   .object({
     mode: z.enum(['performance', 'generate']),
     component: z.enum(['vocal', 'instrument', 'lyric', 'melody', 'full']),
-    versionId: z.string().uuid().nullable().optional(),
-    blockId: z.string().uuid().nullable().optional(),
-    humanSourceVersionId: z.string().uuid().nullable().optional(),
+    versionId: z.string().guid().nullable().optional(),
+    blockId: z.string().guid().nullable().optional(),
+    humanSourceVersionId: z.string().guid().nullable().optional(),
   })
   .strict()
 

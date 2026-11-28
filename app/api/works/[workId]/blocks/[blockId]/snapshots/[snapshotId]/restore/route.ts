@@ -5,7 +5,7 @@ import { createWorkAccessDeps, resolveWorkAccess } from '@/lib/catalogue/access'
 import type { LyricBlock } from '@/types/catalogue'
 
 const RestoreSchema = z
-  .object({ session_id: z.string().uuid() })
+  .object({ session_id: z.string().guid() })
   .strict()
 
 export async function POST(

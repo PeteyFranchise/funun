@@ -10,7 +10,7 @@ const Schema = z.object({ roomKey: z.string().trim().min(1).max(80) }).strict()
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  if (!z.string().uuid().safeParse(id).success) {
+  if (!z.string().guid().safeParse(id).success) {
     return NextResponse.json({ error: 'Invalid assignment id' }, { status: 400 })
   }
   const parsed = Schema.safeParse(await request.json().catch(() => ({})))

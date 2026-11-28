@@ -85,7 +85,7 @@ type MemberChangeOutcome = {
 
 const PatchMemberSchema = z
   .object({
-    memberId: z.string().uuid(),
+    memberId: z.string().guid(),
     role: z.enum(WORKSPACE_ROLE_VALUES).optional(),
     status: z.enum(WORKSPACE_MEMBERSHIP_STATE_VALUES).optional(),
   })
@@ -94,7 +94,7 @@ const PatchMemberSchema = z
     message: 'Provide a role or a status to update.',
   })
 
-const DeleteMemberSchema = z.object({ memberId: z.string().uuid() }).strict()
+const DeleteMemberSchema = z.object({ memberId: z.string().guid() }).strict()
 
 // ─── Outcome → HTTP, in the shape of ────────────────────────────────────────
 // `app/api/antenna/opportunities/[opportunityId]/apply/route.ts`: a

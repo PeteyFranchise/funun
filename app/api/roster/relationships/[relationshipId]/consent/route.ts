@@ -137,7 +137,7 @@ import type { RosterRelationshipState } from '@/lib/workspaces/types'
 const ConsentBodySchema = z
   .object({
     permissions: z.array(z.string()).min(1),
-    projectId: z.string().uuid().nullable().optional(),
+    projectId: z.string().guid().nullable().optional(),
   })
   .strict()
 
