@@ -76,6 +76,16 @@ BEGIN
       USING ERRCODE = 'invalid_parameter_value';
   END IF;
 
+  -- A BACKFILLED row is not a review. Its digest was computed when the song was
+  -- migrated and no human approved those bytes, so it can never authorise a
+  -- normal capture. Stated explicitly rather than relying on the verdict check
+  -- above to catch it by implication.
+  IF v_review.provenance <> 'reviewed' THEN
+    RAISE EXCEPTION 'quality review % is %, not a review, and cannot authorise capture',
+      p_quality_review_id, v_review.provenance
+      USING ERRCODE = 'invalid_parameter_value';
+  END IF;
+
   -- THE COMPARISON THIS WHOLE SLICE EXISTS FOR. The caller hashed the bytes it
   -- actually copied; the review holds the digest of the bytes a human approved.
   -- If they differ the file changed in between, and no amount of good faith in

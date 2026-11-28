@@ -20,7 +20,9 @@
     "marketing:build": "tsx scripts/build-marketing-artifact.ts",
     "marketing:verify": "tsx scripts/verify-marketing-artifact.ts",
     "playbook:activation-check": "tsx scripts/check-playbook-activation.ts",
-    "export:audition-sample": "tsx scripts/print-audition-sample.ts"
+    "export:audition-sample": "tsx scripts/print-audition-sample.ts",
+    "crate:shadow-read": "tsx scripts/crate-identity-shadow-read.ts",
+    "crate:backfill": "node scripts/crate-backfill.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.52.0",

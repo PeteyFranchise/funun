@@ -77,9 +77,34 @@ CREATE TABLE public.crate_quality_reviews (
   sha256         TEXT NOT NULL CHECK (sha256 ~ '^[0-9a-f]{64}$'),
   size_bytes     BIGINT NOT NULL CHECK (size_bytes > 0),
   mime_type      TEXT NOT NULL,
-  reviewer_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+
+  -- PROVENANCE (added for 50.5B's backfill, 2026-11-28). A row is either a real
+  -- review, where a named human listened to THESE bytes, or a backfill, where
+  -- the digest was computed when the song was migrated and nobody approved these
+  -- exact bytes at all. Historical admitted songs predate byte-tied review
+  -- entirely, and manufacturing a 'reviewed' row naming the original staff
+  -- member would assert they approved bytes they never heard. That is the forged
+  -- evidence this table exists to make impossible, so the two cases are
+  -- different kinds of row rather than the same row with a footnote.
+  provenance     TEXT NOT NULL DEFAULT 'reviewed'
+    CHECK (provenance IN ('reviewed', 'backfilled')),
+
+  -- Attribution is mandatory for a REVIEW and impossible for a backfill: there
+  -- is no reviewer to name. Tied to provenance so a NULL is never ambiguous.
+  reviewer_id    UUID REFERENCES auth.users(id) ON DELETE RESTRICT,
+  CONSTRAINT crate_quality_reviews_reviewer_matches_provenance CHECK (
+    (provenance = 'reviewed') = (reviewer_id IS NOT NULL)
+  ),
+
   reviewed_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-  verdict        TEXT NOT NULL CHECK (verdict IN ('passed', 'failed')),
+
+  -- 'unreviewed' exists only for backfilled rows and is what stops a migrated
+  -- song's legacy per-song verdict being read as a byte-level pass.
+  verdict        TEXT NOT NULL CHECK (verdict IN ('passed', 'failed', 'unreviewed')),
+  CONSTRAINT crate_quality_reviews_verdict_matches_provenance CHECK (
+    (verdict = 'unreviewed') = (provenance = 'backfilled')
+  ),
+
   notes          TEXT
 );
 
