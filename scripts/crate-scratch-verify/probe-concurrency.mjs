@@ -14,8 +14,12 @@ const sha = s => createHash('sha256').update(s).digest('hex')
 const conn = () => new Client({ host: process.env.PGHOST ?? '/private/tmp/pgtest', port: Number(process.env.PGPORT ?? 54329), user:'postgres', database:'postgres' })
 
 const setup = conn(); await setup.connect()
-const r = await setup.query(`INSERT INTO public.sync_listings (vault_project_id,track_id,artist_user_id,status)
-  VALUES ('22222222-2222-2222-2222-222222222222',(SELECT id FROM public.tracks WHERE project_id='22222222-2222-2222-2222-222222222222' AND NOT EXISTS (SELECT 1 FROM public.sync_listings l WHERE l.track_id = tracks.id) LIMIT 1),$1,'pending_admit') RETURNING id`,[U])
+const r = await setup.query(`WITH t AS (
+    INSERT INTO public.tracks (project_id,title,audio_file_url)
+    VALUES ('22222222-2222-2222-2222-222222222222','probe','u/p/t.wav') RETURNING id
+  )
+  INSERT INTO public.sync_listings (vault_project_id,track_id,artist_user_id,status)
+  SELECT '22222222-2222-2222-2222-222222222222', t.id, $1, 'pending_admit' FROM t RETURNING id`,[U])
 const L = r.rows[0].id
 const D = sha('concurrent bytes')
 await setup.query(`SELECT public.crate_record_quality_review($1,'track-audio','p',$2,10,'audio/wav',$3,'passed',null)`,[L,D,U])

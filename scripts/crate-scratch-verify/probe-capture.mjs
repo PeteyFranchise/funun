@@ -7,11 +7,16 @@ const ok = (cond, label, extra='') => { if(!cond) fails++; console.log(`${cond?'
 
 const U='11111111-1111-1111-1111-111111111111'
 async function freshListing(status='pending_admit') {
-  const r = await c.query(`INSERT INTO public.sync_listings (vault_project_id,track_id,artist_user_id,status)
-    VALUES ('22222222-2222-2222-2222-222222222222',
-      -- a track per listing: sync_listings_active_track_uniq (096:63-65) permits
-      -- one ACTIVE listing per song, and the stub baseline now reproduces it
-      (SELECT id FROM public.tracks WHERE project_id='22222222-2222-2222-2222-222222222222' AND NOT EXISTS (SELECT 1 FROM public.sync_listings l WHERE l.track_id = tracks.id) LIMIT 1),$1,$2) RETURNING id`,[U,status])
+  const r = await c.query(`WITH t AS (
+      -- A track MINTED per listing, not drawn from a finite pool.
+      -- sync_listings_active_track_uniq (096:63-65) permits one ACTIVE listing
+      -- per song; a pool that runs dry makes every probe fail for an unrelated
+      -- reason, and then every mutation looks caught.
+      INSERT INTO public.tracks (project_id,title,audio_file_url)
+      VALUES ('22222222-2222-2222-2222-222222222222','probe','u/p/t.wav') RETURNING id
+    )
+    INSERT INTO public.sync_listings (vault_project_id,track_id,artist_user_id,status)
+    SELECT '22222222-2222-2222-2222-222222222222', t.id, $1, $2 FROM t RETURNING id`,[U,status])
   return r.rows[0].id
 }
 const sha = (s) => createHash('sha256').update(s).digest('hex')

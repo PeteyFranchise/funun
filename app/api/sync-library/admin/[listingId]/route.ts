@@ -218,6 +218,28 @@ export async function POST(
       capturedBy: auth.user.id,
     })
 
+    // MEDIUM (review 2026-11-28): A FAILED REPLAY STILL UPLOADED A COPY.
+    // This branch used to return `replay.ok` or fall through to the 409 without
+    // looking at orphanPath, so a definitively refused replay — different bytes,
+    // or a withdrawal landing before the RPC took its lock — left a private
+    // object that nothing referenced and nothing would ever clean up. The
+    // helper was classifying it correctly; the route was dropping the
+    // obligation. Same handling as the main capture path, for the same reason.
+    if (!replay.ok && replay.orphanPath) {
+      const swept = await enqueueCaptureOrphan(service, listingId, replay.orphanPath)
+      if (!swept.ok && !swept.deleted) {
+        await logStaffAction(service, {
+          actorId: auth.user.id,
+          action: swept.refusedAsLive
+            ? 'sync_library.capture_orphan_refused_live'
+            : 'sync_library.capture_orphan_untracked',
+          targetType: 'sync_listing',
+          targetId: listingId,
+          changes: { bucket: 'crate-audio', path: replay.orphanPath, source: 'admit_retry' },
+        })
+      }
+    }
+
     if (replay.ok && replay.outcome === 'replayed') {
       if (replay.strayPath) await enqueueCaptureOrphan(service, listingId, replay.strayPath)
 
