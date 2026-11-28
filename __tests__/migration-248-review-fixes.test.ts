@@ -45,8 +45,37 @@ describe('migration 248 — M1: the write boundary exists', () => {
     expect(has('REVOKE CREATE ON SCHEMA public FROM service_role;')).toBe(true)
   })
 
-  it('hardens the owner role unconditionally, not only when creating it', () => {
-    expect(has('ALTER ROLE funun_crate_evidence NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;')).toBe(true)
+  it('enforces the role attributes it can, and ASSERTS the two it cannot', () => {
+    // Setting NOSUPERUSER or NOBYPASSRLS requires superuser, and Supabase's
+    // migration runner is not one — the second production apply failed at that
+    // exact statement with 42501. Those two are now asserted and the migration
+    // refuses if they are wrong; the rest are still enforced.
+    expect(has('ALTER ROLE funun_crate_evidence NOLOGIN NOINHERIT NOCREATEDB NOCREATEROLE;')).toBe(true)
+    expect(has('SELECT rolsuper, rolbypassrls INTO v_super, v_bypass')).toBe(true)
+    expect(has('must be NOSUPERUSER and NOBYPASSRLS before it can own the evidence tables')).toBe(true)
+    // the form that cannot run on a hosted runner must not come back
+    expect(SQL).not.toContain('ALTER ROLE funun_crate_evidence NOLOGIN NOINHERIT NOSUPERUSER')
+  })
+
+  it('the harness applies as a non-superuser, the way production does', () => {
+    const baseline = readFileSync(
+      path.join(process.cwd(), 'scripts/crate-scratch-verify/baseline.sql'), 'utf8')
+    const apply = readFileSync(
+      path.join(process.cwd(), 'scripts/crate-scratch-verify/apply.mjs'), 'utf8')
+    expect(baseline).toContain('CREATE ROLE migration_runner NOLOGIN NOSUPERUSER NOBYPASSRLS CREATEROLE')
+    expect(apply).toContain("SET ROLE migration_runner")
+    // and it must not hand itself an extension production keeps elsewhere
+    expect(baseline).not.toContain('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"')
+  })
+
+  it('uses gen_random_uuid, which needs no extension', () => {
+    // Code only. The identifier survives in the comment explaining why it is
+    // NOT used — the sixth time in this file an assertion has had to be
+    // narrowed because it matched prose rather than the thing the prose is
+    // about.
+    const codeOnly = SQL.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n')
+    expect(codeOnly).not.toContain('uuid_generate_v4()')
+    expect(codeOnly).toContain('gen_random_uuid()')
   })
 
   it('refuses to transfer ownership if an application role is a member of the owner', () => {
