@@ -56,7 +56,10 @@ export type ContactEditableField = (typeof CONTACT_EDITABLE_FIELDS)[number]
 // reaching pickContactFields(). tags is a bounded string[]; address/
 // custom_fields are bounded free-form jsonb (object, not array — a client
 // sending an array or primitive is rejected, not silently coerced).
-const jsonObject = z.record(z.unknown())
+// Zod 4 removed the single-argument form of z.record: the key schema is now
+// required. z.string() is the shape this already had in practice — a JSON object
+// always has string keys — so this is the same validator stated explicitly.
+const jsonObject = z.record(z.string(), z.unknown())
 
 export const ContactCreateSchema = z
   .object({
