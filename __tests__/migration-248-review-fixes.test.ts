@@ -98,8 +98,12 @@ describe('migration 248 — M2 to M6: the same-song and same-request bindings', 
     expect(has('crate_manifest_items_header_same_request')).toBe(true)
   })
 
-  it('M6: artifact supersession stays on the same song', () => {
-    expect(has('crate_song_artifacts_supersedes_same_song')).toBe(true)
+  it('M6: artifact supersession stays on the same song, now via the stronger lineage FK', () => {
+    // M6's same-song binding was SUPERSEDED by the owner's 2026-11-27 lineage
+    // decision: the predecessor FK now carries song, role and version, which
+    // implies same-song and also stops an instrumental superseding artwork.
+    expect(has('crate_song_artifacts_predecessor_is_real')).toBe(true)
+    expect(has('FOREIGN KEY (supersedes_artifact_id, crate_song_id, role, supersedes_version)')).toBe(true)
     // the single-column form the review broke must not come back
     expect(has('supersedes_artifact_id UUID REFERENCES public.crate_song_artifacts(id)')).toBe(false)
   })
@@ -137,6 +141,27 @@ describe('migration 248 — M7: supersession chains cannot cycle', () => {
   it('manifests carry the same adjacency', () => {
     expect(has('crate_delivery_manifests_chain_adjacent')).toBe(true)
     expect(has('crate_delivery_manifests_predecessor_is_real')).toBe(true)
+  })
+})
+
+describe('migration 248 — owner decision 2026-11-27: artifact lineage is linear', () => {
+  it('carries the predecessor through song, ROLE and version, not song alone', () => {
+    // Same-song alone still let an instrumental claim it superseded that song's
+    // artwork, which is not lineage.
+    expect(
+      has(`FOREIGN KEY (supersedes_artifact_id, crate_song_id, role, supersedes_version)
+           REFERENCES public.crate_song_artifacts (id, crate_song_id, role, chain_version)`)
+    ).toBe(true)
+  })
+
+  it('allows one successor per predecessor and one row per song, role and version', () => {
+    expect(has('crate_song_artifacts_linear_chain UNIQUE (supersedes_artifact_id)')).toBe(true)
+    expect(has('crate_song_artifacts_one_per_song_role_version UNIQUE (crate_song_id, role, chain_version)')).toBe(true)
+  })
+
+  it('keeps origin shape and adjacency, matching the approval and manifest chains', () => {
+    expect(has('crate_song_artifacts_chain_shape')).toBe(true)
+    expect(has('crate_song_artifacts_chain_adjacent')).toBe(true)
   })
 })
 

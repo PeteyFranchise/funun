@@ -187,6 +187,17 @@ CREATE TABLE public.crate_song_artifacts (
   captured_by           UUID NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
   supersedes_artifact_id UUID,
 
+  -- OWNER DECISION 2026-11-27: artifact lineage is LINEAR per captured song AND
+  -- role. There is no case in this domain where one song and one role needs two
+  -- parallel supersession histories: the roles already express the legitimate
+  -- parallelism (a master and an instrumental are different roles, not competing
+  -- branches), and D-18 closes the recording-version case because a re-admission
+  -- creates a NEW captured song rather than branching the old song's artifacts.
+  -- Branching would leave the (crate_song_id, role) current pointer naming one
+  -- branch while another equally valid head had no defined status.
+  chain_version          INT NOT NULL DEFAULT 1 CHECK (chain_version >= 1),
+  supersedes_version     INT,
+
   -- NOT NULL for role 'review_playback': the captured playback must trace to the
   -- review whose sha256 it matched.
   quality_review_id     UUID REFERENCES public.crate_quality_reviews(id) ON DELETE RESTRICT,
@@ -195,12 +206,30 @@ CREATE TABLE public.crate_song_artifacts (
 
   CONSTRAINT crate_song_artifacts_no_self_supersede CHECK (supersedes_artifact_id <> id),
 
-  -- M6 (review 2026-11-25): supersession must stay on the SAME SONG. The simple
-  -- single-column FK checked only that the artifact existed, so song B's artifact
-  -- could supersede song A's, contradicting the contract's own requirement.
-  CONSTRAINT crate_song_artifacts_supersedes_same_song
-    FOREIGN KEY (supersedes_artifact_id, crate_song_id)
-    REFERENCES public.crate_song_artifacts (id, crate_song_id) ON DELETE RESTRICT,
+  -- M6 plus the lineage decision: the predecessor must be the same song, the
+  -- SAME ROLE, and the immediately preceding version. Same-song alone still let
+  -- an instrumental claim it superseded that song's artwork, which is not
+  -- lineage. Four columns, matching how approvals and manifests now work.
+  CONSTRAINT crate_song_artifacts_predecessor_is_real
+    FOREIGN KEY (supersedes_artifact_id, crate_song_id, role, supersedes_version)
+    REFERENCES public.crate_song_artifacts (id, crate_song_id, role, chain_version)
+    ON DELETE RESTRICT,
+
+  -- One successor per predecessor: the chain cannot fork.
+  CONSTRAINT crate_song_artifacts_linear_chain UNIQUE (supersedes_artifact_id),
+
+  -- One root, and one row per version, per song and role: the chain cannot have
+  -- two independent heads either, which is the hole the approvals chain had.
+  CONSTRAINT crate_song_artifacts_one_per_song_role_version
+    UNIQUE (crate_song_id, role, chain_version),
+
+  CONSTRAINT crate_song_artifacts_chain_shape CHECK (
+    (supersedes_artifact_id IS NULL) = (chain_version = 1)
+    AND (supersedes_version IS NULL) = (chain_version = 1)
+  ),
+  CONSTRAINT crate_song_artifacts_chain_adjacent CHECK (
+    supersedes_version IS NULL OR supersedes_version = chain_version - 1
+  ),
 
   -- One stored object is captured once.
   CONSTRAINT crate_song_artifacts_object_unique UNIQUE (storage_bucket, storage_path),
@@ -210,7 +239,9 @@ CREATE TABLE public.crate_song_artifacts (
   -- two-column (id, crate_song_id) target would let a (song, review_playback)
   -- pointer name that song's artwork with every declared constraint green.
   CONSTRAINT crate_song_artifacts_id_song UNIQUE (id, crate_song_id),
-  CONSTRAINT crate_song_artifacts_id_song_role UNIQUE (id, crate_song_id, role)
+  CONSTRAINT crate_song_artifacts_id_song_role UNIQUE (id, crate_song_id, role),
+  CONSTRAINT crate_song_artifacts_id_song_role_version
+    UNIQUE (id, crate_song_id, role, chain_version)
 );
 
 CREATE INDEX idx_crate_song_artifacts_song_role
