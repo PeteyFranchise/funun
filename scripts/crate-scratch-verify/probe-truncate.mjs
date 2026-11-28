@@ -1,4 +1,12 @@
 import { Client } from 'pg'
+
+// LOW (review 2026-11-28): a probe that prints a failure and exits 0 lets a
+// scripted run report success while an assertion failed. Every console.log is
+// routed through a tally so the process status matches what was printed.
+let probeFailures = 0
+const rawLog = console.log.bind(console)
+console.log = (...a) => { const s = a.join(' '); if (s.includes('*** ')) probeFailures++; rawLog(...a) }
+process.on('exit', () => { if (probeFailures > 0) process.exitCode = 1 })
 const c = new Client({ host: process.env.PGHOST ?? '/private/tmp/pgtest', port: Number(process.env.PGPORT ?? 54329), user:'postgres', database:'postgres' })
 await c.connect()
 // CASCADE defeats the FK objection, so whatever refuses now is the trigger.

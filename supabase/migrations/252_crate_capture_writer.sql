@@ -34,7 +34,7 @@ CREATE OR REPLACE FUNCTION public.crate_capture_admitted_song(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = ''
 AS $$
 DECLARE
   v_song_id      UUID;
@@ -70,6 +70,48 @@ BEGIN
   IF NOT FOUND THEN
     RAISE EXCEPTION 'listing % does not exist', p_listing_id USING ERRCODE = 'foreign_key_violation';
   END IF;
+
+  -- IDEMPOTENCY IS CHECKED BEFORE THE STATUS GATE, and the order matters.
+  -- Since capture now performs the admission in this same transaction, a
+  -- successful capture leaves the listing 'admitted'. A retry after a lost
+  -- response would therefore hit the pending_admit gate below and error, when
+  -- the truthful answer is "you already did this" — which is precisely the
+  -- ambiguity M3 existed to remove. Found by a probe, not by reading.
+  -- EXACT REPLAY, not "something exists". An earlier version returned any
+  -- version returned any existing song before validating anything, so a retry
+  -- could admit on stale captured bytes. A row that exists but holds different
+  -- bytes is a conflict, not a success.
+  SELECT * INTO v_existing FROM public.crate_songs WHERE source_listing_id = p_listing_id;
+  IF FOUND THEN
+    SELECT a.sha256 INTO v_existing_sha
+      FROM public.crate_song_current_artifacts c
+      JOIN public.crate_song_artifacts a
+        ON a.id = c.artifact_id
+     WHERE c.crate_song_id = v_existing.id AND c.role = 'review_playback';
+    IF v_existing_sha IS DISTINCT FROM p_sha256 THEN
+      RAISE EXCEPTION
+        'listing % is already captured as song % holding different bytes (% vs %)',
+        p_listing_id, v_existing.id, v_existing_sha, p_sha256
+        USING ERRCODE = 'unique_violation';
+    END IF;
+    -- M3 (review 2026-11-28): REPLAY IS NOT CREATION, AND THE CALLER MUST BE
+    -- ABLE TO TELL. A bare id made a replay indistinguishable from a fresh
+    -- capture, so the caller went on reporting ITS OWN uploaded path as the
+    -- artifact path while no row referenced it: an object leaked, queued by
+    -- nobody. Returning the authoritative path lets the caller clean up the copy
+    -- it made and stop claiming it.
+    SELECT a.storage_path INTO v_existing_path
+      FROM public.crate_song_current_artifacts c
+      JOIN public.crate_song_artifacts a ON a.id = c.artifact_id
+     WHERE c.crate_song_id = v_existing.id AND c.role = 'review_playback';
+
+    RETURN jsonb_build_object(
+      'outcome', 'replayed',
+      'crate_song_id', v_existing.id,
+      'artifact_path', v_existing_path
+    );
+  END IF;
+
 
   -- M4: capture belongs to the admission decision, so the listing must be at the
   -- point of decision. Previously any status was accepted.
@@ -119,41 +161,6 @@ BEGIN
       p_size_bytes, v_review.size_bytes USING ERRCODE = 'integrity_constraint_violation';
   END IF;
 
-  -- M3 SCENARIO B: idempotency is EXACT REPLAY, not "something exists". The old
-  -- version returned any existing song before validating anything, so a retry
-  -- could admit on stale captured bytes. A row that exists but holds different
-  -- bytes is a conflict, not a success.
-  SELECT * INTO v_existing FROM public.crate_songs WHERE source_listing_id = p_listing_id;
-  IF FOUND THEN
-    SELECT a.sha256 INTO v_existing_sha
-      FROM public.crate_song_current_artifacts c
-      JOIN public.crate_song_artifacts a
-        ON a.id = c.artifact_id
-     WHERE c.crate_song_id = v_existing.id AND c.role = 'review_playback';
-    IF v_existing_sha IS DISTINCT FROM p_sha256 THEN
-      RAISE EXCEPTION
-        'listing % is already captured as song % holding different bytes (% vs %)',
-        p_listing_id, v_existing.id, v_existing_sha, p_sha256
-        USING ERRCODE = 'unique_violation';
-    END IF;
-    -- M3 (review 2026-11-28): REPLAY IS NOT CREATION, AND THE CALLER MUST BE
-    -- ABLE TO TELL. A bare id made a replay indistinguishable from a fresh
-    -- capture, so the caller went on reporting ITS OWN uploaded path as the
-    -- artifact path while no row referenced it: an object leaked, queued by
-    -- nobody. Returning the authoritative path lets the caller clean up the copy
-    -- it made and stop claiming it.
-    SELECT a.storage_path INTO v_existing_path
-      FROM public.crate_song_current_artifacts c
-      JOIN public.crate_song_artifacts a ON a.id = c.artifact_id
-     WHERE c.crate_song_id = v_existing.id AND c.role = 'review_playback';
-
-    RETURN jsonb_build_object(
-      'outcome', 'replayed',
-      'crate_song_id', v_existing.id,
-      'artifact_path', v_existing_path
-    );
-  END IF;
-
   -- Derived, not supplied.
   SELECT t.title INTO v_title FROM public.tracks t WHERE t.id = v_listing.track_id;
   SELECT u.artist_name INTO v_artist_name
@@ -188,10 +195,37 @@ BEGIN
   VALUES (v_song_id, 0, 'captured', p_captured_by,
           jsonb_build_object('listing_id', p_listing_id, 'quality_review_id', v_review.id));
 
+  -- MEDIUM (review 2026-11-28): THE ADMISSION TRANSITION HAPPENS HERE, in the
+  -- same transaction and under the same lock as the capture.
+  --
+  -- It used to happen in the route after this function returned. Capture
+  -- committed, the lock released, and a concurrent REJECT could move the
+  -- listing to 'rejected' before the route's compare-and-set — which then
+  -- affected zero rows and returned 409, leaving an immutable captured song and
+  -- artifact attached to a rejected listing. Evidence claiming a capture
+  -- occurred outside a successful admission.
+  --
+  -- The status was already checked as 'pending_admit' above, under this lock,
+  -- so this cannot lose; the guard exists because an admission that silently
+  -- affected no rows is exactly the failure being closed.
+  UPDATE public.sync_listings
+     SET status      = 'admitted',
+         admitted_at = now(),
+         decided_at  = now(),
+         decided_by  = p_captured_by,
+         updated_at  = now()
+   WHERE id = p_listing_id
+     AND status = 'pending_admit';
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'listing % could not be admitted after capture', p_listing_id
+      USING ERRCODE = 'serialization_failure';
+  END IF;
+
   RETURN jsonb_build_object(
     'outcome', 'created',
     'crate_song_id', v_song_id,
-    'artifact_path', p_path
+    'artifact_path', p_path,
+    'admitted', true
   );
 END;
 $$;
@@ -228,7 +262,7 @@ CREATE OR REPLACE FUNCTION public.crate_enqueue_capture_orphan(
 RETURNS UUID
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = ''
 AS $$
 DECLARE
   v_id UUID;

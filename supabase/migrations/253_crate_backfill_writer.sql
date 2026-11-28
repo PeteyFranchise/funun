@@ -37,7 +37,7 @@ CREATE OR REPLACE FUNCTION public.crate_backfill_capture_song(
 RETURNS UUID
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = ''
 AS $$
 DECLARE
   v_song_id      UUID;

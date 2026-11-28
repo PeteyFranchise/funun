@@ -35,7 +35,7 @@ CREATE OR REPLACE FUNCTION public.crate_record_quality_review(
 RETURNS UUID
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = ''
 AS $$
 DECLARE
   v_id UUID;

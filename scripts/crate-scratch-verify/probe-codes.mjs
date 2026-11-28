@@ -1,4 +1,12 @@
 import { Client } from 'pg'
+
+// LOW (review 2026-11-28): a probe that prints a failure and exits 0 lets a
+// scripted run report success while an assertion failed. Every console.log is
+// routed through a tally so the process status matches what was printed.
+let probeFailures = 0
+const rawLog = console.log.bind(console)
+console.log = (...a) => { const s = a.join(' '); if (s.includes('*** ')) probeFailures++; rawLog(...a) }
+process.on('exit', () => { if (probeFailures > 0) process.exitCode = 1 })
 import { createHash } from 'node:crypto'
 const c = new Client({ host: process.env.PGHOST ?? '/private/tmp/pgtest', port: Number(process.env.PGPORT ?? 54329), user:'postgres', database:'postgres' })
 await c.connect()
@@ -6,7 +14,7 @@ const U='11111111-1111-1111-1111-111111111111'
 const sha = s => createHash('sha256').update(s).digest('hex')
 
 const r = await c.query(`INSERT INTO public.sync_listings (vault_project_id,track_id,artist_user_id,status)
-  VALUES ('22222222-2222-2222-2222-222222222222','33333333-3333-3333-3333-333333333333',$1,'pending_admit') RETURNING id`,[U])
+  VALUES ('22222222-2222-2222-2222-222222222222',(SELECT id FROM public.tracks WHERE project_id='22222222-2222-2222-2222-222222222222' AND NOT EXISTS (SELECT 1 FROM public.sync_listings l WHERE l.track_id = tracks.id) LIMIT 1),$1,'pending_admit') RETURNING id`,[U])
 const L = r.rows[0].id
 const A = sha('bytes A'), B = sha('bytes B')
 

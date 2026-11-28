@@ -45,6 +45,23 @@ node probe-codes.mjs       # the SQLSTATE the TypeScript caller maps is the one 
 node probe-concurrency.mjs # two simultaneous captures, and enqueue serialising behind the listing lock
 ```
 
+## The baseline MUST reproduce production RLS, and the first version did not
+
+This harness's first version created the legacy tables **without their RLS**, and every probe
+passed. That was worthless for the question that mattered: all three tables the writers read have
+RLS enabled with ownership-scoped policies, and `funun_crate_evidence` is `NOBYPASSRLS`, so in
+production its `SELECT ... FOR UPDATE` would have returned **no rows** and every writer would have
+been dead on arrival. A reviewer found it by reading the real migrations; no amount of probing
+against an unfaithful baseline could have.
+
+`baseline.sql` now enables that RLS, and `probe-rls.mjs` runs every RPC through
+`SET LOCAL ROLE service_role` with a **must-fail control**: drop the listing policy and the writer
+stops finding its row, which proves the policies are what make it work rather than decoration.
+
+The same lesson repeated twice more in miniature, both found by running it: the stub `sync_listings`
+was missing `admitted_at`, so a grant failed and nothing applied; and the probes reused one track
+across listings, which the real partial unique index forbids.
+
 ## Results, 2026-11-28, PostgreSQL 17.12
 
 All four migrations applied. Every probe passed.
@@ -64,5 +81,11 @@ All four migrations applied. Every probe passed.
 - **Concurrency:** two simultaneous captures of one listing produced *created + replayed*, one song,
   one artifact. No unhandled loser. Enqueue **blocks** while a capture holds the listing lock, then
   refuses the now-live path.
+- **As `service_role`, under production RLS**, quality review, capture and backfill all succeed —
+  and dropping one policy makes capture fail, so the policies are load-bearing.
+- **Capture and admission are one transaction.** Racing a capture+admit against a reject, in both
+  orderings, yields only *admitted with one capture* or *rejected with none*. Never a captured song
+  on a rejected listing.
+- **Every probe exits nonzero when it fails**, verified by inverting an assertion in each.
 - `SQLSTATE 23505` is what the database raises for an already-captured conflict, which is what the
   TypeScript maps to `already_captured_different_bytes` — that branch is live, not dead.

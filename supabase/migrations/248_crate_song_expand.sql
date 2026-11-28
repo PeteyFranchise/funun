@@ -1208,7 +1208,49 @@ GRANT SELECT (id, status, track_id, vault_project_id, artist_user_id)
 -- column that makes the lock legal. `updated_at` rather than `id`: if the grant
 -- is ever misused, a touched timestamp is a far smaller problem than a rewritten
 -- primary key.
-GRANT UPDATE (updated_at) ON public.sync_listings TO funun_crate_evidence;
+-- MEDIUM (review 2026-11-28): capture and the admission transition must be ONE
+-- transaction, so the evidence role writes the decision columns too. Previously
+-- capture committed, the lock released, and a concurrent REJECT could land
+-- before the route's own compare-and-set — leaving an immutable captured song
+-- attached to a rejected listing. Still column-level: this role may record an
+-- admission decision and may not touch anything else on the listing.
+GRANT UPDATE (status, admitted_at, decided_at, decided_by, updated_at)
+  ON public.sync_listings TO funun_crate_evidence;
+
+-- HIGH (review 2026-11-28): GRANTS ARE NOT ENOUGH. All three legacy tables the
+-- writers read have RLS ENABLED with ownership-scoped policies —
+-- sync_listings (096:73-81) is `artist_user_id = auth.uid()`, and tracks
+-- (001:141-143) and user_profiles (053:19-37) are the same shape. The evidence
+-- role is deliberately NOBYPASSRLS, so without policies of its own its
+-- SELECT ... FOR UPDATE would return NO ROWS: every writer would report that
+-- the listing does not exist, the migration would apply cleanly, and the whole
+-- capture path would be dead on arrival.
+--
+-- A scratch harness that creates these tables WITHOUT their RLS passes every
+-- probe and proves nothing about this. That is exactly what happened.
+--
+-- These policies are deliberately narrow: this role reads these three tables and
+-- locks the listing row, nothing else. BYPASSRLS would have been one line and is
+-- refused — it would hand the role blanket visibility across every table in the
+-- database, which is a far larger grant than "read three columns of three
+-- tables" and is a security decision nobody has made.
+
+CREATE POLICY crate_evidence_reads_listings ON public.sync_listings
+  FOR SELECT TO funun_crate_evidence USING (true);
+
+-- The listing row lock (SELECT ... FOR UPDATE) is an UPDATE-privileged read, so
+-- an UPDATE policy is required as well as the grant above. WITH CHECK is `true`
+-- rather than `false` because the capture function now performs the admission
+-- transition in the same transaction; the column grant is what keeps that
+-- narrow, since this role can write only the five decision columns.
+CREATE POLICY crate_evidence_locks_listings ON public.sync_listings
+  FOR UPDATE TO funun_crate_evidence USING (true) WITH CHECK (true);
+
+CREATE POLICY crate_evidence_reads_tracks ON public.tracks
+  FOR SELECT TO funun_crate_evidence USING (true);
+
+CREATE POLICY crate_evidence_reads_profiles ON public.user_profiles
+  FOR SELECT TO funun_crate_evidence USING (true);
 GRANT SELECT (id, title, audio_file_url, project_id)
   ON public.tracks TO funun_crate_evidence;
 GRANT SELECT (id, artist_name)

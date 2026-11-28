@@ -401,6 +401,7 @@ export async function POST(
     // listing is untouched so staff can retry.
     //
     // Dark until 248, 251 and 252 are applied.
+    let capturedAndAdmitted = false
     if (CRATE_CAPTURE_ENABLED) {
       // The captured owner/payee snapshot, read from the SAME place every buyer
       // surface reads the artist name (user_profiles.artist_name, as
@@ -462,20 +463,30 @@ export async function POST(
       // M3: on a replay our own upload is unreferenced. Clean up the copy this
       // attempt made rather than leaving it for nobody to find.
       if (captured.strayPath) await enqueueCaptureOrphan(service, listingId, captured.strayPath)
+
+      // MEDIUM (review 2026-11-28): the capture transaction ALREADY performed
+      // the pending_admit -> admitted transition, atomically and under the same
+      // lock. Running the compare-and-set below as well would be a second,
+      // separate decision on a listing this request has already admitted. The
+      // whole point of moving it into the function was that the gap between the
+      // two was where a concurrent reject could land.
+      capturedAndAdmitted = true
     }
 
-    const { data: updatedRows, error: updateError } = await service
-      .from('sync_listings')
-      .update({
-        status: 'admitted',
-        admitted_at: nowIso,
-        decided_at: nowIso,
-        decided_by: auth.user.id,
-        updated_at: nowIso,
-      })
-      .eq('id', listingId)
-      .eq('status', row.status)
-      .select('id')
+    const { data: updatedRows, error: updateError } = capturedAndAdmitted
+      ? { data: [{ id: listingId }], error: null }
+      : await service
+          .from('sync_listings')
+          .update({
+            status: 'admitted',
+            admitted_at: nowIso,
+            decided_at: nowIso,
+            decided_by: auth.user.id,
+            updated_at: nowIso,
+          })
+          .eq('id', listingId)
+          .eq('status', row.status)
+          .select('id')
     if (updateError) {
       return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     }

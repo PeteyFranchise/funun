@@ -52,4 +52,5 @@ catch (e) { console.log('OK    superuser UPDATE refused by trigger:', e.message.
 try { await c.query(`TRUNCATE public.crate_quality_reviews`); console.log('*** HOLE ***  superuser TRUNCATE succeeded') }
 catch (e) { console.log('OK    superuser TRUNCATE refused by trigger:', e.message.slice(0,60)) }
 console.log(holes === 0 ? '\nNO HOLES FOUND' : `\n${holes} HOLE(S) FOUND`)
+process.exitCode = holes === 0 ? 0 : 1
 await c.end()

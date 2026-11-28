@@ -286,8 +286,32 @@ describe('round four — M1: the writer role can actually lock and read', () => 
     }
   })
 
-  it('grants the UPDATE privilege FOR UPDATE requires, on the narrowest column', () => {
-    expect(has('GRANT UPDATE (updated_at) ON public.sync_listings TO funun_crate_evidence;')).toBe(true)
+  it('grants the UPDATE privilege FOR UPDATE requires, narrowed to the decision columns', () => {
+    // Widened from UPDATE(updated_at) when the admission transition moved INTO
+    // the capture transaction: the role now records a decision as well as
+    // taking the lock. Still column-level, so it cannot touch anything else.
+    expect(has('GRANT UPDATE (status, admitted_at, decided_at, decided_by, updated_at) ON public.sync_listings TO funun_crate_evidence;')).toBe(true)
+  })
+
+  it('gives the evidence role the RLS policies without which it sees no rows', () => {
+    // NOBYPASSRLS plus column grants is not enough: all three legacy tables
+    // have ownership-scoped RLS, so without policies the writers find nothing.
+    expect(has('CREATE POLICY crate_evidence_reads_listings ON public.sync_listings')).toBe(true)
+    expect(has('CREATE POLICY crate_evidence_locks_listings ON public.sync_listings')).toBe(true)
+    expect(has('CREATE POLICY crate_evidence_reads_tracks ON public.tracks')).toBe(true)
+    expect(has('CREATE POLICY crate_evidence_reads_profiles ON public.user_profiles')).toBe(true)
+  })
+
+  it('uses the house standard empty search_path, not public/pg_temp', () => {
+    for (const sql of [W251, W252, W253]) {
+      expect(sql).toContain("SET search_path = ''")
+      expect(sql).not.toContain('SET search_path = public')
+    }
+  })
+
+  it('admission happens inside the capture transaction', () => {
+    expect(flatOf(W252)).toContain("SET status = 'admitted'")
+    expect(flatOf(W252)).toContain("WHERE id = p_listing_id AND status = 'pending_admit'")
   })
 })
 
