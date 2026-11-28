@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
+import { CRATE_CAPTURE_ENABLED, captureAdmittedSong, enqueueCaptureOrphan } from '@/lib/sync-library/crate-capture'
 import { createNotification } from '@/lib/notifications'
 import {
   buildSyncLibraryAdmittedNotification,
@@ -390,6 +391,53 @@ export async function POST(
     // hardcoded predicate would break reject. `.select('id')` is required
     // because a Supabase update returns no rows unless asked, and without rows
     // the count is unobservable.
+    // ─── Phase 50.5B: CAPTURE BEFORE ADMITTING ───────────────────────
+    // D-16: an admitted song is captured, not pointed at. Storage and Postgres
+    // cannot share a transaction, so one of two bad outcomes is always
+    // reachable: an orphaned private copy, or an admitted song with no
+    // artifact. The second is worse, because a buyer could be shown a song The
+    // Crate holds nothing for, so capture runs FIRST and the status flip below
+    // happens only if it succeeded. A failure leaves a file to sweep, and the
+    // listing is untouched so staff can retry.
+    //
+    // Dark until 248, 251 and 252 are applied.
+    if (CRATE_CAPTURE_ENABLED) {
+      // The captured owner/payee snapshot, read from the SAME place every buyer
+      // surface reads the artist name (user_profiles.artist_name, as
+      // lib/deals/catalog-query.ts does). Captured now so a later profile edit
+      // cannot change who a standing licence says it is for.
+      const { data: ownerRaw } = await service
+        .from('user_profiles')
+        .select('artist_name')
+        .eq('id', row.artist_user_id)
+        .maybeSingle()
+
+      const captured = await captureAdmittedSong(service, {
+        listingId,
+        sourceAudioPath: track.audio_file_url,
+        title: track.title ?? songTitle,
+        primaryArtistName: (ownerRaw as { artist_name: string | null } | null)?.artist_name ?? '',
+        payeeUserId: row.artist_user_id,
+        capturedBy: auth.user.id,
+        sourceTrackId: row.track_id,
+        sourceProjectId: row.vault_project_id,
+      })
+      if (!captured.ok) {
+        if (captured.orphanPath) await enqueueCaptureOrphan(service, captured.orphanPath)
+        const status = captured.reason === 'digest_mismatch' ? 409 : 503
+        return NextResponse.json(
+          {
+            error:
+              captured.reason === 'digest_mismatch'
+                ? 'The audio has changed since it was reviewed, so this song was not admitted. Review the current file first.'
+                : 'This song could not be captured, so it was not admitted. Nothing changed; try again.',
+            data: { listingId, status: row.status, reason: captured.reason },
+          },
+          { status }
+        )
+      }
+    }
+
     const { data: updatedRows, error: updateError } = await service
       .from('sync_listings')
       .update({
