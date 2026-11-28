@@ -31,6 +31,18 @@
 
 BEGIN;
 
+-- WHY gen_random_uuid() AND NOT uuid_generate_v4(). The first apply attempt
+-- failed here with "function uuid_generate_v4() does not exist" (42883).
+-- uuid-ossp lives in the `extensions` schema on this platform, not `public`, so
+-- the unqualified call does not resolve for the migration runner — even though
+-- migration 096 used it years ago under a different search_path. gen_random_uuid()
+-- is in core PostgreSQL since 13, needs no extension and no qualification, and
+-- migration 081 already uses it here.
+--
+-- The scratch harness missed this because its baseline created uuid-ossp in
+-- `public`. That is the third fidelity gap the stub baseline has produced, and
+-- the first one a reviewer did not catch before production did.
+
 -- ─── (0) Shared append-only guard ─────────────────────────────────────────
 --
 -- Evidence tables are append-only. This is enforced by an UNCONDITIONAL trigger,
@@ -70,7 +82,7 @@ COMMENT ON FUNCTION public.crate_append_only() IS
 -- is not evidence of a review, it is a row.
 
 CREATE TABLE public.crate_quality_reviews (
-  id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   listing_id     UUID NOT NULL REFERENCES public.sync_listings(id) ON DELETE RESTRICT,
   source_bucket  TEXT NOT NULL,
   source_path    TEXT NOT NULL,
@@ -134,7 +146,7 @@ COMMENT ON TABLE public.crate_quality_reviews IS
 -- real review of the captured object alongside it.
 
 CREATE TABLE public.crate_backfill_attestations (
-  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   listing_id    UUID NOT NULL REFERENCES public.sync_listings(id) ON DELETE RESTRICT,
   source_bucket TEXT NOT NULL,
   source_path   TEXT NOT NULL,
@@ -167,7 +179,7 @@ COMMENT ON TABLE public.crate_backfill_attestations IS
 -- commercial identity, never cascade owners. Owner-confirmed 2026-11-20.
 
 CREATE TABLE public.crate_songs (
-  id                     UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Provenance only. ON DELETE SET NULL is correct HERE and only here: these
   -- are not identity, and a vault deletion must not remove the captured song.
@@ -238,7 +250,7 @@ COMMENT ON COLUMN public.crate_songs.source_listing_id IS
 -- design is avoiding.
 
 CREATE TABLE public.crate_song_artifacts (
-  id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   crate_song_id         UUID NOT NULL REFERENCES public.crate_songs(id) ON DELETE RESTRICT,
   role                  TEXT NOT NULL,
   storage_bucket        TEXT NOT NULL,
@@ -358,7 +370,7 @@ COMMENT ON TABLE public.crate_song_current_artifacts IS
 -- a lie.
 
 CREATE TABLE public.crate_artifact_approvals (
-  id                           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   crate_song_id                UUID NOT NULL,
   artifact_id                  UUID NOT NULL,
   decision                     TEXT NOT NULL CHECK (decision IN ('approved', 'rejected')),
@@ -466,7 +478,7 @@ COMMENT ON TABLE public.crate_song_current_approvals IS
 -- the immediate one.
 
 CREATE TABLE public.crate_clearance_assessments (
-  id                     UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   crate_song_id          UUID NOT NULL REFERENCES public.crate_songs(id) ON DELETE RESTRICT,
   version                INT  NOT NULL CHECK (version >= 1),
   previous_assessment_id UUID,
@@ -530,7 +542,7 @@ ALTER TABLE public.crate_songs
 -- ─── (8) crate_song_events — the lifecycle history ───────────────────────
 
 CREATE TABLE public.crate_song_events (
-  id                      UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   crate_song_id           UUID NOT NULL REFERENCES public.crate_songs(id) ON DELETE RESTRICT,
   lifecycle_version_after INT  NOT NULL,
   kind                    TEXT NOT NULL,
@@ -603,7 +615,7 @@ ALTER TABLE public.tracks
 -- declared append-only. The columns were the lie, not the doctrine.
 
 CREATE TABLE public.license_request_holds (
-  id                       UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   request_id               UUID NOT NULL,
   crate_song_id            UUID NOT NULL,
   triggering_assessment_id UUID NOT NULL,
@@ -632,7 +644,7 @@ COMMENT ON TABLE public.license_request_holds IS
   'A live request held because its song''s clearance assessment advanced. Deliberately has no release columns: release is an immutable attributable act recorded in license_request_hold_decisions, not an edit here. Stage eligibility (submitted, in_negotiation, terms_agreed, contract) is enforced in the RPC, not by a trigger on every request.';
 
 CREATE TABLE public.license_request_hold_decisions (
-  id                     UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   request_id             UUID NOT NULL,
   crate_song_id          UUID NOT NULL,
   decision               TEXT NOT NULL CHECK (decision IN ('released', 'reauthorized')),
@@ -697,7 +709,7 @@ COMMENT ON TABLE public.license_request_hold_decision_holds IS
 -- decided and no authority exists, which is the gap that made an earlier design's
 -- "released" state unable to execute.
 CREATE TABLE public.license_request_execution_authority (
-  id                     UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   request_id             UUID NOT NULL,
   crate_song_id          UUID NOT NULL,
   accepted_assessment_id UUID NOT NULL,
@@ -759,7 +771,7 @@ COMMENT ON TABLE public.license_request_execution_authority IS
 -- load-bearing at all. Without it they are decorative.
 
 CREATE TABLE public.crate_delivery_manifests (
-  id                     UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   request_id             UUID NOT NULL,
   crate_song_id          UUID NOT NULL,
   version                INT  NOT NULL CHECK (version >= 1),
@@ -886,7 +898,7 @@ COMMENT ON TABLE public.crate_request_current_manifests IS
 -- "this is the document that was signed" checkable later rather than assumed.
 
 CREATE TABLE public.crate_contract_snapshots (
-  id                     UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   request_id             UUID NOT NULL,
   crate_song_id          UUID NOT NULL,
   manifest_id            UUID NOT NULL,
@@ -924,7 +936,7 @@ CREATE TRIGGER crate_contract_snapshots_append_only
 -- ─── (13) Song terms ────────────────────────────────────────────────────
 
 CREATE TABLE public.crate_song_terms (
-  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   crate_song_id UUID REFERENCES public.crate_songs(id) ON DELETE RESTRICT,
   terms         JSONB NOT NULL DEFAULT '{}'::jsonb,
   authored_by   UUID NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
@@ -949,7 +961,7 @@ COMMENT ON COLUMN public.crate_song_terms.crate_song_id IS
 -- its result rather than record it.
 
 CREATE TABLE public.crate_capture_orphans (
-  id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   storage_bucket   TEXT NOT NULL,
   storage_path     TEXT NOT NULL,
   enqueued_at      TIMESTAMPTZ NOT NULL DEFAULT now(),

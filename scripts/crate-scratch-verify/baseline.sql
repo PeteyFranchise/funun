@@ -1,7 +1,14 @@
 -- Scratch baseline: ONLY the objects migrations 248/251/252/253 reference.
 -- This is NOT the production schema and proves nothing about the other 247
 -- migrations. It exists so the four under test can actually execute.
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- NO uuid-ossp IN public. An earlier version of this file created it here, and
+-- the harness therefore resolved gen_random_uuid() happily while the real apply
+-- failed with 42883: on this platform uuid-ossp lives in the `extensions`
+-- schema, not `public`. The baseline must not install conveniences production
+-- lacks — that is how a harness certifies a migration that cannot run.
+--
+-- Everything now uses gen_random_uuid(), which is core PostgreSQL since 13.
+CREATE SCHEMA IF NOT EXISTS extensions;
 
 -- Supabase-like roles.
 CREATE ROLE anon NOLOGIN;
@@ -10,7 +17,7 @@ CREATE ROLE service_role NOLOGIN BYPASSRLS;
 CREATE ROLE authenticator NOLOGIN;
 
 CREATE SCHEMA IF NOT EXISTS auth;
-CREATE TABLE auth.users (id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), email TEXT);
+CREATE TABLE auth.users (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), email TEXT);
 
 CREATE SCHEMA IF NOT EXISTS storage;
 CREATE TABLE storage.buckets (
@@ -19,24 +26,24 @@ CREATE TABLE storage.buckets (
 );
 
 CREATE TABLE public.vault_projects (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID, type TEXT, title TEXT NOT NULL
 );
 
 CREATE TABLE public.tracks (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id UUID REFERENCES public.vault_projects ON DELETE CASCADE NOT NULL,
   title TEXT, audio_file_url TEXT, audio_file_size BIGINT
 );
 
-CREATE TABLE public.vault_documents (id UUID PRIMARY KEY DEFAULT uuid_generate_v4());
+CREATE TABLE public.vault_documents (id UUID PRIMARY KEY DEFAULT gen_random_uuid());
 
 CREATE TABLE public.user_profiles (
   id UUID PRIMARY KEY, artist_name TEXT, profile_visibility TEXT
 );
 
 CREATE TABLE public.sync_listings (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   vault_project_id UUID NOT NULL REFERENCES public.vault_projects(id) ON DELETE CASCADE,
   track_id UUID NOT NULL REFERENCES public.tracks(id) ON DELETE CASCADE,
   artist_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
