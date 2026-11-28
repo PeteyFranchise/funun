@@ -92,10 +92,6 @@ BEGIN
     RAISE EXCEPTION 'listing % has no quality review', p_listing_id
       USING ERRCODE = 'invalid_parameter_value';
   END IF;
-  IF v_review.provenance <> 'reviewed' THEN
-    RAISE EXCEPTION 'the current record for listing % is %, not a review, and cannot authorise capture',
-      p_listing_id, v_review.provenance USING ERRCODE = 'invalid_parameter_value';
-  END IF;
   IF v_review.verdict <> 'passed' THEN
     RAISE EXCEPTION 'the current review for listing % did not pass', p_listing_id
       USING ERRCODE = 'invalid_parameter_value';

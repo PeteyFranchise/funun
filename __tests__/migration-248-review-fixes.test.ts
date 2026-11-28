@@ -241,6 +241,64 @@ describe('writers — M7: a backfill is an operator act', () => {
   })
 
   it('does not claim the backfilled bytes are the admitted recording', () => {
-    expect(flatOf(W253)).toContain('does NOT establish that they are the recording that was admitted')
+    expect(flatOf(W253)).toContain('nobody has confirmed these are the bytes that were admitted')
+  })
+})
+
+// ─── Owner decisions 2026-11-28: backfill topology and exposure ─────────
+const W254 = readFileSync(path.join(process.cwd(), 'supabase/migrations/254_crate_review_captured_artifact.sql'), 'utf8')
+
+describe('backfill topology — a backfill is not a review', () => {
+  it('attestations are their own relation, not a row in crate_quality_reviews', () => {
+    expect(has('CREATE TABLE public.crate_backfill_attestations (')).toBe(true)
+    expect(flatOf(W253)).toContain('INSERT INTO public.crate_backfill_attestations')
+    expect(flatOf(W253)).not.toContain('INSERT INTO public.crate_quality_reviews')
+  })
+
+  it('crate_quality_reviews means one thing again: a named human approved these bytes', () => {
+    expect(has('reviewer_id    UUID NOT NULL REFERENCES auth.users(id)')).toBe(true)
+    expect(has("verdict        TEXT NOT NULL CHECK (verdict IN ('passed', 'failed'))")).toBe(true)
+    // The contradiction is gone from the SCHEMA. The words survive in comments
+    // explaining why, which is the point of keeping them: asserting on prose
+    // rather than on the column definition is how a test checks the wrong thing.
+    const codeOnly = SQL.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n')
+    expect(codeOnly).not.toContain("'unreviewed'")
+    expect(codeOnly).not.toContain('provenance     TEXT')
+    expect(codeOnly).not.toContain('crate_quality_reviews_reviewer_matches_provenance')
+  })
+
+  it('an artifact rests on exactly one basis, enforced by XOR', () => {
+    expect(has('crate_song_artifacts_playback_basis_xor')).toBe(true)
+    expect(has('(quality_review_id IS NOT NULL) <> (backfill_attestation_id IS NOT NULL)')).toBe(true)
+  })
+
+  it('the attestation table is append-only and truncate-guarded like other evidence', () => {
+    expect(has('BEFORE UPDATE OR DELETE ON public.crate_backfill_attestations')).toBe(true)
+    expect(has('BEFORE TRUNCATE ON public.crate_backfill_attestations')).toBe(true)
+  })
+})
+
+describe('promotion — re-review reviews the CAPTURED object', () => {
+  it('rechecks the digest against the artifact, not the live Vault file', () => {
+    expect(flatOf(W254)).toContain('p_sha256 IS DISTINCT FROM v_current.sha256')
+    expect(flatOf(W254)).toContain('no longer hashes to its recorded digest')
+    // It must never READ the mutable pointer. The identifier appears in the
+    // header comment explaining exactly that, so the assertion is on code.
+    const codeOnly = W254.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n')
+    expect(codeOnly).not.toContain('audio_file_url')
+    expect(codeOnly).not.toContain('public.tracks')
+  })
+
+  it('only promotes something that is actually backfilled', () => {
+    expect(flatOf(W254)).toContain('v_current.backfill_attestation_id IS NULL')
+  })
+
+  it('is append-only: the attestation survives and the artifact gets a successor', () => {
+    expect(flatOf(W254)).toContain('supersedes_artifact_id, chain_version, supersedes_version')
+    expect(flatOf(W254)).not.toContain('DELETE FROM public.crate_backfill_attestations')
+  })
+
+  it('a failed review changes nothing but the record that someone looked', () => {
+    expect(flatOf(W254)).toContain("IF p_verdict = 'failed' THEN RETURN v_review_id;")
   })
 })

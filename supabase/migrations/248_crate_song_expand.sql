@@ -78,33 +78,15 @@ CREATE TABLE public.crate_quality_reviews (
   size_bytes     BIGINT NOT NULL CHECK (size_bytes > 0),
   mime_type      TEXT NOT NULL,
 
-  -- PROVENANCE (added for 50.5B's backfill, 2026-11-28). A row is either a real
-  -- review, where a named human listened to THESE bytes, or a backfill, where
-  -- the digest was computed when the song was migrated and nobody approved these
-  -- exact bytes at all. Historical admitted songs predate byte-tied review
-  -- entirely, and manufacturing a 'reviewed' row naming the original staff
-  -- member would assert they approved bytes they never heard. That is the forged
-  -- evidence this table exists to make impossible, so the two cases are
-  -- different kinds of row rather than the same row with a footnote.
-  provenance     TEXT NOT NULL DEFAULT 'reviewed'
-    CHECK (provenance IN ('reviewed', 'backfilled')),
-
-  -- Attribution is mandatory for a REVIEW and impossible for a backfill: there
-  -- is no reviewer to name. Tied to provenance so a NULL is never ambiguous.
-  reviewer_id    UUID REFERENCES auth.users(id) ON DELETE RESTRICT,
-  CONSTRAINT crate_quality_reviews_reviewer_matches_provenance CHECK (
-    (provenance = 'reviewed') = (reviewer_id IS NOT NULL)
-  ),
-
+  -- OWNER DECISION 2026-11-28: this table means ONE thing — a named human
+  -- approved THESE EXACT BYTES. An earlier attempt added a 'provenance' column
+  -- so a backfill could live here as an "unreviewed review", which is a
+  -- permanent semantic contradiction, and left every future consumer obliged to
+  -- filter for it. Backfills now live in crate_backfill_attestations instead, so
+  -- a row in THIS table is always and only evidence of human approval.
+  reviewer_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
   reviewed_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-
-  -- 'unreviewed' exists only for backfilled rows and is what stops a migrated
-  -- song's legacy per-song verdict being read as a byte-level pass.
-  verdict        TEXT NOT NULL CHECK (verdict IN ('passed', 'failed', 'unreviewed')),
-  CONSTRAINT crate_quality_reviews_verdict_matches_provenance CHECK (
-    (verdict = 'unreviewed') = (provenance = 'backfilled')
-  ),
-
+  verdict        TEXT NOT NULL CHECK (verdict IN ('passed', 'failed')),
   notes          TEXT
 );
 
@@ -117,6 +99,52 @@ CREATE TRIGGER crate_quality_reviews_append_only
 
 COMMENT ON TABLE public.crate_quality_reviews IS
   'What a staff quality reviewer actually approved, identified by sha256 of the exact object. The legacy sync_listings.quality_* columns (107:50-54) record that a review happened; this records what it was of. Append-only: a corrected verdict is a new row.';
+
+-- ─── (1b) crate_backfill_attestations — NOT a review ────────────────────
+--
+-- OWNER DECISION 2026-11-28, on the reviewer's recommendation. A backfill and a
+-- quality review are different claims:
+--
+--   quality review       a named person approved these exact bytes
+--   backfill attestation the system copied the current object, and NOBODY has
+--                        confirmed it is the recording that was admitted
+--
+-- They are separate relations so the difference is structural rather than a
+-- predicate every future writer must remember. A 50.5C approval writer holding
+-- only an artifact id can require a passed quality review; a backfill
+-- attestation cannot accidentally satisfy that, because it is not the same kind
+-- of object and no foreign key reaches it.
+--
+-- An attestation is NEVER erased by a later re-review. It stays as truthful
+-- historical evidence of how the song entered The Crate; the re-review appends a
+-- real review of the captured object alongside it.
+
+CREATE TABLE public.crate_backfill_attestations (
+  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  listing_id    UUID NOT NULL REFERENCES public.sync_listings(id) ON DELETE RESTRICT,
+  source_bucket TEXT NOT NULL,
+  source_path   TEXT NOT NULL,
+  sha256        TEXT NOT NULL CHECK (sha256 ~ '^[0-9a-f]{64}$'),
+  size_bytes    BIGINT NOT NULL CHECK (size_bytes > 0),
+  mime_type     TEXT NOT NULL,
+
+  -- The OPERATOR who ran the migration. Never the artist: the row is immutable,
+  -- and recording the artist as having performed an operator's act is a false
+  -- statement that can never be corrected.
+  attested_by   UUID NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  attested_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  notes         TEXT
+);
+
+CREATE INDEX idx_crate_backfill_attestations_listing
+  ON public.crate_backfill_attestations (listing_id, attested_at DESC);
+
+CREATE TRIGGER crate_backfill_attestations_append_only
+  BEFORE UPDATE OR DELETE ON public.crate_backfill_attestations
+  FOR EACH ROW EXECUTE FUNCTION public.crate_append_only();
+
+COMMENT ON TABLE public.crate_backfill_attestations IS
+  'A system statement that these bytes were copied from the live object at backfill time. NOT a review and deliberately not in crate_quality_reviews: nobody confirmed these are the bytes that were admitted, and the upload route permits replacing a track''s audio after admission. Survives a later re-review as historical evidence.';
 
 -- ─── (2) crate_songs — the commercial identity ────────────────────────────
 --
@@ -223,11 +251,16 @@ CREATE TABLE public.crate_song_artifacts (
   chain_version          INT NOT NULL DEFAULT 1 CHECK (chain_version >= 1),
   supersedes_version     INT,
 
-  -- NOT NULL for role 'review_playback': the captured playback must trace to the
-  -- review whose sha256 it matched.
-  quality_review_id     UUID REFERENCES public.crate_quality_reviews(id) ON DELETE RESTRICT,
-  CONSTRAINT crate_song_artifacts_playback_needs_review
-    CHECK (role <> 'review_playback' OR quality_review_id IS NOT NULL),
+  -- A review_playback artifact must trace to EXACTLY ONE basis, and the two are
+  -- mutually exclusive by construction: either a human approved these bytes, or
+  -- a backfill attested that it copied them and nobody has. An artifact cannot
+  -- be both, and cannot be neither.
+  quality_review_id       UUID REFERENCES public.crate_quality_reviews(id) ON DELETE RESTRICT,
+  backfill_attestation_id UUID REFERENCES public.crate_backfill_attestations(id) ON DELETE RESTRICT,
+  CONSTRAINT crate_song_artifacts_playback_basis_xor CHECK (
+    role <> 'review_playback'
+    OR ((quality_review_id IS NOT NULL) <> (backfill_attestation_id IS NOT NULL))
+  ),
 
   CONSTRAINT crate_song_artifacts_no_self_supersede CHECK (supersedes_artifact_id <> id),
 
@@ -1025,6 +1058,7 @@ ALTER TABLE public.crate_request_current_manifests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.crate_contract_snapshots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.crate_song_terms ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.crate_capture_orphans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crate_backfill_attestations ENABLE ROW LEVEL SECURITY;
 
 -- Browser roles: nothing at all.
 REVOKE ALL ON public.crate_quality_reviews FROM PUBLIC, anon, authenticated;
@@ -1046,6 +1080,7 @@ REVOKE ALL ON public.crate_request_current_manifests FROM PUBLIC, anon, authenti
 REVOKE ALL ON public.crate_contract_snapshots FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON public.crate_song_terms FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON public.crate_capture_orphans FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.crate_backfill_attestations FROM PUBLIC, anon, authenticated;
 
 -- service_role: REVOKE ALL, not an enumerated list. The enumerated form left
 -- TRIGGER behind, which was enough to sabotage the mutable projections.
@@ -1068,6 +1103,7 @@ REVOKE ALL ON public.crate_request_current_manifests FROM service_role;
 REVOKE ALL ON public.crate_contract_snapshots FROM service_role;
 REVOKE ALL ON public.crate_song_terms FROM service_role;
 REVOKE ALL ON public.crate_capture_orphans FROM service_role;
+REVOKE ALL ON public.crate_backfill_attestations FROM service_role;
 
 -- Then exactly one privilege back.
 GRANT SELECT ON public.crate_quality_reviews TO service_role;
@@ -1089,6 +1125,7 @@ GRANT SELECT ON public.crate_request_current_manifests TO service_role;
 GRANT SELECT ON public.crate_contract_snapshots TO service_role;
 GRANT SELECT ON public.crate_song_terms TO service_role;
 GRANT SELECT ON public.crate_capture_orphans TO service_role;
+GRANT SELECT ON public.crate_backfill_attestations TO service_role;
 
 -- §4.12: service_role must not be able to create objects in this schema either,
 -- which would let it introduce its own writers beside these tables.
@@ -1096,6 +1133,9 @@ REVOKE CREATE ON SCHEMA public FROM service_role;
 
 -- Statement-level TRUNCATE guards, because the row-level triggers cover UPDATE
 -- and DELETE only. Defence in depth behind the REVOKE above.
+CREATE TRIGGER crate_backfill_attestations_no_truncate
+  BEFORE TRUNCATE ON public.crate_backfill_attestations
+  FOR EACH STATEMENT EXECUTE FUNCTION public.crate_append_only();
 CREATE TRIGGER crate_quality_reviews_no_truncate
   BEFORE TRUNCATE ON public.crate_quality_reviews
   FOR EACH STATEMENT EXECUTE FUNCTION public.crate_append_only();
@@ -1170,6 +1210,7 @@ ALTER TABLE public.crate_request_current_manifests OWNER TO funun_crate_evidence
 ALTER TABLE public.crate_contract_snapshots OWNER TO funun_crate_evidence;
 ALTER TABLE public.crate_song_terms OWNER TO funun_crate_evidence;
 ALTER TABLE public.crate_capture_orphans OWNER TO funun_crate_evidence;
+ALTER TABLE public.crate_backfill_attestations OWNER TO funun_crate_evidence;
 ALTER FUNCTION public.crate_append_only() OWNER TO funun_crate_evidence;
 
 REVOKE funun_crate_evidence FROM CURRENT_USER;

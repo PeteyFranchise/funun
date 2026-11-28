@@ -5,10 +5,12 @@
 // DRY RUN BY DEFAULT. Pass --apply to write. Requires SUPABASE_URL and
 // SUPABASE_SERVICE_ROLE_KEY, and migrations 248, 252 and 253 applied.
 //
-// Backfilled songs get a provenance='backfilled', verdict='unreviewed' review
-// row with no reviewer, because no human approved those exact bytes. They are
-// captured in lifecycle_state 'draft' and are not exposed to anyone by this
-// script.
+// Backfilled songs get a row in crate_backfill_attestations, NOT in
+// crate_quality_reviews: a backfill is not a review, and owner decision
+// 2026-11-28 keeps the two structurally separate so no approval writer can
+// mistake one for the other. They are captured in lifecycle_state 'draft',
+// reach no buyer, and stay that way until staff review the CAPTURED object
+// through crate_review_captured_artifact (migration 254).
 
 import { createClient } from '@supabase/supabase-js'
 import { createHash, randomUUID } from 'node:crypto'

@@ -13,11 +13,15 @@
 -- the original staff member, which asserts they approved bytes they never heard.
 -- That is precisely the forgery crate_quality_reviews exists to prevent.
 --
--- So a backfill produces a DIFFERENT KIND OF ROW: provenance 'backfilled',
--- verdict 'unreviewed', reviewer_id NULL. The song is captured and the file is
--- held, and the record says plainly that nobody approved these exact bytes. Any
--- surface that later wants a byte-level guarantee can ask for provenance
--- 'reviewed' and will correctly not find one.
+-- So a backfill produces a DIFFERENT KIND OF OBJECT: a row in
+-- crate_backfill_attestations, never in crate_quality_reviews. Owner decision
+-- 2026-11-28. An approval writer that requires a passed quality review cannot
+-- reach an attestation at all, so the guarantee is structural rather than a
+-- predicate every future consumer has to remember.
+--
+-- The captured song stays in lifecycle_state 'draft'. It is staff-visible for
+-- the purpose of re-review and reaches no buyer until migration 254's promotion
+-- path appends a real review OF THE CAPTURED OBJECT.
 
 BEGIN;
 
@@ -39,7 +43,7 @@ DECLARE
   v_song_id      UUID;
   v_existing     public.crate_songs%ROWTYPE;
   v_existing_sha TEXT;
-  v_review_id    UUID;
+  v_attestation_id UUID;
   v_artifact_id  UUID;
   v_listing      public.sync_listings%ROWTYPE;
   v_title        TEXT;
@@ -102,16 +106,16 @@ BEGIN
   SELECT u.artist_name INTO v_artist_name
     FROM public.user_profiles u WHERE u.id = v_listing.artist_user_id;
 
-  INSERT INTO public.crate_quality_reviews (
+  INSERT INTO public.crate_backfill_attestations (
     listing_id, source_bucket, source_path, sha256, size_bytes, mime_type,
-    provenance, reviewer_id, verdict, notes
+    attested_by, notes
   )
   VALUES (
     p_listing_id, 'track-audio', COALESCE(v_source_path, ''), p_sha256, p_size_bytes, p_mime_type,
-    'backfilled', NULL, 'unreviewed',
-    'Digest computed at backfill from the object as it stood then. No human approved these bytes, and this does NOT establish that they are the recording that was admitted: the upload route permits replacing a track''s audio after admission.'
+    p_operator_id,
+    'Copied from the live object at backfill. NOT a review: nobody has confirmed these are the bytes that were admitted, and the upload route permits replacing a track''s audio after admission.'
   )
-  RETURNING id INTO v_review_id;
+  RETURNING id INTO v_attestation_id;
 
   INSERT INTO public.crate_songs (
     source_track_id, source_project_id, source_listing_id,
@@ -126,12 +130,12 @@ BEGIN
 
   INSERT INTO public.crate_song_artifacts (
     crate_song_id, role, storage_bucket, storage_path, sha256, size_bytes,
-    mime_type, source_bucket, source_path, status, captured_by, quality_review_id
+    mime_type, source_bucket, source_path, status, captured_by, backfill_attestation_id
   )
   VALUES (
     v_song_id, 'review_playback', p_bucket, p_path, p_sha256, p_size_bytes,
     p_mime_type, 'track-audio', COALESCE(v_source_path, ''), 'verified',
-    p_operator_id, v_review_id
+    p_operator_id, v_attestation_id
   )
   RETURNING id INTO v_artifact_id;
 
@@ -140,8 +144,8 @@ BEGIN
 
   INSERT INTO public.crate_song_events (crate_song_id, lifecycle_version_after, kind, actor, detail)
   VALUES (v_song_id, 0, 'captured_by_backfill', p_operator_id,
-          jsonb_build_object('listing_id', p_listing_id, 'quality_review_id', v_review_id,
-                             'provenance', 'backfilled'));
+          jsonb_build_object('listing_id', p_listing_id,
+                             'backfill_attestation_id', v_attestation_id));
 
   RETURN v_song_id;
 END;
